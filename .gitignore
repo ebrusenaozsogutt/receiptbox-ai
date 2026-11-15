@@ -1,0 +1,50 @@
+# ---- Secrets & local config ----
+.env
+.env.*
+!.env.example
+
+# ---- Private data (never commit real receipts, screenshots, datasets) ----
+ai/datasets/*
+!ai/datasets/.gitkeep
+backend/storage/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# ---- Flutter / Dart / Android (mobile/ has its own .gitignore too) ----
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+*.jks
+*.keystore
+*.iml
+.idea/
+.gradle/
+*.log
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
+.claude/settings.local.json
