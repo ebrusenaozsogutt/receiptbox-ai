@@ -25,11 +25,11 @@ Any table besides what's needed for the health check, auth, real screens, AI cod
 
 ## Acceptance criteria
 
-- [ ] `docker compose -f infra/docker-compose.yml up -d` starts db + backend; `curl localhost:8000/api/v1/health` → `{"status":"ok","db":"ok"}`.
-- [ ] `uv run pytest -q` passes (health test uses a test DB).
-- [ ] `flutter analyze` clean; `flutter test` passes; app runs on an Android emulator and shows "Sunucu: bağlı".
-- [ ] CI workflow passes on push.
-- [ ] No secrets committed; `.env.example` complete.
+- [x] `docker compose -f infra/docker-compose.yml up -d` starts db + backend; `curl localhost:8000/api/v1/health` → `{"status":"ok","db":"ok"}`.
+- [x] `uv run pytest -q` passes (health test uses a test DB).
+- [x] `flutter analyze` clean; `flutter test` passes; app runs on an Android emulator and shows "Sunucu: bağlı".
+- [ ] CI workflow passes on push. *(workflow written; needs a push to GitHub, not run yet)*
+- [x] No secrets committed; `.env.example` complete.
 
 ## Tests
 

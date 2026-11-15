@@ -29,3 +29,14 @@ Format: `D-NNN · date · decision · reason`. Only the owner moves items from "
 ## Proposed / not approved
 
 _(Claude Code: write feature ideas here instead of implementing them.)_
+
+Implementation choices made in P00 that the owner may want to confirm (none adds scope):
+
+| ID | Date | Choice | Reason |
+|---|---|---|---|
+| P-001 | 2026-11-15 | Docker database is published on host port **5433**, not 5432 | A PostgreSQL 17 Windows service already uses 5432 on the owner's PC; also stops tests from touching it by accident |
+| P-002 | 2026-11-15 | Generated `*.g.dart` (Riverpod) are git-ignored; CI and README run `build_runner` | Keeps diffs small; spec §18 asks for Riverpod code generation |
+| P-003 | 2026-11-15 | Mobile uses `package:material_ui` instead of `package:flutter/material.dart` | Flutter 3.50 deprecates the old import; `flutter create` already generates the new one |
+| P-004 | 2026-11-15 | `AI_MODEL_EXTRACT`/`AI_MODEL_ASSISTANT` are empty until P05 | Model names must come from env vars (CLAUDE.md); no guessing of model IDs |
+| P-005 | 2026-11-15 | Compose backend reads a committed, clearly fake `infra/dev-defaults.env`, then the optional repo-root `.env` | `up -d` works before a `.env` exists; real values override it |
+| P-006 | 2026-11-15 | uvicorn's own access log is disabled; the app logs method/path/status/duration itself | uvicorn would print query strings, which will later carry document tokens |
