@@ -9,7 +9,7 @@ Update after every phase. Newest entry on top of the log.
 | P00 | Repository bootstrap & tooling | ✅ Done | 2026-11-16 |
 | P01 | Backend data model & migrations | ✅ Done | 2026-11-16 |
 | P02 | Backend authentication | ✅ Done | 2026-11-16 |
-| P03 | Mobile app shell & auth | ⬜ | |
+| P03 | Mobile app shell & auth | 🟨 Done locally; waiting for green CI | 2026-11-16 (local) |
 | P04 | On-device capture: OCR, QR, PII masking, share | ⬜ | |
 | P05 | AI provider layer & receipt extraction | ⬜ | |
 | P06 | e-Invoice QR, merchant normalisation, categorisation | ⬜ | |
@@ -35,6 +35,29 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner:
 - Known gaps / follow-ups:
 -->
+
+### 2026-11-16 — P03 Mobile app shell & auth (done locally; CI not yet run)
+- Done:
+  - **Theme (`mobile/lib/core/theme/`)** from the Figma "Direction v1" tokens read with the Figma connector: colors, type scale (Plus Jakarta Sans, bundled with its OFL licence), spacing, radii 8/12/16/24, component sizes, shadows, one `ThemeData`. Nothing else in `lib/` may contain a color or size: `test/theme_tokens_guard_test.dart` fails if it does.
+  - **Bottom navigation** built from the Figma component `BottomNav` (node 2:22): Ana Sayfa · Harcamalar · (+) · Ürünler · Asistan, 76 high, the (+) a raised 56×56 rounded square (radius 18, teal shadow); icons are the Figma SVGs. The (+) opens a sheet with Fiş Tara, Galeriden Ekle, Banka Ekran Görüntüsü, Manuel Harcama, Ürün Ekle (placeholder pages).
+  - **Auth in the app:** Splash (token check + `/me`) → Consent (spec 15.3 text; two buttons) → Register (18+ checkbox required) / Login → main shell. Tokens in `flutter_secure_storage`, settings in `shared_preferences`.
+  - **Dio auth interceptor:** adds the access token; on 401 refreshes once and retries; concurrent 401s share ONE refresh (refresh tokens are single-use, see P02); a late 401 from an old token just retries; refresh rejected → tokens deleted, back to Login with an explanation; refresh failing for network reasons keeps the session.
+  - **Settings** (gear on Home): e-mail, "Fiş görsellerini sakla" (default ON, local), server status row (P00's "Sunucu: bağlı"), Çıkış yap, Hesabı sil (confirmation, then Register).
+  - **Shared widgets:** `MoneyText` (`1.349,90 TL`), `DateText` (`09 Kasım 2026`), `EmptyState`, `ErrorView`, `LoadingView`, `MessageBanner`, `AppTextField`. Backend error codes → Turkish messages in one file (`core/networking/api_error.dart`).
+  - Android: `allowBackup="false"`, app label "ReceiptBox AI".
+- Tests added: **192 Flutter tests** (was 3): money/date formatting, error mapping, interceptor (12 cases with a scripted fake network), router redirect rules, form validators, login / register (18+) / consent screens, full app flows (fresh install, restart, revoked session, offline start, logout, delete account), main shell and the 5 (+) actions, bottom-nav measurements against Figma (76, 56×56, radius 18, shadow, label style, tap targets, no overflow on narrow screens / large fonts), settings, server status tile, theme tokens against the Figma values, and the guard test. Plus `integration_test/app_e2e_test.dart`.
+- Verified on the **Android emulator against the real backend** (`flutter test integration_test/app_e2e_test.dart -d emulator-5554 ...`, passes): consent → register (18+ error first) → Home; 4 tabs and all 5 (+) actions; restart keeps the session; a garbage access token is renewed silently (refresh token rotated); a revoked refresh token → Login with the "Oturum süren doldu" message; wrong password message; login; settings; logout → Login; delete account → Register, and the account is really gone on the server. Screenshots of the consent, register, Home/Harcamalar screens match the Figma look.
+- Checks run on 2026-11-16: `ruff check`, `ruff format --check`, `pytest` (285 passed), `flutter analyze` (no issues), `flutter test` (192 passed), the emulator test.
+- Manual test steps for the owner: README §3.3 ("What you should see").
+- Problems found by the tests and fixed in this phase: the bottom bar overflowed on narrow screens / large system fonts; the (+) sheet overflowed on short screens; the bar tabs gave screen readers no tap action; Dart's `toUpperCase()` turned "Gizlilik" into "GIZLILIK" (Turkish needs "GİZLİLİK"); a network failure during refresh would have signed the user out; the keyboard stayed open after submitting a form.
+- Known gaps / follow-ups:
+  - CI for this phase has not run yet (needs a push).
+  - Login / Register / Consent have no Figma frames; they were built from the tokens and components. Please design or review them (DESIGN_TRACK row 8).
+  - Only 7 of 13 category colors exist in Figma so far.
+  - The emulator test is not in CI (no emulator on GitHub's runners). Do not run an `adb` screenshot loop while it runs: that disturbed an earlier run.
+  - On this PC Docker Desktop sometimes stops by itself; `docker desktop start` brings it back (backend tests need it).
+  - The AI consent value is stored but nothing uses it yet (P05), and Settings has no toggle for it.
+  - Tested on the emulator only, not on a real phone.
 
 ### 2026-11-16 — P02 CI confirmed
 - CI run on `main` (`471dc5f`): jobs `backend` and `mobile` both green, including the 285 backend tests on a fresh PostgreSQL service with the longer test `JWT_SECRET`. P02 is closed.

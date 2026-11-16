@@ -194,7 +194,17 @@ An access token lives 15 minutes (`AUTH_EXPIRED` afterwards: use *refresh*); a r
    flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
    ```
 
-The first build takes several minutes (Gradle downloads things). When it works, the emulator shows **"Sunucu: bağlı"** (server connected). If the backend is stopped, tapping **"Tekrar dene"** shows **"Sunucu: bağlantı yok"**.
+The first build takes several minutes (Gradle downloads things).
+
+**What you should see (P03):**
+
+1. First launch: the consent screen **"Verilerin senin kontrolünde"** → tap **Kabul ediyorum** (or "Şimdilik kabul etmiyorum").
+2. **Hesap oluştur** (Register): enter an e-mail and a password (8+ characters, a letter and a digit), tick **"18 yaşından büyük olduğumu onaylıyorum"**, tap **Kayıt ol**. Without the tick you get a red message and nothing is sent.
+3. You land on **Ana Sayfa** with the bottom bar: Ana Sayfa · Harcamalar · **(+)** · Ürünler · Asistan. Tap each tab. Tap the raised **(+)** button: a sheet with Fiş Tara, Galeriden Ekle, Banka Ekran Görüntüsü, Manuel Harcama, Ürün Ekle (each opens a "Bu özellik yakında" page; the arrow goes back).
+4. The gear icon at the top right of Ana Sayfa opens **Ayarlar**: your e-mail, the **"Fiş görsellerini sakla"** switch (on by default), "Sunucu: bağlı", **Çıkış yap** and **Hesabı sil**.
+5. Close the app completely and open it again: you are still signed in (no login screen).
+6. **Çıkış yap** → Login screen. Sign in again → Ana Sayfa.
+7. **Hesabı sil** → confirmation → the account is deleted and you are back on **Register**. (Signing in with the old e-mail now fails: "E-posta veya parola hatalı.")
 
 `10.0.2.2` is the emulator's special address for "the PC it runs on".
 
@@ -204,6 +214,17 @@ Mobile checks:
 flutter analyze
 flutter test
 ```
+
+**End-to-end test on the emulator** (drives the real app against the real backend and checks the acceptance criteria: consent → register → Home, restart keeps the session, an expired access token is renewed silently, a revoked refresh token leads to Login, logout, delete account). It needs the emulator running and `docker compose ... up -d` running; it creates a throw-away `e2e-...@example.test` account and deletes it again. It is not part of CI.
+
+```powershell
+cd mobile
+flutter test integration_test/app_e2e_test.dart -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8000
+```
+
+Do not take screenshots with `adb` in a loop while it runs: that disturbs the test.
+
+**Design:** all colors, font sizes, spacing, radii and component sizes live only in `mobile/lib/core/theme/` (values from the Figma file, see `docs/design/DESIGN_TRACK.md`). A test (`mobile/test/theme_tokens_guard_test.dart`) fails if a hard-coded value is written anywhere else.
 
 `dart run build_runner build` generates the `*.g.dart` files (Riverpod providers). They are git-ignored, so run it after cloning and after changing a provider.
 

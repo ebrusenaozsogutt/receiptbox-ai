@@ -20,11 +20,11 @@ Camera, OCR, any real data screen content.
 
 ## Acceptance criteria
 
-- [ ] Fresh install: consent → register → lands on Home; restart keeps session.
-- [ ] Expired access token silently refreshed; revoked refresh → back to Login.
-- [ ] Delete account works and returns to Register.
-- [ ] All 5 tabs/actions navigate; no hard-coded colors outside `core/theme/`.
-- [ ] `flutter analyze` clean; widget tests pass.
+- [x] Fresh install: consent → register → lands on Home; restart keeps session. *(verified on the Android emulator against the real backend: `integration_test/app_e2e_test.dart`)*
+- [x] Expired access token silently refreshed; revoked refresh → back to Login. *(same test)*
+- [x] Delete account works and returns to Register. *(same test; the account is really gone on the server)*
+- [x] All 5 tabs/actions navigate; no hard-coded colors outside `core/theme/`. *(4 tabs + the (+) with its 5 actions; `test/theme_tokens_guard_test.dart` fails on any hard-coded color or size outside `core/theme/`)*
+- [x] `flutter analyze` clean; widget tests pass. *(192 tests)*
 
 ## Tests
 

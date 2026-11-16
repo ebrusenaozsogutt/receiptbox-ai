@@ -19,8 +19,8 @@ Runs in parallel with P00–P04. Output: approved screens + design tokens that P
 | 4 | Match suggestion sheet | P09 | ⬜ | |
 | 5 | Product detail (warranty, return, documents) | P12 | ⬜ | |
 | 6 | Assistant chat (suggested questions, action buttons) | P14 | ⬜ | |
-| 7 | (+) action sheet, bottom navigation | P03 | 🟨 Bottom nav component done | [Figma](https://www.figma.com/design/dXpZpN53pLMmkYylQwmK1H) · page "🎨 Tasarım Sistemi" |
-| 8 | Login / Register / Consent | P03 | ⬜ | |
+| 7 | (+) action sheet, bottom navigation | P03 | ✅ Bottom nav built from the Figma component (node 2:22). 🟨 The (+) sheet is a first draft in the same style, no Figma frame yet | [Figma](https://www.figma.com/design/dXpZpN53pLMmkYylQwmK1H) · page "🎨 Tasarım Sistemi" |
+| 8 | Login / Register / Consent | P03 | 🟨 Implemented in P03 from the tokens and the Button / input components; **no Figma frames yet**, please design or review them | |
 | 9 | Transactions list & detail | P07 | ⬜ | |
 | 10 | Installment schedule, Budgets, Settings | P10–P13 | ⬜ | |
 
@@ -54,5 +54,7 @@ Runs in parallel with P00–P04. Output: approved screens + design tokens that P
 | cat/grocery | #2F9E6E | cat/tech | #3B6FD8 |
 | cat/food | #E08A2E | cat/transport | #8A5CD6 |
 | cat/clothing | #D64F7A | cat/subscription | #2AA3B8 |
+
+Also defined in Figma but missing from the table above (read with `get_variable_defs` on 2026-11-16): color/text-subtle `#8A9693` (inactive tab labels, placeholders), color/surface-alt `#EEF2F1` (segmented control background), color/on-primary `#FFFFFF`, cat/other `#8A9693`. Component values used by P03: BottomNav 76 high, 1 px top border, 20 px side padding, 24 px icons, Caption labels; the (+) button is 56×56, radius 18, primary, shadow `0 6 14 rgba(13,94,87,0.30)`; buttons 48 high, radius 12, secondary border 1.5; inputs 48 high, radius 12, 1 px border, label above in Label style. Only 7 of the 13 category colors exist so far (grocery, tech, food, transport, clothing, subscription, other).
 
 Type scale: Display 32/40 ExtraBold · Title L 22/28 Bold · Title M 18/24 Bold · Title S 16/22 SemiBold · Body 15/22 · Body S 13/18 · Label 13/16 SemiBold · Caption 12/16 Medium · Overline 11/14 Bold +8%.
