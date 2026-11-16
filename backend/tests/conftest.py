@@ -1,10 +1,11 @@
 import os
+import tempfile
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 # Must be set before app.main is imported: it builds the default app at import time.
-os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
+os.environ.setdefault("JWT_SECRET", "test-only-jwt-secret-not-for-production-use")
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
@@ -12,6 +13,7 @@ from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from app.core.config import Settings  # noqa: E402
@@ -80,6 +82,37 @@ async def app() -> AsyncIterator[FastAPI]:
     test_app = create_app(make_test_settings())
     yield test_app
     await test_app.state.engine.dispose()
+
+
+@pytest.fixture
+def storage_root() -> Iterator[Path]:
+    """A throw-away STORAGE_ROOT. (pytest's tmp_path fails on this PC: the Windows user name
+    contains non-ASCII letters and pytest's own temp folder is not accessible.)"""
+    with tempfile.TemporaryDirectory(prefix="receiptbox-test-") as directory:
+        yield Path(directory)
+
+
+@pytest_asyncio.fixture
+async def api_app(migrated_database: str, storage_root: Path) -> AsyncIterator[FastAPI]:
+    """An app on the migrated test database whose requests really commit.
+
+    Unlike db_session (rolled back), API requests commit, so every user is deleted afterwards
+    (DELETE, not TRUNCATE ... CASCADE: that would also wipe the seeded global aliases).
+    Files go to a temporary STORAGE_ROOT.
+    """
+    test_app = create_app(make_test_settings(storage_root=str(storage_root)))
+    yield test_app
+    async with test_app.state.session_factory() as session:
+        await session.execute(text("DELETE FROM users"))
+        await session.commit()
+    await test_app.state.engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def api_client(api_app: FastAPI) -> AsyncIterator[AsyncClient]:
+    transport = ASGITransport(app=api_app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+        yield http_client
 
 
 @pytest_asyncio.fixture
