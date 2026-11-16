@@ -16,6 +16,10 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --frozen --no-dev
 
 COPY app ./app
+# Database migrations and the seed data they read (docker compose exec backend alembic upgrade head)
+COPY alembic.ini ./
+COPY migrations ./migrations
+COPY data ./data
 
 # Run as an unprivileged user.
 RUN useradd --create-home appuser && mkdir -p /app/storage && chown -R appuser /app/storage
