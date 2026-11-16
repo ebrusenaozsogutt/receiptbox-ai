@@ -8,7 +8,7 @@ Update after every phase. Newest entry on top of the log.
 |---|---|---|---|
 | P00 | Repository bootstrap & tooling | ✅ Done | 2026-11-16 |
 | P01 | Backend data model & migrations | ✅ Done | 2026-11-16 |
-| P02 | Backend authentication | ⬜ | |
+| P02 | Backend authentication | 🟨 Done locally; waiting for green CI | 2026-11-16 (local) |
 | P03 | Mobile app shell & auth | ⬜ | |
 | P04 | On-device capture: OCR, QR, PII masking, share | ⬜ | |
 | P05 | AI provider layer & receipt extraction | ⬜ | |
@@ -35,6 +35,28 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner:
 - Known gaps / follow-ups:
 -->
+
+### 2026-11-16 — P02 Backend authentication (done locally; CI not yet run)
+- Done:
+  - Endpoints under `/api/v1`: `POST /auth/register` (201), `/auth/login`, `/auth/refresh`, `/auth/logout` (204), `GET /me`, `DELETE /me` (204). Layers: `api/auth.py`, `api/deps.py` (`get_current_user`), `services/auth.py`, `repositories/users.py` + `refresh_tokens.py`, `schemas/auth.py`, `security/{passwords,tokens,rate_limit}.py`, `storage/files.py`.
+  - Argon2id passwords (argon2-cffi defaults = RFC 9106 low-memory profile, hash upgraded on login if parameters change); access JWT (HS256, 15 min, `sub` = user id, `typ` = access, algorithm pinned); refresh token = 256 random bits, only its SHA-256 is stored, 30 days, **rotated on every use**; reuse of a revoked token revokes the whole family (found by walking the `replaced_by` chain, no schema change) and returns 401.
+  - Error codes: `AUTH_INVALID_TOKEN`, `AUTH_EXPIRED`, `AUTH_INVALID_CREDENTIALS` (same answer for wrong password and unknown e-mail, with a dummy hash check so timing does not leak), `EMAIL_ALREADY_REGISTERED` (409), `INVALID_EMAIL` / `WEAK_PASSWORD` / `ADULT_CONFIRMATION_REQUIRED` (422), `RATE_LIMITED` (429 + `Retry-After`). 401s carry `WWW-Authenticate: Bearer`.
+  - Argon2 hashing/verification runs in a worker thread (`asyncio.to_thread`), so a login does not freeze the single-process server for the ~50 ms it takes.
+  - Login rate limit: 5 attempts per minute per e-mail + IP (in-process sliding window, injectable clock; e-mail is hashed in memory).
+  - `DELETE /me`: user row (FK cascades remove every row they own) then `STORAGE_ROOT/users/<id>/`.
+  - `JWT_SECRET` must be at least 32 characters (checked at start-up, the rejected value is never echoed); test and CI secrets were lengthened.
+  - New dependencies: `argon2-cffi`, `PyJWT` (both in spec §18).
+- Tests added (285 backend tests in total, 90 new): `tests/api/test_auth.py` (60: happy paths, wrong password, duplicate e-mail, weak password / bad e-mail / 18+, rotation, reuse and family revocation, expired refresh and access tokens, forged tokens incl. `alg: none`, parallel refresh, logout, rate limit per e-mail / per IP / sliding window, passwords and tokens never in logs or responses, OpenAPI), `tests/test_security.py` (passwords, tokens, settings check, limiter, storage cleanup), `tests/test_delete_account.py` (data in 16 tables for two users, only the deleted user's rows and files disappear, old credentials stop working, storage failure does not undo the deletion).
+- Checks run on 2026-11-16: `ruff check`, `ruff format --check`, `pytest` (285 passed, also on a brand-new empty database), live smoke test of the whole Swagger flow against the rebuilt Docker backend (register → me → refresh x2 → reuse 401 → family dead → logout → delete → 401 → rate limit 429).
+- Manual test steps for the owner: README §3.2.2 (Swagger UI at `http://localhost:8000/docs`).
+- Known gaps / follow-ups:
+  - CI for this phase has not run yet (needs a push).
+  - Two refreshes with the same token at the same moment cannot both succeed: the second is treated as reuse and the family is revoked. The mobile app (P03) must serialise refreshes.
+  - Logout revokes the refresh token only; an already issued access token stays valid until it expires (max 15 minutes).
+  - The rate limiter keys on the client IP the app sees (behind a reverse proxy that would be the proxy's IP) and resets when the server restarts.
+  - If deleting the user's files fails after the database delete, only the error type is logged and the request still succeeds; orphaned files are possible (revisit in P16).
+  - Not implemented, by design (see DECISIONS P-023): OAuth, e-mail verification, password reset e-mails.
+  - `pytest`'s `tmp_path` does not work on this PC (the Windows user name has non-ASCII letters), so tests use their own `storage_root` fixture built on `tempfile`.
 
 ### 2026-11-16 — P01 CI confirmed
 - CI run on `main` (`90c185b`): jobs `backend` and `mobile` both green, including the migration tests on a fresh PostgreSQL service. P01 is closed.

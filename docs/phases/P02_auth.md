@@ -21,11 +21,11 @@ OAuth (Google/Apple), e-mail verification, password reset e-mails (document as f
 
 ## Acceptance criteria
 
-- [ ] Register/login/refresh/logout/me/delete work and match OpenAPI schemas.
-- [ ] Refresh rotation and reuse detection tested.
-- [ ] Expired access token → 401 `AUTH_EXPIRED`.
-- [ ] `DELETE /me` removes all user rows (test inserts rows in several tables first).
-- [ ] Passwords never logged or returned; hashes are Argon2id.
+- [x] Register/login/refresh/logout/me/delete work and match OpenAPI schemas.
+- [x] Refresh rotation and reuse detection tested.
+- [x] Expired access token → 401 `AUTH_EXPIRED`.
+- [x] `DELETE /me` removes all user rows (test inserts rows in several tables first). *(16 tables, two users, only the deleted user's rows go)*
+- [x] Passwords never logged or returned; hashes are Argon2id.
 
 ## Tests
 

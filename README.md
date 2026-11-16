@@ -166,6 +166,22 @@ SELECT a.alias_normalized, m.canonical_name
  WHERE a.alias_normalized = 'MIGROS TICARET AS';     -- Migros
 ```
 
+### 3.2.2 Try the login system (Swagger UI)
+
+With the backend running (after code changes: `docker compose -f infra/docker-compose.yml up -d --build`), open <http://localhost:8000/docs>. Every endpoint can be tried from this page.
+
+1. **`POST /api/v1/auth/register`** → *Try it out* → body:
+   `{"email": "ebru@example.com", "password": "Parola123", "is_adult_confirmed": true}` → *Execute*. You get **201** with an `access_token` and a `refresh_token`. (Password: at least 8 characters, one letter and one digit.)
+2. Click the green **Authorize** button at the top, paste the `access_token` (no "Bearer " prefix), *Authorize*.
+3. **`GET /api/v1/me`** → *Execute* → **200** with your e-mail. (Without Authorize you get **401** `AUTH_INVALID_TOKEN`.)
+4. **`POST /api/v1/auth/login`** with the same e-mail and password → **200**. A wrong password gives **401** `AUTH_INVALID_CREDENTIALS`; the 6th attempt within a minute gives **429** `RATE_LIMITED`.
+5. **`POST /api/v1/auth/refresh`** with `{"refresh_token": "<the refresh_token>"}` → **200**, a new pair. Copy the new `refresh_token` and refresh a second time → **200** again.
+6. Now send the **first** `refresh_token` again → **401**. This is *reuse detection*: a refresh token works only once, and replaying an old one also kills the newer tokens (try the newest one: **401**).
+7. **`POST /api/v1/auth/logout`** with a valid `refresh_token` → **204**; using it afterwards → **401**.
+8. **`DELETE /api/v1/me`** (Authorize first) → **204**. Your account and all its data are gone: `GET /api/v1/me` → **401**, logging in → **401**.
+
+An access token lives 15 minutes (`AUTH_EXPIRED` afterwards: use *refresh*); a refresh token lives 30 days.
+
 ### 3.3 The Android app
 
 1. Start an emulator: Android Studio → **Virtual Device Manager → ▶**, or `flutter emulators --launch <emulator_id>`. Wait until you see the Android home screen.
