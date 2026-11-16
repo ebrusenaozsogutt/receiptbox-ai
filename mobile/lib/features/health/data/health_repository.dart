@@ -13,14 +13,20 @@ class HealthRepository {
 
   /// Throws [DioException] when the server cannot be reached.
   Future<HealthStatus> fetch() async {
-    final response = await _dio.get<Map<String, dynamic>>('/health');
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/health',
+      // 503 is a valid answer here ("server up, database down"), not a failure.
+      options: Options(
+        validateStatus: (status) => status == 200 || status == 503,
+      ),
+    );
     return HealthStatus.fromJson(response.data!);
   }
 }
 
 @riverpod
 HealthRepository healthRepository(Ref ref) {
-  return HealthRepository(ref.watch(dioProvider));
+  return HealthRepository(ref.watch(publicDioProvider));
 }
 
 /// Riverpod 3 retries failed providers automatically. Here the user retries with a button,
