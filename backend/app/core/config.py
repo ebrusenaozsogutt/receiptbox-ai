@@ -11,10 +11,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=(".env", "../.env"), extra="ignore")
 
     # Host port 5433 is the docker compose `db` service (see infra/docker-compose.yml).
-    database_url: str = "postgresql+asyncpg://receiptbox:receiptbox@localhost:5433/receiptbox"
+    database_url: str = "postgresql+asyncpg://receiptbox:receiptbox@127.0.0.1:5433/receiptbox"
     # Used by the test-suite only; the database is created by infra/db/init-test-db.sql.
     test_database_url: str = (
-        "postgresql+asyncpg://receiptbox:receiptbox@localhost:5433/receiptbox_test"
+        "postgresql+asyncpg://receiptbox:receiptbox@127.0.0.1:5433/receiptbox_test"
     )
 
     # Required: no default on purpose, so a missing secret fails loudly at start-up.
