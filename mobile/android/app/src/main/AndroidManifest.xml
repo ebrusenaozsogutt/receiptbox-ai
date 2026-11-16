@@ -1,6 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="receiptbox"
+        android:allowBackup="false"
+        android:label="ReceiptBox AI"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
