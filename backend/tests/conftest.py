@@ -1,20 +1,78 @@
 import os
+import uuid
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 # Must be set before app.main is imported: it builds the default app at import time.
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
+import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
+from alembic import command  # noqa: E402
+from alembic.config import Config  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from app.core.config import Settings  # noqa: E402
+from app.core.database import create_engine  # noqa: E402
 from app.main import create_app  # noqa: E402
+from app.models import User  # noqa: E402
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
 def make_test_settings(**overrides: object) -> Settings:
     base = Settings()  # type: ignore[call-arg]
     return base.model_copy(update={"database_url": base.test_database_url, **overrides})
+
+
+def alembic_config(database_url: str) -> Config:
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", database_url)
+    # Do not let Alembic reconfigure logging in the middle of a pytest run.
+    config.attributes["configure_logger"] = False
+    return config
+
+
+@pytest.fixture(scope="session")
+def migrated_database() -> str:
+    """The dedicated test database, rebuilt from scratch with `alembic upgrade head`.
+
+    Sync on purpose: Alembic's async env.py calls asyncio.run(), which needs no running loop.
+    """
+    url = make_test_settings().database_url
+    config = alembic_config(url)
+    command.downgrade(config, "base")
+    command.upgrade(config, "head")
+    return url
+
+
+@pytest_asyncio.fixture
+async def db_session(migrated_database: str) -> AsyncIterator[AsyncSession]:
+    """A session whose changes are rolled back after each test (savepoint-based)."""
+    engine = create_engine(migrated_database)
+    async with engine.connect() as connection:
+        outer_transaction = await connection.begin()
+        session = AsyncSession(
+            bind=connection,
+            join_transaction_mode="create_savepoint",
+            expire_on_commit=False,
+        )
+        try:
+            yield session
+        finally:
+            await session.close()
+            await outer_transaction.rollback()
+    await engine.dispose()
+
+
+async def create_user(session: AsyncSession, label: str = "user") -> User:
+    """Insert a user with a unique, lowercase e-mail (a placeholder password hash)."""
+    user = User(email=f"{label}-{uuid.uuid4().hex[:8]}@example.test", password_hash="not-a-hash")
+    session.add(user)
+    await session.flush()
+    return user
 
 
 @pytest_asyncio.fixture
