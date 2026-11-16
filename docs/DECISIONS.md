@@ -17,6 +17,7 @@ Format: `D-NNN · date · decision · reason`. Only the owner moves items from "
 | D-009 | 2026-11-15 | Money stored as BIGINT minor units | Avoid float errors |
 | D-010 | 2026-11-15 | Claude Code writes the code; owner reviews/tests each phase | Owner decision |
 | D-011 | 2026-11-15 | All md docs in English | Owner decision |
+| D-012 | 2026-11-16 | Money columns are `BIGINT NOT NULL CHECK (>= 0)` except four where the amount can be genuinely unknown: `observations.amount_minor`, `receipt_items.unit_price_minor`, `receipt_items.total_price_minor`, `products.purchase_price_minor` (NULL allowed, never 0 as a placeholder) | Owner chose this in the P01 plan; avoids silently inventing amounts (invariant 7) |
 
 ## Open (need owner input)
 
@@ -40,3 +41,11 @@ Implementation choices made in P00 that the owner may want to confirm (none adds
 | P-004 | 2026-11-15 | `AI_MODEL_EXTRACT`/`AI_MODEL_ASSISTANT` are empty until P05 | Model names must come from env vars (CLAUDE.md); no guessing of model IDs |
 | P-005 | 2026-11-15 | Compose backend reads a committed, clearly fake `infra/dev-defaults.env`, then the optional repo-root `.env` | `up -d` works before a `.env` exists; real values override it |
 | P-006 | 2026-11-15 | uvicorn's own access log is disabled; the app logs method/path/status/duration itself | uvicorn would print query strings, which will later carry document tokens |
+| P-007 | 2026-11-16 | Enums are `VARCHAR + CHECK` (not native PostgreSQL enums) everywhere | Adding a value to a native enum is awkward in Alembic; the phase file asked for one consistent choice |
+| P-008 | 2026-11-16 | `observations.direction` values are `DEBIT` / `CREDIT`; amounts are always >= 0 | Spec 6.1 names the column but not its values |
+| P-009 | 2026-11-16 | `transactions.merchant_id` and `category_id` are nullable; `observations.fingerprint` is NOT NULL; `warranties.start_date` is nullable, `end_date` NOT NULL; `match_decisions.score` is nullable `NUMERIC(6,2)` | Spec 6.1 lists the columns without nullability; unknown values stay empty (invariant 7) |
+| P-010 | 2026-11-16 | Database-level partial unique index `uq_observations_one_confirmed_per_source` enforces spec 6.3 (one CONFIRMED observation per source per transaction, bank rows linked through installment payments excepted) | A database guard is safer than relying on service code alone; P09 must respect it when merging |
+| P-011 | 2026-11-16 | `receipt_items`, `installment_plans`, `installment_payments`, `warranties`, `return_windows` have no `user_id` (as in spec 6.1); they are reached through their parent, which does. `reminders.target_id` is not a foreign key because it points at different tables by `type` | Follows the spec literally; later repositories must join through the parent |
+| P-012 | 2026-11-16 | `merchants_seed.csv` (223 merchants, 691 aliases) was authored by Claude from general knowledge; every alias also has an ASCII-folded variant (POS slips often drop Turkish letters) | Needed >= 150 merchants; owner should review names and default categories |
+| P-013 | 2026-11-16 | Money parser reads a lone separator followed by exactly three digits as thousands (`1.349` = 1349 TL) and rejects `1,349` as ambiguous; negatives are rejected | Turkish lira has two decimals, so three digits cannot be decimals; ambiguity is rejected rather than guessed |
+| P-014 | 2026-11-16 | All database URLs use `127.0.0.1` instead of `localhost` | On the owner's Windows PC `localhost` adds ~2 s to every connection (IPv6 attempt first) |

@@ -142,6 +142,30 @@ uv run ruff format --check .
 uv run pytest -q          # needs the db container running
 ```
 
+### 3.2.1 Database tables (migrations)
+
+The tables are created by Alembic migrations (`backend/migrations/versions/`). With the database container running:
+
+```powershell
+cd backend
+uv run alembic upgrade head      # creates all tables and loads the seed data
+uv run alembic current           # shows the current version (0002 = up to date)
+```
+
+Or from inside the Docker backend container: `docker compose -f infra/docker-compose.yml exec backend alembic upgrade head`.
+
+`uv run alembic downgrade base` removes every table again (and **all data** in them). The tests do this to the separate `receiptbox_test` database by themselves; you never need it for `receiptbox`.
+
+**Look at the tables yourself:** install [DBeaver](https://dbeaver.io/download/) (Community), create a **PostgreSQL** connection with host `127.0.0.1`, port `5433`, database `receiptbox`, user `receiptbox`, password `receiptbox`, then open `receiptbox → Schemas → public → Tables`. Compare them with section 6 of `docs/spec/00_PROJECT_SPEC.md`. Handy queries:
+
+```sql
+SELECT key, label_tr, sort_order FROM categories ORDER BY sort_order;
+SELECT count(*) FROM merchants;                      -- 223
+SELECT a.alias_normalized, m.canonical_name
+  FROM merchant_aliases a JOIN merchants m ON m.id = a.merchant_id
+ WHERE a.alias_normalized = 'MIGROS TICARET AS';     -- Migros
+```
+
 ### 3.3 The Android app
 
 1. Start an emulator: Android Studio → **Virtual Device Manager → ▶**, or `flutter emulators --launch <emulator_id>`. Wait until you see the Android home screen.
@@ -189,7 +213,8 @@ flutter test
 | `flutter`, `uv` or `docker` "is not recognized" | Close and reopen PowerShell / VS Code. Then check your PATH (see 1.4). |
 | `docker ... failed to connect to the docker API` | Docker Desktop is not running. Start it and wait for **Engine running**. |
 | `port is already allocated` on 8000 | Something else uses port 8000. Stop it, or change the port mapping in `infra/docker-compose.yml`. |
-| `pytest` cannot connect to the database | Start it: `docker compose -f infra/docker-compose.yml up -d db`. Tests use `localhost:5433`. |
+| `pytest` cannot connect to the database | Start it: `docker compose -f infra/docker-compose.yml up -d db`. Tests use `127.0.0.1:5433`. |
+| Database connections are slow (about 2 seconds each) | Use `127.0.0.1` instead of `localhost` in the database URLs (some Windows PCs try IPv6 first). The defaults already do. |
 | App shows "Sunucu: bağlantı yok" | Is the backend running? Open <http://localhost:8000/api/v1/health> in your PC browser. On a real phone use `adb reverse` (3.4). |
 | Emulator is very slow or does not start | Run `emulator -accel-check` from `%LOCALAPPDATA%\Android\Sdk\emulator`. Make sure virtualization is on in BIOS and "Windows Hypervisor Platform" is enabled in Windows Features. |
 | `flutter doctor` complains about Android licenses | `flutter doctor --android-licenses` |

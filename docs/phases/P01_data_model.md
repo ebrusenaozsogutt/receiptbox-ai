@@ -25,11 +25,11 @@ Endpoints (except none), business logic, matching.
 
 ## Acceptance criteria
 
-- [ ] `alembic upgrade head` and `alembic downgrade base` both succeed on an empty DB.
-- [ ] All tables/columns/enums match spec §6.1 (a test introspects metadata for required columns).
-- [ ] Seeds load: 13 categories, ≥ 150 merchants, aliases resolve (e.g. `MIGROS TICARET AS` → Migros).
-- [ ] `UserScopedRepository` cannot be called without `user_id` (type-enforced) and filters correctly (test with 2 users).
-- [ ] Money helpers handle ≥ 15 formats incl. negatives rejected, `494,6` → 49460.
+- [x] `alembic upgrade head` and `alembic downgrade base` both succeed on an empty DB.
+- [x] All tables/columns/enums match spec §6.1 (a test introspects metadata for required columns).
+- [x] Seeds load: 13 categories, ≥ 150 merchants, aliases resolve (e.g. `MIGROS TICARET AS` → Migros). *(223 merchants, 691 aliases)*
+- [x] `UserScopedRepository` cannot be called without `user_id` (type-enforced) and filters correctly (test with 2 users).
+- [x] Money helpers handle ≥ 15 formats incl. negatives rejected, `494,6` → 49460. *(18 accepted formats, 17 rejected)*
 
 ## Tests
 
