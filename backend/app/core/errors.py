@@ -22,8 +22,11 @@ class AppError(Exception):
     code = "BAD_REQUEST"
     default_message = "The request could not be processed."
 
-    def __init__(self, message: str | None = None) -> None:
+    def __init__(
+        self, message: str | None = None, *, headers: dict[str, str] | None = None
+    ) -> None:
         self.message = message or self.default_message
+        self.headers = headers
         super().__init__(self.message)
 
 
@@ -39,10 +42,86 @@ class ConflictError(AppError):
     default_message = "The request conflicts with the current state."
 
 
-def error_response(status_code: int, code: str, message: str) -> JSONResponse:
+class ValidationFailedError(AppError):
+    """A business-rule validation failure (the request was well-formed JSON)."""
+
+    status_code = 422
+    code = "VALIDATION_ERROR"
+    default_message = "The request is invalid."
+
+
+# ---- authentication (P02) ----------------------------------------------------------------
+
+
+class AuthError(AppError):
+    """401. The WWW-Authenticate header is required by RFC 6750 for bearer authentication."""
+
+    status_code = 401
+    code = "AUTH_INVALID_TOKEN"
+    default_message = "Authentication is required."
+
+    def __init__(
+        self, message: str | None = None, *, headers: dict[str, str] | None = None
+    ) -> None:
+        super().__init__(message, headers=headers or {"WWW-Authenticate": "Bearer"})
+
+
+class InvalidTokenError(AuthError):
+    code = "AUTH_INVALID_TOKEN"
+    default_message = "The token is missing, malformed, revoked or unknown."
+
+
+class ExpiredTokenError(AuthError):
+    code = "AUTH_EXPIRED"
+    default_message = "The token has expired."
+
+
+class InvalidCredentialsError(AuthError):
+    # Same answer for "no such e-mail" and "wrong password", so it cannot be used to find
+    # out which e-mail addresses are registered.
+    code = "AUTH_INVALID_CREDENTIALS"
+    default_message = "E-mail or password is incorrect."
+
+
+class InvalidEmailError(ValidationFailedError):
+    code = "INVALID_EMAIL"
+    default_message = "The e-mail address is not valid."
+
+
+class WeakPasswordError(ValidationFailedError):
+    code = "WEAK_PASSWORD"
+    default_message = (
+        "The password must be 8-128 characters with at least one letter and one digit."
+    )
+
+
+class AdultConfirmationRequiredError(ValidationFailedError):
+    code = "ADULT_CONFIRMATION_REQUIRED"
+    default_message = "You must confirm that you are 18 or older."
+
+
+class EmailAlreadyRegisteredError(ConflictError):
+    code = "EMAIL_ALREADY_REGISTERED"
+    default_message = "An account with this e-mail address already exists."
+
+
+class RateLimitedError(AppError):
+    status_code = 429
+    code = "RATE_LIMITED"
+    default_message = "Too many attempts. Try again later."
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__(headers={"Retry-After": str(retry_after_seconds)})
+        self.retry_after_seconds = retry_after_seconds
+
+
+def error_response(
+    status_code: int, code: str, message: str, headers: dict[str, str] | None = None
+) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
         content={"error": {"code": code, "message": message}},
+        headers=headers,
     )
 
 
@@ -56,7 +135,7 @@ def _http_status_code_name(status_code: int) -> str:
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
-        return error_response(exc.status_code, exc.code, exc.message)
+        return error_response(exc.status_code, exc.code, exc.message, exc.headers)
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_exception(_: Request, exc: StarletteHTTPException) -> JSONResponse:
