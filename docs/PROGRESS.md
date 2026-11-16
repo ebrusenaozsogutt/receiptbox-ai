@@ -6,7 +6,7 @@ Update after every phase. Newest entry on top of the log.
 
 | Phase | Title | Status | Date done |
 |---|---|---|---|
-| P00 | Repository bootstrap & tooling | 🟨 Done locally; waiting for the first green CI run | 2026-11-15 (local) |
+| P00 | Repository bootstrap & tooling | ✅ Done | 2026-11-16 |
 | P01 | Backend data model & migrations | ⬜ | |
 | P02 | Backend authentication | ⬜ | |
 | P03 | Mobile app shell & auth | ⬜ | |
@@ -36,7 +36,10 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
-### 2026-11-15 — P00 Repository bootstrap & tooling (done locally, CI not yet run)
+### 2026-11-16 — P00 CI confirmed
+- First CI run on `main` (`3ccbdb3`): jobs `backend` and `mobile` both green. This closes the last P00 acceptance criterion. The action versions noted below as unverified worked as written.
+
+### 2026-11-15 — P00 Repository bootstrap & tooling (done locally; CI confirmed on 2026-11-16)
 - Done:
   - Monorepo layout from spec §21, `.gitignore` (secrets, `ai/datasets/*`, `backend/storage/`, generated Dart), `.gitattributes`, `.editorconfig`, `.env.example`, Windows README.
   - `infra/docker-compose.yml`: `db` (postgres:16, volume, healthcheck, separate `receiptbox_test` database) and `backend` (Dockerfile, non-root, depends on healthy db).
@@ -47,7 +50,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Checks run on 2026-11-15: `ruff check`, `ruff format --check`, `pytest` (7 passed), `flutter analyze` (no issues), `flutter test` (3 passed), `docker compose up -d` + `curl /api/v1/health` → `{"status":"ok","db":"ok"}`, app on the Android emulator (Medium Phone API 37) showed "Sunucu: bağlı", and "Sunucu: bağlantı yok" after stopping the backend.
 - Manual test steps for the owner: see README §3 (start Docker → `docker compose -f infra/docker-compose.yml up -d` → `curl http://localhost:8000/api/v1/health` → start the emulator → `flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000`).
 - Known gaps / follow-ups:
-  - **CI has not run yet**: it needs a push to the owner's private GitHub repo. The acceptance box "CI workflow passes on push" stays unchecked until the first green run. The action versions (`checkout@v4`, `setup-uv@v5`, `flutter-action@v2`) were not verified against GitHub.
+  - ~~CI has not run yet~~ → resolved on 2026-11-16, see the entry above.
   - Host port of the Docker database is **5433** (a Windows PostgreSQL 17 service already uses 5432 on the owner's PC).
   - `*.g.dart` files are git-ignored; run `dart run build_runner build` after cloning (CI does this).
   - `AI_MODEL_EXTRACT` / `AI_MODEL_ASSISTANT` / `GEMINI_API_KEY` are empty in `.env.example` until P05.
