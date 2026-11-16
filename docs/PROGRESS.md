@@ -9,7 +9,7 @@ Update after every phase. Newest entry on top of the log.
 | P00 | Repository bootstrap & tooling | ✅ Done | 2026-11-16 |
 | P01 | Backend data model & migrations | ✅ Done | 2026-11-16 |
 | P02 | Backend authentication | ✅ Done | 2026-11-16 |
-| P03 | Mobile app shell & auth | 🟨 Done locally; waiting for green CI | 2026-11-16 (local) |
+| P03 | Mobile app shell & auth | ✅ Done | 2026-11-16 |
 | P04 | On-device capture: OCR, QR, PII masking, share | ⬜ | |
 | P05 | AI provider layer & receipt extraction | ⬜ | |
 | P06 | e-Invoice QR, merchant normalisation, categorisation | ⬜ | |
@@ -36,7 +36,10 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
-### 2026-11-16 — P03 Mobile app shell & auth (done locally; CI not yet run)
+### 2026-11-16 — P03 CI confirmed
+- CI run on `main` (`96553ae`): jobs `backend` and `mobile` both green (the mobile job runs `build_runner`, `flutter analyze` and the 192 Flutter tests on GitHub's runner). P03 is closed.
+
+### 2026-11-16 — P03 Mobile app shell & auth (done locally; CI confirmed later the same day)
 - Done:
   - **Theme (`mobile/lib/core/theme/`)** from the Figma "Direction v1" tokens read with the Figma connector: colors, type scale (Plus Jakarta Sans, bundled with its OFL licence), spacing, radii 8/12/16/24, component sizes, shadows, one `ThemeData`. Nothing else in `lib/` may contain a color or size: `test/theme_tokens_guard_test.dart` fails if it does.
   - **Bottom navigation** built from the Figma component `BottomNav` (node 2:22): Ana Sayfa · Harcamalar · (+) · Ürünler · Asistan, 76 high, the (+) a raised 56×56 rounded square (radius 18, teal shadow); icons are the Figma SVGs. The (+) opens a sheet with Fiş Tara, Galeriden Ekle, Banka Ekran Görüntüsü, Manuel Harcama, Ürün Ekle (placeholder pages).
@@ -51,7 +54,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner: README §3.3 ("What you should see").
 - Problems found by the tests and fixed in this phase: the bottom bar overflowed on narrow screens / large system fonts; the (+) sheet overflowed on short screens; the bar tabs gave screen readers no tap action; Dart's `toUpperCase()` turned "Gizlilik" into "GIZLILIK" (Turkish needs "GİZLİLİK"); a network failure during refresh would have signed the user out; the keyboard stayed open after submitting a form.
 - Known gaps / follow-ups:
-  - CI for this phase has not run yet (needs a push).
+  - ~~CI for this phase has not run yet~~ → green on 2026-11-16, see the entry above.
   - Login / Register / Consent have no Figma frames; they were built from the tokens and components. Please design or review them (DESIGN_TRACK row 8).
   - Only 7 of 13 category colors exist in Figma so far.
   - The emulator test is not in CI (no emulator on GitHub's runners). Do not run an `adb` screenshot loop while it runs: that disturbed an earlier run.
