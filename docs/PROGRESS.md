@@ -8,7 +8,7 @@ Update after every phase. Newest entry on top of the log.
 |---|---|---|---|
 | P00 | Repository bootstrap & tooling | ✅ Done | 2026-11-16 |
 | P01 | Backend data model & migrations | ✅ Done | 2026-11-16 |
-| P02 | Backend authentication | 🟨 Done locally; waiting for green CI | 2026-11-16 (local) |
+| P02 | Backend authentication | ✅ Done | 2026-11-16 |
 | P03 | Mobile app shell & auth | ⬜ | |
 | P04 | On-device capture: OCR, QR, PII masking, share | ⬜ | |
 | P05 | AI provider layer & receipt extraction | ⬜ | |
@@ -36,7 +36,10 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
-### 2026-11-16 — P02 Backend authentication (done locally; CI not yet run)
+### 2026-11-16 — P02 CI confirmed
+- CI run on `main` (`471dc5f`): jobs `backend` and `mobile` both green, including the 285 backend tests on a fresh PostgreSQL service with the longer test `JWT_SECRET`. P02 is closed.
+
+### 2026-11-16 — P02 Backend authentication (done locally; CI confirmed later the same day)
 - Done:
   - Endpoints under `/api/v1`: `POST /auth/register` (201), `/auth/login`, `/auth/refresh`, `/auth/logout` (204), `GET /me`, `DELETE /me` (204). Layers: `api/auth.py`, `api/deps.py` (`get_current_user`), `services/auth.py`, `repositories/users.py` + `refresh_tokens.py`, `schemas/auth.py`, `security/{passwords,tokens,rate_limit}.py`, `storage/files.py`.
   - Argon2id passwords (argon2-cffi defaults = RFC 9106 low-memory profile, hash upgraded on login if parameters change); access JWT (HS256, 15 min, `sub` = user id, `typ` = access, algorithm pinned); refresh token = 256 random bits, only its SHA-256 is stored, 30 days, **rotated on every use**; reuse of a revoked token revokes the whole family (found by walking the `replaced_by` chain, no schema change) and returns 401.
@@ -50,7 +53,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Checks run on 2026-11-16: `ruff check`, `ruff format --check`, `pytest` (285 passed, also on a brand-new empty database), live smoke test of the whole Swagger flow against the rebuilt Docker backend (register → me → refresh x2 → reuse 401 → family dead → logout → delete → 401 → rate limit 429).
 - Manual test steps for the owner: README §3.2.2 (Swagger UI at `http://localhost:8000/docs`).
 - Known gaps / follow-ups:
-  - CI for this phase has not run yet (needs a push).
+  - ~~CI for this phase has not run yet~~ → green on 2026-11-16, see the entry above.
   - Two refreshes with the same token at the same moment cannot both succeed: the second is treated as reuse and the family is revoked. The mobile app (P03) must serialise refreshes.
   - Logout revokes the refresh token only; an already issued access token stays valid until it expires (max 15 minutes).
   - The rate limiter keys on the client IP the app sees (behind a reverse proxy that would be the proxy's IP) and resets when the server restarts.
