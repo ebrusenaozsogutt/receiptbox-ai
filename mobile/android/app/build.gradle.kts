@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace = "com.receiptbox.receiptbox"
-    compileSdk = flutter.compileSdkVersion
+    // receive_sharing_intent needs API 37 or newer to compile (this does not change which phones
+    // can install the app: minSdk stays 24, targetSdk is unchanged).
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
