@@ -10,7 +10,7 @@ Update after every phase. Newest entry on top of the log.
 | P01 | Backend data model & migrations | ✅ Done | 2026-11-16 |
 | P02 | Backend authentication | ✅ Done | 2026-11-16 |
 | P03 | Mobile app shell & auth | ✅ Done | 2026-11-16 |
-| P04 | On-device capture: OCR, QR, PII masking, share | ✅ Done (CI pending) | 2026-11-19 |
+| P04 | On-device capture: OCR, QR, PII masking, share | ✅ Done | 2026-11-19 |
 | P05 | AI provider layer & receipt extraction | ⬜ | |
 | P06 | e-Invoice QR, merchant normalisation, categorisation | ⬜ | |
 | P07 | Receipt review flow, manual entry, documents | ⬜ | |
@@ -36,7 +36,10 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
-### 2026-11-19 — P04 On-device capture: OCR, QR, PII masking, share (done locally; verified on the emulator, no real phone)
+### 2026-11-19 — P04 CI confirmed
+- CI run on `main` (`8f35836`): jobs `backend` and `mobile` both green (the mobile job runs `build_runner`, `flutter analyze` and the 345 Flutter tests on GitHub's runner; the emulator test is not part of CI). P04 is closed; the real-phone camera check stays open under known gaps.
+
+### 2026-11-19 — P04 On-device capture: OCR, QR, PII masking, share (done locally; CI confirmed later the same day; verified on the emulator, no real phone)
 - Done:
   - **Pipeline (`features/capture/data/capture_pipeline.dart`)**, entirely on the phone and offline: image or PDF (first 2 pages via `pdfx`) → resize to a 2000 px long edge + EXIF rotation into a new metadata-free JPEG → GİB QR (ML Kit barcode, only a GİB invoice QR is kept, buyer `avkntckn` removed) → ML Kit text recognition (Latin, text lines joined in reading order: a name and its price on the same band become one row) → PII masking → `CapturePayload {kind, masked_text, qr_payload?, capture_date, source}`. Nothing is uploaded and no image is stored (P07); every temporary image is deleted when processing ends and the temp folder is cleared at the next start.
   - **PII masker (`core/privacy/pii_masker.dart`)** with all spec 15.1 rules: IBAN, Luhn card numbers (also partly hidden), TCKN with checksum, phones, e-mails, balance/limit/account lines (whole line), names after Sayın / Ad Soyad / Kart Sahibi / Müşteri (+ Hesap Sahibi, see P-035). Turkish-aware (İ/ı/ş folding, length-preserving), biased toward masking, returns counts only.
@@ -60,7 +63,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
   - On this emulator the photo picker needed a "Done" tap after choosing a picture; real phones may select straight away.
   - Images are not kept after reading (storing receipt images is P07); the "Fiş görsellerini sakla" setting has no effect yet. The AI consent value is still not checked (P05).
   - The first Gradle build after adding the plugins took about 14 minutes on this PC; later builds take 1–2 minutes.
-  - CI for this phase has not run yet (push pending).
+  - ~~CI for this phase has not run yet~~ → green on 2026-11-19, see the entry above.
 
 ### 2026-11-16 — P03 CI confirmed
 - CI run on `main` (`96553ae`): jobs `backend` and `mobile` both green (the mobile job runs `build_runner`, `flutter analyze` and the 192 Flutter tests on GitHub's runner). P03 is closed.
