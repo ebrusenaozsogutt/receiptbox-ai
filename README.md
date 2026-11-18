@@ -200,13 +200,47 @@ The first build takes several minutes (Gradle downloads things).
 
 1. First launch: the consent screen **"Verilerin senin kontrolünde"** → tap **Kabul ediyorum** (or "Şimdilik kabul etmiyorum").
 2. **Hesap oluştur** (Register): enter an e-mail and a password (8+ characters, a letter and a digit), tick **"18 yaşından büyük olduğumu onaylıyorum"**, tap **Kayıt ol**. Without the tick you get a red message and nothing is sent.
-3. You land on **Ana Sayfa** with the bottom bar: Ana Sayfa · Harcamalar · **(+)** · Ürünler · Asistan. Tap each tab. Tap the raised **(+)** button: a sheet with Fiş Tara, Galeriden Ekle, Banka Ekran Görüntüsü, Manuel Harcama, Ürün Ekle (each opens a "Bu özellik yakında" page; the arrow goes back).
+3. You land on **Ana Sayfa** with the bottom bar: Ana Sayfa · Harcamalar · **(+)** · Ürünler · Asistan. Tap each tab. Tap the raised **(+)** button: a sheet with Fiş Tara, Galeriden Ekle, Banka Ekran Görüntüsü, Manuel Harcama, Ürün Ekle. Since P04 the first three are real (see below); Manuel Harcama and Ürün Ekle still open a "Bu özellik yakında" page (the arrow goes back).
 4. The gear icon at the top right of Ana Sayfa opens **Ayarlar**: your e-mail, the **"Fiş görsellerini sakla"** switch (on by default), "Sunucu: bağlı", **Çıkış yap** and **Hesabı sil**.
 5. Close the app completely and open it again: you are still signed in (no login screen).
 6. **Çıkış yap** → Login screen. Sign in again → Ana Sayfa.
 7. **Hesabı sil** → confirmation → the account is deleted and you are back on **Register**. (Signing in with the old e-mail now fails: "E-posta veya parola hatalı.")
 
 `10.0.2.2` is the emulator's special address for "the PC it runs on".
+
+**Capture on the emulator (P04).** A real phone is not needed: everything below uses pictures and files that you put on the emulator. Nothing is uploaded in P04; the phone reads the picture, hides personal data and shows the result on a screen ("Okunan bilgiler"). Debug builds also show the original text under the masked text, so you can compare. Release builds never keep the original text.
+
+1. Make synthetic samples (made-up receipt, bank screenshot, GİB QR invoice, 2-page PDF; they go to the git-ignored `ai/datasets/synthetic/`):
+   ```powershell
+   uv run --with pillow --with "qrcode[pil]" python ai/experiments/make_synthetic_samples.py
+   ```
+2. Put them in the emulator's gallery and downloads (the emulator must be running):
+   ```powershell
+   adb push ai/datasets/synthetic/. /sdcard/Pictures/ReceiptBoxSamples/
+   adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/ReceiptBoxSamples/receipt_market.jpg
+   adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/ReceiptBoxSamples/bank_screenshot.jpg
+   adb push ai/datasets/synthetic/invoice_2pages.pdf /sdcard/Download/
+   ```
+3. **Gallery:** (+) → **Galeriden Ekle** → **Fotoğraf seç** → pick `receipt_market.jpg` → choose **Fiş veya fatura**. You should see "3 hassas bilgi gizlendi: 1 telefon, 1 isim, 1 kart numarası", the phone number as `[PHONE]`, the customer as `[NAME]`, the card as `[CARD]`, and **TOPLAM 270,30** still readable. Scroll down: the original text is shown below (debug builds only).
+4. **Bank screenshot:** (+) → **Banka Ekran Görüntüsü** → pick `bank_screenshot.jpg`: the balance line, IBAN, card number and account holder are replaced; the spending rows stay.
+5. **Share:** open the emulator's **Files** app → Downloads → long-press `invoice_2pages.pdf` → **Share** → **ReceiptBox AI** → choose the kind. "2 sayfa okundu", the name after "Sayın" is `[NAME]`. (The same works from any app's share button, also while you are signed out: the file waits and is offered after you sign in.)
+6. **Camera:** (+) → **Fiş Tara**. The first time Android asks for the camera permission. "Don't allow" shows an explanation and a **Galeriden ekle** button. The emulator's virtual scene shows a living room: take a picture and you get "Okunamadı" (there is no text in it); **Tekrar dene** goes back to the camera. A real receipt through a real phone camera is still to be checked (see `docs/PROGRESS.md`, known gaps).
+7. **Offline:** switch the emulator to airplane mode and repeat step 3: it works the same (the OCR models are inside the app).
+
+**Real ML Kit test on the emulator** (`mobile/integration_test/capture_e2e_test.dart`): reads the six synthetic samples with the real OCR/QR/PDF code and checks the masking and that the buyer's identity number is removed from the GİB QR. `flutter test` reinstalls the app, which wipes files pushed to the emulator, so the samples are served from your PC for a moment:
+
+```powershell
+python -m http.server 8765 --bind 127.0.0.1 --directory ai/datasets/synthetic
+```
+
+and in a second PowerShell:
+
+```powershell
+cd mobile
+flutter test integration_test/capture_e2e_test.dart -d emulator-5554
+```
+
+Add `--dart-define=EXPECT_OFFLINE=true` to prove it works without a network: the test prints `SAMPLES_READY` and waits; run `adb shell cmd connectivity airplane-mode enable`, and it continues once the network is really gone. Turn airplane mode off afterwards (`adb shell cmd connectivity airplane-mode disable`). Do not use `adb` screenshot loops while it runs.
 
 Mobile checks:
 

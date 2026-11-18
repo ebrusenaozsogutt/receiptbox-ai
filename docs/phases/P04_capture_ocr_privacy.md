@@ -21,11 +21,11 @@ Uploading/extraction (P05/P08), storing images (P07).
 
 ## Acceptance criteria
 
-- [ ] Camera, gallery and share (from Gallery app and from a PDF viewer) all produce a `CapturePayload`.
-- [ ] GİB QR detected on a sample e-Archive invoice; `avkntckn` absent from output.
-- [ ] PII masker unit tests: ≥ 40 cases, 100% pass, including Turkish text around numbers and false-positive checks (e.g. receipt totals and dates are **not** masked; 11-digit numbers failing TCKN checksum are not masked).
-- [ ] Original (unmasked) text is never persisted or sent; verified by code review note in PROGRESS.
-- [ ] Works offline (no network needed for this phase).
+- [x] Camera, gallery and share (from Gallery app and from a PDF viewer) all produce a `CapturePayload`. *(Emulator: gallery picker, share from the Files app and via share intents for an image and a PDF, camera via the emulator's virtual scene. The camera on a real phone is a manual test for later, see PROGRESS known gaps.)*
+- [x] GİB QR detected on a sample e-Archive invoice; `avkntckn` absent from output. *(Synthetic invoice; real ML Kit on the emulator.)*
+- [x] PII masker unit tests: ≥ 40 cases, 100% pass, including Turkish text around numbers and false-positive checks (e.g. receipt totals and dates are **not** masked; 11-digit numbers failing TCKN checksum are not masked).
+- [x] Original (unmasked) text is never persisted or sent; verified by code review note in PROGRESS.
+- [x] Works offline (no network needed for this phase). *(Integration test passes in airplane mode.)*
 
 ## Tests
 

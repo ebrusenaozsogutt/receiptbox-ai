@@ -10,7 +10,7 @@ Update after every phase. Newest entry on top of the log.
 | P01 | Backend data model & migrations | ✅ Done | 2026-11-16 |
 | P02 | Backend authentication | ✅ Done | 2026-11-16 |
 | P03 | Mobile app shell & auth | ✅ Done | 2026-11-16 |
-| P04 | On-device capture: OCR, QR, PII masking, share | ⬜ | |
+| P04 | On-device capture: OCR, QR, PII masking, share | ✅ Done (CI pending) | 2026-11-19 |
 | P05 | AI provider layer & receipt extraction | ⬜ | |
 | P06 | e-Invoice QR, merchant normalisation, categorisation | ⬜ | |
 | P07 | Receipt review flow, manual entry, documents | ⬜ | |
@@ -35,6 +35,32 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner:
 - Known gaps / follow-ups:
 -->
+
+### 2026-11-19 — P04 On-device capture: OCR, QR, PII masking, share (done locally; verified on the emulator, no real phone)
+- Done:
+  - **Pipeline (`features/capture/data/capture_pipeline.dart`)**, entirely on the phone and offline: image or PDF (first 2 pages via `pdfx`) → resize to a 2000 px long edge + EXIF rotation into a new metadata-free JPEG → GİB QR (ML Kit barcode, only a GİB invoice QR is kept, buyer `avkntckn` removed) → ML Kit text recognition (Latin, text lines joined in reading order: a name and its price on the same band become one row) → PII masking → `CapturePayload {kind, masked_text, qr_payload?, capture_date, source}`. Nothing is uploaded and no image is stored (P07); every temporary image is deleted when processing ends and the temp folder is cleared at the next start.
+  - **PII masker (`core/privacy/pii_masker.dart`)** with all spec 15.1 rules: IBAN, Luhn card numbers (also partly hidden), TCKN with checksum, phones, e-mails, balance/limit/account lines (whole line), names after Sayın / Ad Soyad / Kart Sahibi / Müşteri (+ Hesap Sahibi, see P-035). Turkish-aware (İ/ı/ş folding, length-preserving), biased toward masking, returns counts only.
+  - **Screens:** Fiş Tara (live preview, guide frame, shutter; permission denied / no camera / error states with a way to the gallery), Galeriden Ekle and Banka Ekran Görüntüsü (system photo picker, no permission), a "Bu bir ne?" sheet (receipt or bank screenshot) for gallery and shared files, and **Okunan bilgiler** (masked text, how many items of each kind were hidden, QR found, and in debug builds the original text under it with a warning). Share sheet: images and PDFs (`SEND`/`SEND_MULTIPLE` intent filters); shared files wait in an app-wide inbox if you are still signed out.
+  - Android: camera permission (camera not a required feature), `launchMode=singleTask`, `compileSdk 37` (needed by `receive_sharing_intent`), Flutter deep linking switched off (P-036).
+  - `ai/experiments/make_synthetic_samples.py` makes six SYNTHETIC samples (receipt, rotated receipt, receipt with GİB QR, bank screenshot, 2-page PDF, an image without text) into the git-ignored `ai/datasets/synthetic/`. No real receipt or bank screenshot was used or committed.
+- Tests added (**345 Flutter tests**, was 192): `pii_masker_test` (84 cases incl. false positives: totals, dates, times, seller tax numbers, 11-digit numbers failing the TCKN checksum, "MÜŞTERİ NÜSHASI"), `gib_qr_parser_test` (23), `reading_order_test`, `image_preprocessor_test` (scaling, EXIF, no metadata), `capture_pipeline_test` (fakes: masking, QR, PDF, errors, files deleted also on failure, original text only when debug asks), `capture_screens_test` (gallery, bank, kind sheet, picker cancel/error, result states, share at start / while running / while signed out, camera states), `privacy_guard_test` (no logging and no network code in `core/ocr`, `core/privacy`, `features/capture`; the original text is kept only for debug), and the theme-token guard still passes. Widget tests use a fake pipeline; no real LLM anywhere.
+- Checks run on 2026-11-19: `ruff check`, `ruff format --check`, `pytest` (285 passed, Docker database running), `flutter analyze` (no issues), `flutter test` (345 passed).
+- **Verified on the Android emulator** (Medium Phone API 37, synthetic samples only):
+  - `integration_test/capture_e2e_test.dart` with the REAL ML Kit, PDF and image code: 6/6 pass (receipt text read and masked; EXIF-rotated photo read upright; GİB QR found with the buyer TCKN absent; bank screenshot IBAN/balance/card/holder masked; 2-page PDF read; picture without text gives "no text"). It also passes **in airplane mode** (the test waits until the network is really gone before it reads anything): the phase works offline.
+  - By hand in the real app: gallery → kind sheet → masked result; bank screenshot; **share** a picture and a PDF with `adb` share intents and from the emulator's **Files app → Share → ReceiptBox AI** (while running, from a cold start, and while signed out: offered after login); camera permission denied screen, live preview (emulator virtual scene), shutter, "no text" result and retry.
+  - The throw-away test accounts were deleted again; the dev database only holds `ebru@test.com`.
+- Manual test steps for the owner: README §3.3 "Capture on the emulator (P04)".
+- **Code-review note (acceptance: original text never persisted or sent):** the unmasked OCR text is created in `OcrService.readText` and consumed in `CapturePipeline.process`, which masks it immediately. It is not written to disk, SharedPreferences or logs (no `print`/`debugPrint`/`log` in the guarded folders, enforced by a test), not sent anywhere (no network package in those folders, enforced by a test, and no upload exists in P04), and `CaptureResult.debugOriginalText` is only filled when `kDebugMode` is true (a release build drops it after masking; the result screen shows it only in debug builds). In debug builds it stays in memory until the result screen is left (the flow state is reset then). Error messages shown to the user never contain image text. `allowBackup` stays off.
+- Known gaps / follow-ups:
+  - **Camera on a real phone is NOT checked (owner has no phone connected). Manual test for later:** on the phone run the app, (+) → Fiş Tara, allow the camera, photograph a real receipt held inside the guide frame (also a long, curved thermal receipt and a poorly lit one), and compare the masked text with the original in the debug view. The code path (preview, capture, pipeline) is the same one the emulator camera and the gallery use, but autofocus, low light and the phone's native resolution are untested.
+  - **OCR quality on real receipts is not measured.** Only synthetic images were used, so the masker's real-world recall (names especially: it is a heuristic) and OCR mistakes (for example ML Kit read "ŞTİ" as "ŞTỈ" with a combining dot, "SÜT" as "sÜT") are unknown until the owner's manual check with real receipts (phase file, "Manual check for the owner": 10 receipts and 2 bank screenshots).
+  - `pdfx` applies the old Kotlin Gradle plugin; Flutter warns that future versions will refuse it (the build works today). Revisit when a newer `pdfx` exists.
+  - `receive_sharing_intent` crashes the app if another app shares a `content://` file without granting read access (it throws inside the plugin); normal share sheets always grant it. Only the first of several shared files is read; PDFs: first 2 pages only.
+  - `capture_date` for a shared file is the copy's modified time (see P-038). The gallery picker's file time is used when Android provides it.
+  - On this emulator the photo picker needed a "Done" tap after choosing a picture; real phones may select straight away.
+  - Images are not kept after reading (storing receipt images is P07); the "Fiş görsellerini sakla" setting has no effect yet. The AI consent value is still not checked (P05).
+  - The first Gradle build after adding the plugins took about 14 minutes on this PC; later builds take 1–2 minutes.
+  - CI for this phase has not run yet (push pending).
 
 ### 2026-11-16 — P03 CI confirmed
 - CI run on `main` (`96553ae`): jobs `backend` and `mobile` both green (the mobile job runs `build_runner`, `flutter analyze` and the 192 Flutter tests on GitHub's runner). P03 is closed.
