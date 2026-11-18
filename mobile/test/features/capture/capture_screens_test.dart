@@ -279,6 +279,66 @@ void main() {
       expect(app.pipeline.inputs.single.isPdf, isFalse);
     });
 
+    testWidgets(
+      'a file shared while the user is still signed out waits and is offered after login',
+      (tester) async {
+        final api = FakeAuthApi()..passwords['ebru@example.com'] = 'Parola123';
+        final app = await TestApp.create(
+          api: api,
+          preferences: {'consent_seen': true, 'has_account': true},
+        );
+        await tester.pumpWidget(app.app());
+        await tester.pumpAndSettle();
+        expect(find.text('Giriş yap'), findsWidgets); // on the login screen
+
+        app.sharedMedia.controller.add([
+          SharedFile(
+            path: '/cache/early.jpg',
+            isPdf: false,
+            modified: DateTime(2026, 10, 8),
+          ),
+        ]);
+        await tester.pumpAndSettle();
+        expect(find.text('Bu bir ne?'), findsNothing); // nothing before sign-in
+
+        await tester.enterText(
+          find.byKey(const Key('login_email')),
+          'ebru@example.com',
+        );
+        await tester.enterText(
+          find.byKey(const Key('login_password')),
+          'Parola123',
+        );
+        await tester.tap(find.widgetWithText(FilledButton, 'Giriş yap'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Bu bir ne?'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('kind_receipt')));
+        await tester.pumpAndSettle();
+        expect(app.pipeline.inputs.single.file.path, '/cache/early.jpg');
+        expect(app.sharedMedia.resets, greaterThan(0));
+      },
+    );
+
+    testWidgets('closing the kind sheet drops the shared file', (tester) async {
+      final app = await _openApp(tester);
+      app.sharedMedia.controller.add([
+        SharedFile(
+          path: '/cache/drop.jpg',
+          isPdf: false,
+          modified: DateTime(2026, 10, 9),
+        ),
+      ]);
+      await tester.pumpAndSettle();
+      expect(find.text('Bu bir ne?'), findsOneWidget);
+
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+
+      expect(app.pipeline.inputs, isEmpty);
+      expect(find.text('Bu bir ne?'), findsNothing);
+    });
+
     testWidgets('nothing happens when nothing is shared', (tester) async {
       final app = await _openApp(tester);
       expect(find.text('Bu bir ne?'), findsNothing);

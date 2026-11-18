@@ -6,13 +6,13 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../data/capture_providers.dart';
-import '../data/media_sources.dart';
 import '../domain/capture_payload.dart';
 import 'capture_kind_sheet.dart';
 
-/// Sits around the main screens and reacts to "Share -> ReceiptBox" from other apps:
-/// asks whether it is a receipt or a bank screenshot, reads it on the phone and opens the
-/// result screen. Also wipes leftovers of an earlier run from the temporary capture folder.
+/// Sits around the main screens and reacts to "Share -> ReceiptBox" from other apps (the files
+/// wait in [sharedInboxProvider] until the user is signed in and these screens exist): asks
+/// whether it is a receipt or a bank screenshot, reads it on the phone and opens the result
+/// screen. Also wipes leftovers of an earlier run from the temporary capture folder.
 class SharedMediaListener extends ConsumerStatefulWidget {
   const SharedMediaListener({super.key, required this.child});
 
@@ -24,35 +24,21 @@ class SharedMediaListener extends ConsumerStatefulWidget {
 }
 
 class _SharedMediaListenerState extends ConsumerState<SharedMediaListener> {
-  StreamSubscription<List<SharedFile>>? _subscription;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_start());
+    unawaited(ref.read(captureTempDirProvider).clear().catchError((_) {}));
+    // Something may already be waiting (the app was started by the share).
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_drain()));
   }
 
-  Future<void> _start() async {
-    final source = ref.read(sharedMediaSourceProvider);
-    try {
-      await ref.read(captureTempDirProvider).clear();
-      final initial = await source.initial();
-      if (!mounted) return;
-      _subscription = source.stream().listen(
-        (files) => unawaited(_handle(files)),
-        onError: (_) {}, // sharing is a convenience: a plugin hiccup must not crash the app
-      );
-      await _handle(initial);
-    } on Object {
-      // No sharing support (or no platform at all, as in unit tests): everything else works.
-    }
-  }
-
-  Future<void> _handle(List<SharedFile> files) async {
-    if (files.isEmpty || _busy || !mounted) return;
+  Future<void> _drain() async {
+    if (_busy || !mounted) return;
+    final files = ref.read(sharedInboxProvider.notifier).take();
+    if (files.isEmpty) return;
     _busy = true;
-    final source = ref.read(sharedMediaSourceProvider);
     try {
       // One file at a time: the first one is read, the others are dropped.
       final shared = files.first;
@@ -80,20 +66,21 @@ class _SharedMediaListenerState extends ConsumerState<SharedMediaListener> {
               ),
             ),
       );
-      if (!mounted) return;
       unawaited(context.push('/capture/result'));
     } finally {
       _busy = false;
-      unawaited(source.reset().catchError((_) {}));
+      // Another share may have arrived while the sheet was open.
+      if (mounted && ref.read(sharedInboxProvider).isNotEmpty) {
+        unawaited(_drain());
+      }
     }
   }
 
   @override
-  void dispose() {
-    unawaited(_subscription?.cancel());
-    super.dispose();
+  Widget build(BuildContext context) {
+    ref.listen(sharedInboxProvider, (previous, next) {
+      if (next.isNotEmpty) unawaited(_drain());
+    });
+    return widget.child;
   }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }

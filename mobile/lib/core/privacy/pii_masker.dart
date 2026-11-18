@@ -187,7 +187,7 @@ class PiiMasker {
     r'\btoplam borc\b|\bhesap (?:no|numarasi)\b',
   );
   static final _nameLabel = RegExp(
-    r'\b(?:sayin|ad soyad|adi soyadi|kart sahibi|musteri)\b',
+    r'\b(?:sayin|ad soyad|adi soyadi|kart sahibi|hesap sahibi|musteri)\b',
   );
 
   /// What may follow a label without being a name ("MÜŞTERİ NÜSHASI", "Sayın Müşterimiz"...).

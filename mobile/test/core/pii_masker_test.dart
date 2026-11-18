@@ -256,6 +256,10 @@ void main() {
     test('"Kart Sahibi: ..."', () {
       expect(m('Kart Sahibi: EBRU YILMAZ'), 'Kart Sahibi: [NAME]');
     });
+    test('"Hesap Sahibi: ..." (bank screenshots)', () {
+      expect(m('Hesap Sahibi: Ayşe Örnek'), 'Hesap Sahibi: [NAME]');
+      expect(m('HESAP SAHİBİ\nAyşe Örnek'), 'HESAP SAHİBİ\n[NAME]');
+    });
     test('"Müşteri: ..."', () {
       expect(m('Müşteri: Ahmet Demir'), 'Müşteri: [NAME]');
     });

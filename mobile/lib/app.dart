@@ -12,6 +12,7 @@ import 'features/auth/presentation/consent_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
 import 'features/auth/presentation/splash_screen.dart';
+import 'features/capture/data/capture_providers.dart';
 import 'features/capture/presentation/camera_screen.dart';
 import 'features/capture/presentation/capture_result_screen.dart';
 import 'features/capture/presentation/pick_image_screen.dart';
@@ -178,6 +179,8 @@ class ReceiptBoxApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Start listening for shared files right away (see SharedInbox).
+    ref.read(sharedInboxProvider);
     return MaterialApp.router(
       title: 'ReceiptBox AI',
       routerConfig: ref.watch(routerProvider),

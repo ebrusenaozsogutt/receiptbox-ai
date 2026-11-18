@@ -85,6 +85,9 @@ class AppSizes {
   static const double shutterButton = 72;
   static const double shutterRing = 4;
 
+  /// The guide frame drawn over the camera preview (where the receipt should go).
+  static const double guideFrameBorder = 2;
+
   /// Height of the text boxes on the capture result screen (masked / original text).
   static const double resultTextMaxHeight = 320;
 }

@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/loading_view.dart';
 import '../data/capture_providers.dart';
@@ -135,9 +136,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     return Scaffold(
       backgroundColor: AppColors.cameraBackground,
       appBar: AppBar(
-        title: const Text('Fiş Tara'),
+        title: Text(
+          'Fiş Tara',
+          style: AppTextStyles.titleM.copyWith(
+            color: AppColors.cameraForeground,
+          ),
+        ),
         backgroundColor: AppColors.cameraBackground,
         foregroundColor: AppColors.cameraForeground,
+        iconTheme: const IconThemeData(color: AppColors.cameraForeground),
       ),
       body: switch (_status) {
         _CameraStatus.starting => const LoadingView(),
@@ -188,7 +195,44 @@ class _Preview extends StatelessWidget {
     return SafeArea(
       child: Column(
         children: [
-          Expanded(child: Center(child: CameraPreview(controller))),
+          Expanded(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Center(child: CameraPreview(controller)),
+                // Guide frame: place the receipt inside it.
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xxl),
+                      child: DecoratedBox(
+                        key: const Key('camera_guide_frame'),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AppColors.cameraForeground,
+                            width: AppSizes.guideFrameBorder,
+                          ),
+                          borderRadius: AppRadius.card,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: AppSpacing.l,
+                  right: AppSpacing.l,
+                  bottom: AppSpacing.xxxl,
+                  child: Text(
+                    'Fişi çerçevenin içine yerleştir',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: AppColors.cameraForeground,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.xxl),
             child: Semantics(

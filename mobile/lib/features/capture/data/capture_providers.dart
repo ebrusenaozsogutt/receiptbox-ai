@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -37,6 +39,38 @@ GalleryPicker galleryPicker(Ref ref) => const SystemGalleryPicker();
 
 @Riverpod(keepAlive: true)
 SharedMediaSource sharedMediaSource(Ref ref) => const PluginSharedMediaSource();
+
+/// Files other apps shared with ReceiptBox that nobody has handled yet.
+///
+/// This listens from the moment the app starts: the share plugin does not replay a share that
+/// arrives while no one is listening (for example during the splash or login screen), so the
+/// files are parked here until the main screens ask for them with [take].
+@Riverpod(keepAlive: true)
+class SharedInbox extends _$SharedInbox {
+  @override
+  List<SharedFile> build() {
+    final source = ref.read(sharedMediaSourceProvider);
+    final subscription = source.stream().listen(_add, onError: (_) {});
+    ref.onDispose(subscription.cancel);
+    // Sharing is a convenience: a plugin problem must never stop the app.
+    unawaited(source.initial().then(_add, onError: (_) {}));
+    return const [];
+  }
+
+  void _add(List<SharedFile> files) {
+    if (files.isEmpty || !ref.mounted) return;
+    state = [...state, ...files];
+  }
+
+  /// Hands over everything waiting and tells the platform it was received.
+  List<SharedFile> take() {
+    final taken = state;
+    if (taken.isEmpty) return taken;
+    state = const [];
+    unawaited(ref.read(sharedMediaSourceProvider).reset().catchError((_) {}));
+    return taken;
+  }
+}
 
 /// Lists the phone's cameras. Overridden in tests (there is no camera in a unit test).
 @Riverpod(keepAlive: true)
