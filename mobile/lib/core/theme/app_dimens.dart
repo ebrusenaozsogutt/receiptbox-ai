@@ -80,6 +80,13 @@ class AppSizes {
   static const double dragHandleHeight = 4;
   static const double emptyStateMaxWidth = 320;
   static const double switchTrackHeight = 28;
+
+  /// The camera's round shutter button and its ring.
+  static const double shutterButton = 72;
+  static const double shutterRing = 4;
+
+  /// Height of the text boxes on the capture result screen (masked / original text).
+  static const double resultTextMaxHeight = 320;
 }
 
 class AppShadows {

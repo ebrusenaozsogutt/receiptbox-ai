@@ -105,7 +105,8 @@ void main() {
         await tester.tap(find.byKey(Key('add_action_${action.route}')));
         await tester.pumpAndSettle();
 
-        // The pushed screen has its own title bar and the "coming soon" message.
+        // The pushed screen has its own title bar. The three capture screens are real since
+        // P04 (tested in test/features/capture); the other two still say "coming soon".
         expect(
           find.descendant(
             of: find.byType(AppBar),
@@ -113,7 +114,9 @@ void main() {
           ),
           findsOneWidget,
         );
-        expect(find.text('Bu özellik yakında'), findsOneWidget);
+        if (!action.route.startsWith('/capture/')) {
+          expect(find.text('Bu özellik yakında'), findsOneWidget);
+        }
         expect(
           find.byKey(const Key('nav_add_button')),
           findsNothing,

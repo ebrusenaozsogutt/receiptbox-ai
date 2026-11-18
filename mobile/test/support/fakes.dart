@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:camera/camera.dart' show CameraDescription;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:receiptbox/app.dart';
@@ -8,11 +9,14 @@ import 'package:receiptbox/core/storage/settings_store.dart';
 import 'package:receiptbox/core/storage/token_store.dart';
 import 'package:receiptbox/features/auth/data/auth_api.dart';
 import 'package:receiptbox/features/auth/domain/user_profile.dart';
+import 'package:receiptbox/features/capture/data/capture_providers.dart';
 import 'package:receiptbox/features/health/data/health_repository.dart';
 import 'package:receiptbox/features/health/domain/health_status.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:receiptbox/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'capture_fakes.dart';
 
 /// Tokens kept in memory (the real store is the Android Keystore).
 class InMemoryTokenStore implements TokenStore {
@@ -132,6 +136,14 @@ class TestApp {
   final InMemoryTokenStore tokens;
   final SharedPreferences preferences;
 
+  // Capture (P04): no camera, no ML Kit, no platform channels in widget tests.
+  final FakeCapturePipeline pipeline = FakeCapturePipeline();
+  final FakeGalleryPicker gallery = FakeGalleryPicker();
+  final FakeSharedMediaSource sharedMedia = FakeSharedMediaSource();
+
+  /// What the camera plugin reports. Default: this phone has no camera.
+  Future<List<CameraDescription>> Function() cameras = () async => [];
+
   static Future<TestApp> create({
     FakeAuthApi? api,
     InMemoryTokenStore? tokens,
@@ -149,14 +161,21 @@ class TestApp {
     authApiProvider.overrideWithValue(api),
     tokenStoreProvider.overrideWithValue(tokens),
     sharedPreferencesProvider.overrideWithValue(preferences),
+    capturePipelineProvider.overrideWithValue(pipeline),
+    galleryPickerProvider.overrideWithValue(gallery),
+    sharedMediaSourceProvider.overrideWithValue(sharedMedia),
+    captureTempDirProvider.overrideWithValue(NoopTempDir()),
+    camerasLoaderProvider.overrideWithValue(() => cameras()),
     healthStatusProvider.overrideWith(
       (ref) async => const HealthStatus(status: 'ok', db: 'ok'),
     ),
   ];
 
   /// A fresh app (as after killing and restarting it) sharing the same "device" storage.
-  Widget app() =>
-      ProviderScope(overrides: overrides, child: const ReceiptBoxApp());
+  Widget app({List<Override> extraOverrides = const []}) => ProviderScope(
+    overrides: [...overrides, ...extraOverrides],
+    child: const ReceiptBoxApp(),
+  );
 
   /// One screen on its own (no router), with the real theme and Turkish localization.
   Widget screen(Widget child) => ProviderScope(

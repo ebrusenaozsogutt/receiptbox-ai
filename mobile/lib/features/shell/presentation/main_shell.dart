@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../capture/presentation/shared_media_listener.dart';
 import 'add_sheet.dart';
 import 'bottom_nav.dart';
 
@@ -12,16 +13,18 @@ class MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: AppBottomNav(
-        selectedIndex: navigationShell.currentIndex,
-        onTabSelected: (index) => navigationShell.goBranch(
-          index,
-          // Tapping the tab you are on goes back to its first screen.
-          initialLocation: index == navigationShell.currentIndex,
+    return SharedMediaListener(
+      child: Scaffold(
+        body: navigationShell,
+        bottomNavigationBar: AppBottomNav(
+          selectedIndex: navigationShell.currentIndex,
+          onTabSelected: (index) => navigationShell.goBranch(
+            index,
+            // Tapping the tab you are on goes back to its first screen.
+            initialLocation: index == navigationShell.currentIndex,
+          ),
+          onAddPressed: () => showAddSheet(context),
         ),
-        onAddPressed: () => showAddSheet(context),
       ),
     );
   }

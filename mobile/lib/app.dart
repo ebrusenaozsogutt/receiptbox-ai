@@ -12,7 +12,9 @@ import 'features/auth/presentation/consent_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
 import 'features/auth/presentation/splash_screen.dart';
-import 'features/capture/presentation/capture_screens.dart';
+import 'features/capture/presentation/camera_screen.dart';
+import 'features/capture/presentation/capture_result_screen.dart';
+import 'features/capture/presentation/pick_image_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/products/presentation/add_product_screen.dart';
 import 'features/products/presentation/products_screen.dart';
@@ -140,17 +142,22 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/capture/scan',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ScanReceiptScreen(),
+        builder: (context, state) => const CameraScreen(),
       ),
       GoRoute(
         path: '/capture/gallery',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AddFromGalleryScreen(),
+        builder: (context, state) => const PickImageScreen.gallery(),
       ),
       GoRoute(
         path: '/capture/bank',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const BankScreenshotScreen(),
+        builder: (context, state) => const PickImageScreen.bank(),
+      ),
+      GoRoute(
+        path: '/capture/result',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const CaptureResultScreen(),
       ),
       GoRoute(
         path: '/transactions/new',

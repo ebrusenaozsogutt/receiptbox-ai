@@ -53,4 +53,8 @@ class AppColors {
 
   /// Dim layer behind modal sheets and dialogs.
   static const Color scrim = Color(0x8016211F);
+
+  /// Background of the camera screen (the preview is letter-boxed on it) and the shutter ring.
+  static const Color cameraBackground = Color(0xFF000000);
+  static const Color cameraForeground = Color(0xFFFFFFFF);
 }
