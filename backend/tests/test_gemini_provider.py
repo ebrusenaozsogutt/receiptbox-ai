@@ -23,6 +23,7 @@ from app.ai.provider import (
 from app.ai.providers.fake import FakeProvider
 from app.ai.providers.gemini import BACKOFF_SECONDS, GeminiProvider
 from app.core.config import DEFAULT_MODEL_ASSISTANT, DEFAULT_MODEL_EXTRACT, Settings
+from app.models.enums import CategoryKey
 
 HINTS = ExtractionHints(capture_date=date(2026, 11, 19), source="GALLERY")
 TEXT = "SECRET MARKET\nTARIH: 14.11.2026\nTOPLAM 82,40\n"
@@ -246,12 +247,74 @@ def test_a_failed_call_is_logged_too(caplog: pytest.LogCaptureFixture) -> None:
     assert record.outcome == "http_400"
 
 
+def test_a_category_answer_is_parsed_and_constrained_to_the_enum() -> None:
+    provider, client, _ = make(["FUEL"])
+
+    key = provider.classify_category("OPET", ["KURSUNSUZ 95"])
+
+    assert key == CategoryKey.FUEL
+    call = client.calls[0]
+    assert call["contents"] == "Merchant: OPET\nItems: KURSUNSUZ 95"
+    config = call["config"]
+    assert config.response_mime_type == "text/x.enum"
+    assert config.response_schema is CategoryKey
+    assert "ONE spending category" in config.system_instruction
+
+
+def test_a_category_answer_with_quotes_or_spaces_is_accepted() -> None:
+    provider, _, _ = make(['  "GROCERY"\n'])
+    assert provider.classify_category("X", []) == CategoryKey.GROCERY
+
+
+def test_an_unknown_category_word_is_retried_once_then_fails() -> None:
+    provider, client, _ = make(["Market", "Gıda"])
+
+    with pytest.raises(ProviderOutputError):
+        provider.classify_category("X", [])
+
+    assert len(client.calls) == 2
+
+
+def test_an_unknown_category_word_then_a_good_one_succeeds() -> None:
+    provider, client, _ = make(["Market", "GROCERY"])
+
+    assert provider.classify_category("X", []) == CategoryKey.GROCERY
+    assert len(client.calls) == 2
+
+
+def test_classification_sends_no_items_line_when_there_are_none_and_caps_long_lists() -> None:
+    provider, client, _ = make(["OTHER", "OTHER"])
+
+    provider.classify_category("", [])
+    provider.classify_category("M", [f"item{n}" for n in range(50)])
+
+    assert client.calls[0]["contents"] == "Merchant: (unknown)"
+    assert client.calls[1]["contents"].count("item") == 20
+
+
+def test_classification_is_logged_with_its_own_prompt_version(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    provider, _, _ = make(["FUEL"])
+
+    with caplog.at_level(logging.INFO, logger="receiptbox.ai"):
+        provider.classify_category("SECRET SHOP", ["SECRET ITEM"])
+
+    (record,) = [r for r in caplog.records if r.name == "receiptbox.ai"]
+    assert record.prompt_version == "category_classify.v1"
+    assert "SECRET" not in repr(record.__dict__)
+
+
+def test_classification_failures_are_provider_errors() -> None:
+    provider, _, _ = make([api_error(400)])
+    with pytest.raises(ProviderUnavailableError):
+        provider.classify_category("X", [])
+
+
 def test_the_other_methods_are_not_implemented_yet() -> None:
     provider, _, _ = make([])
     with pytest.raises(NotImplementedError):
         provider.extract_bank_rows("x", None)
-    with pytest.raises(NotImplementedError):
-        provider.classify_category("x", [])
     with pytest.raises(NotImplementedError):
         provider.run_assistant([], [], None)
 

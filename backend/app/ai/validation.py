@@ -65,6 +65,7 @@ class ValidationResult:
     issues: list[str] = field(default_factory=list)
     total_minor: int | None = None
     items: list[ParsedItem] = field(default_factory=list)
+    discount_minor: int = 0  # sum of discount lines (INDIRIM...), not stored as items
 
 
 # ---- text helpers ----------------------------------------------------------------------------
@@ -184,7 +185,7 @@ def validate_receipt(raw: RawReceiptExtraction, masked_text: str, today: date) -
 
     # --- items ---------------------------------------------------------------------------------
     items, discount_minor = _parse_items(raw, issues)
-    confidence["items"] = _rate_items(items, discount_minor, total_minor, issues)
+    confidence["items"] = rate_items(items, discount_minor, total_minor, issues)
 
     # --- date ----------------------------------------------------------------------------------
     parsed_date = _check_date(raw.date, masked_text, today, issues)
@@ -232,6 +233,7 @@ def validate_receipt(raw: RawReceiptExtraction, masked_text: str, today: date) -
         issues=issues,
         total_minor=total_minor,
         items=items,
+        discount_minor=discount_minor,
     )
 
 
@@ -273,7 +275,7 @@ def _money_or_none(value: str | None, issues: list[str]) -> int | None:
         return None
 
 
-def _rate_items(
+def rate_items(
     items: list[ParsedItem], discount_minor: int, total_minor: int | None, issues: list[str]
 ) -> Confidence:
     if not items:

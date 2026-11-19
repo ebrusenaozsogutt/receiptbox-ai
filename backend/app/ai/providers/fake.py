@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.ai.prompts import RECEIPT_EXTRACT
+from app.ai.prompts import CATEGORY_CLASSIFY, RECEIPT_EXTRACT
 from app.ai.provider import (
     ExtractionHints,
     ProviderConfigError,
@@ -21,6 +21,7 @@ from app.ai.provider import (
     log_call,
 )
 from app.ai.schemas import RawReceiptExtraction
+from app.core.text import normalize_alias_key
 from app.models.enums import CategoryKey
 
 BACKEND_DIR = Path(__file__).resolve().parents[3]
@@ -32,14 +33,24 @@ def text_key(masked_text: str) -> str:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
+def _merchant_key(merchant: str) -> str:
+    return normalize_alias_key(merchant)
+
+
 class FakeProvider:
     name = "fake"
     model = "fake-fixtures"
     prompt_version = RECEIPT_EXTRACT
 
-    def __init__(self, answers: dict[str, RawReceiptExtraction] | None = None) -> None:
+    def __init__(
+        self,
+        answers: dict[str, RawReceiptExtraction] | None = None,
+        categories: dict[str, CategoryKey] | None = None,
+    ) -> None:
         self._answers = dict(answers or {})
-        self.calls = 0  # tests look at this
+        self._categories = {_merchant_key(m): k for m, k in (categories or {}).items()}
+        self.calls = 0  # receipt extractions; tests look at this
+        self.classify_calls = 0  # category classifications
 
     @classmethod
     def from_directory(cls, directory: str | Path) -> "FakeProvider":
@@ -57,7 +68,12 @@ class FakeProvider:
                 json.loads(answer_file.read_text(encoding="utf-8"))
             )
             answers[text_key(text_file.read_text(encoding="utf-8"))] = answer
-        return cls(answers)
+        categories: dict[str, CategoryKey] = {}
+        category_file = path / "categories.json"
+        if category_file.exists():
+            raw = json.loads(category_file.read_text(encoding="utf-8"))
+            categories = {merchant: CategoryKey(key) for merchant, key in raw.items()}
+        return cls(answers, categories)
 
     def add(self, masked_text: str, answer: RawReceiptExtraction) -> None:
         self._answers[text_key(masked_text)] = answer
@@ -81,8 +97,26 @@ class FakeProvider:
     def extract_bank_rows(self, masked_text: str, bank_key: str | None) -> list[Any]:
         raise NotImplementedError("Bank screenshots arrive in P08.")
 
+    def add_category(self, merchant: str, key: CategoryKey) -> None:
+        self._categories[_merchant_key(merchant)] = key
+
     def classify_category(self, merchant: str, items: list[str]) -> CategoryKey:
-        raise NotImplementedError("Categorisation arrives in P06.")
+        """The key configured for this merchant name. An unknown merchant is an error, like a
+        model that gave no usable answer (the caller then falls back to OTHER)."""
+        self.classify_calls += 1
+        key = self._categories.get(_merchant_key(merchant))
+        log_call(
+            provider=self.name,
+            model=self.model,
+            prompt_version=CATEGORY_CLASSIFY,
+            latency_ms=0,
+            input_tokens=None,
+            output_tokens=None,
+            outcome="ok" if key is not None else "no_fixture",
+        )
+        if key is None:
+            raise ProviderOutputError("The fake provider has no category for this merchant.")
+        return key
 
     def run_assistant(self, messages: list[Any], tools: list[Any], executor: Any) -> Any:
         raise NotImplementedError("The assistant arrives in P14.")

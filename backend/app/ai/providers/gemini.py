@@ -1,6 +1,8 @@
-"""GeminiProvider: receipt extraction with the `google-genai` SDK (the only place that imports it).
+"""GeminiProvider: receipt extraction and category classification with the `google-genai` SDK
+(the only place that imports it).
 
-* Constrained output: the response must match `RawReceiptExtraction` (JSON schema).
+* Constrained output: the response must match `RawReceiptExtraction` (JSON schema), or be one
+  of the 13 category keys (enum).
 * 1 retry when the answer is not valid for the schema.
 * Exponential back-off (1 s, 2 s, 4 s) on 429 and 5xx, within one overall time budget of
   `timeout_seconds` (30 s by default).
@@ -17,7 +19,7 @@ from google import genai
 from google.genai import errors, types
 from pydantic import ValidationError
 
-from app.ai.prompts import RECEIPT_EXTRACT, load_prompt
+from app.ai.prompts import CATEGORY_CLASSIFY, RECEIPT_EXTRACT, load_prompt
 from app.ai.provider import (
     ExtractionHints,
     ProviderOutputError,
@@ -55,9 +57,42 @@ class GeminiProvider:
         self._client = client if client is not None else genai.Client(api_key=api_key)
         self._sleep = sleep
         self._clock = clock
-        self._system_prompt = load_prompt(RECEIPT_EXTRACT)
+        self._receipt_prompt = load_prompt(RECEIPT_EXTRACT)
+        self._category_prompt = load_prompt(CATEGORY_CLASSIFY)
 
     def extract_receipt(self, masked_text: str, hints: ExtractionHints) -> RawReceiptExtraction:
+        return self._generate(
+            masked_text,
+            system_prompt=self._receipt_prompt,
+            prompt_version=RECEIPT_EXTRACT,
+            mime_type="application/json",
+            schema=RawReceiptExtraction,
+            parse=lambda text: RawReceiptExtraction.model_validate_json(text),
+        )
+
+    def classify_category(self, merchant: str, items: list[str]) -> CategoryKey:
+        lines = [f"Merchant: {merchant.strip() or '(unknown)'}"]
+        if items:
+            lines.append("Items: " + "; ".join(item.strip() for item in items[:20] if item.strip()))
+        return self._generate(
+            "\n".join(lines),
+            system_prompt=self._category_prompt,
+            prompt_version=CATEGORY_CLASSIFY,
+            mime_type="text/x.enum",
+            schema=CategoryKey,
+            parse=lambda text: CategoryKey(text.strip().strip('"')),
+        )
+
+    def _generate(
+        self,
+        contents: str,
+        *,
+        system_prompt: str,
+        prompt_version: str,
+        mime_type: str,
+        schema: Any,
+        parse: Callable[[str], Any],
+    ) -> Any:
         started = self._clock()
         deadline = started + self._timeout_seconds
         schema_failures = 0
@@ -74,11 +109,11 @@ class GeminiProvider:
                 try:
                     response = self._client.models.generate_content(
                         model=self.model,
-                        contents=masked_text,
+                        contents=contents,
                         config=types.GenerateContentConfig(
-                            system_instruction=self._system_prompt,
-                            response_mime_type="application/json",
-                            response_schema=RawReceiptExtraction,
+                            system_instruction=system_prompt,
+                            response_mime_type=mime_type,
+                            response_schema=schema,
                             temperature=0.0,
                             thinking_config=self._thinking,
                             http_options=types.HttpOptions(timeout=max(1, int(remaining * 1000))),
@@ -106,7 +141,7 @@ class GeminiProvider:
                 input_tokens = getattr(usage, "prompt_token_count", None)
                 output_tokens = getattr(usage, "candidates_token_count", None)
                 try:
-                    parsed = RawReceiptExtraction.model_validate_json(response.text or "")
+                    parsed = parse(response.text or "")
                 except (ValidationError, ValueError):
                     schema_failures += 1
                     if schema_failures > 1:  # one retry only
@@ -121,7 +156,7 @@ class GeminiProvider:
             log_call(
                 provider=self.name,
                 model=self.model,
-                prompt_version=self.prompt_version,
+                prompt_version=prompt_version,
                 latency_ms=int((self._clock() - started) * 1000),
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
@@ -130,9 +165,6 @@ class GeminiProvider:
 
     def extract_bank_rows(self, masked_text: str, bank_key: str | None) -> list[Any]:
         raise NotImplementedError("Bank screenshots arrive in P08.")
-
-    def classify_category(self, merchant: str, items: list[str]) -> CategoryKey:
-        raise NotImplementedError("Categorisation arrives in P06.")
 
     def run_assistant(self, messages: list[Any], tools: list[Any], executor: Any) -> Any:
         raise NotImplementedError("The assistant arrives in P14.")

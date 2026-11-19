@@ -5,6 +5,7 @@ from pathlib import Path
 PROMPT_DIR = Path(__file__).parent
 
 RECEIPT_EXTRACT = "receipt_extract.v1"
+CATEGORY_CLASSIFY = "category_classify.v1"
 
 
 def load_prompt(version: str) -> str:
