@@ -1,0 +1,117 @@
+"""The AI provider layer (spec 14).
+
+Everything outside `app/ai/providers/` talks to the model only through `AIProvider`. No provider
+SDK may be imported outside `app/ai/providers/` (test_no_provider_leak.py checks the imports).
+
+Deviation from the spec text, recorded in DECISIONS: `extract_receipt` returns the model's raw
+output (`RawReceiptExtraction`, plain strings); `app/ai/validation.py` turns it into the spec 5.2
+`ReceiptExtraction`. That keeps all number parsing and checking deterministic and in one place.
+"""
+
+import logging
+from dataclasses import dataclass
+from datetime import date
+from typing import Any, Protocol
+
+from app.ai.schemas import RawReceiptExtraction
+from app.core.config import Settings
+from app.models.enums import CategoryKey
+
+call_logger = logging.getLogger("receiptbox.ai")
+
+
+class ProviderError(Exception):
+    """The provider could not deliver an extraction. Messages never contain receipt text."""
+
+
+class ProviderConfigError(ProviderError):
+    """Missing key or model name, or an unknown AI_PROVIDER."""
+
+
+class ProviderUnavailableError(ProviderError):
+    """Timeout, network failure, quota (429) or server error that outlasted the retries."""
+
+
+class ProviderOutputError(ProviderError):
+    """The model answered, but not with a valid ReceiptExtraction, also after the retry."""
+
+
+@dataclass(frozen=True)
+class ExtractionHints:
+    """Context that is safe to give the model. (The capture date is deliberately not used to
+    fill in a missing receipt date: dates are never guessed.)"""
+
+    capture_date: date
+    source: str
+
+
+@dataclass(frozen=True)
+class CallMeta:
+    """What is known about one provider call. Never contains text."""
+
+    provider: str
+    model: str
+    prompt_version: str
+
+
+class AIProvider(Protocol):
+    name: str
+    model: str
+    prompt_version: str
+
+    def extract_receipt(self, masked_text: str, hints: ExtractionHints) -> RawReceiptExtraction: ...
+
+    # Later phases (P08 bank screenshots, P06 categories, P14 assistant).
+    def extract_bank_rows(self, masked_text: str, bank_key: str | None) -> list[Any]: ...
+
+    def classify_category(self, merchant: str, items: list[str]) -> CategoryKey: ...
+
+    def run_assistant(self, messages: list[Any], tools: list[Any], executor: Any) -> Any: ...
+
+
+def log_call(
+    *,
+    provider: str,
+    model: str,
+    prompt_version: str,
+    latency_ms: int,
+    input_tokens: int | None,
+    output_tokens: int | None,
+    outcome: str,
+) -> None:
+    """One log line per provider call: provider, model, prompt version, latency, token counts.
+    Never the content (the JSON formatter only emits whitelisted fields)."""
+    call_logger.info(
+        "ai_call",
+        extra={
+            "provider": provider,
+            "model": model,
+            "prompt_version": prompt_version,
+            "latency_ms": latency_ms,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "outcome": outcome,
+        },
+    )
+
+
+def get_provider(settings: Settings) -> AIProvider:
+    """Build the provider named by AI_PROVIDER. Imports are local so that the SDK is only
+    loaded when it is used."""
+    name = settings.ai_provider.strip().lower()
+    if name == "fake":
+        from app.ai.providers.fake import FakeProvider
+
+        return FakeProvider.from_directory(settings.ai_fake_fixtures_dir)
+    if name == "gemini":
+        from app.ai.providers.gemini import GeminiProvider
+
+        api_key = settings.gemini_api_key.get_secret_value()
+        if not api_key:
+            raise ProviderConfigError("GEMINI_API_KEY is not set.")
+        return GeminiProvider(
+            api_key=api_key,
+            model=settings.ai_model_extract,
+            timeout_seconds=settings.ai_timeout_seconds,
+        )
+    raise ProviderConfigError("AI_PROVIDER must be 'gemini' or 'fake'.")

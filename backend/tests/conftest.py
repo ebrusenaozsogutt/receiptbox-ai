@@ -7,6 +7,11 @@ from pathlib import Path
 # Must be set before app.main is imported: it builds the default app at import time.
 os.environ.setdefault("JWT_SECRET", "test-only-jwt-secret-not-for-production-use")
 
+# No test and no CI job may call a real LLM (CLAUDE.md). Forced, not setdefault: a developer's
+# .env has a real GEMINI_API_KEY, and environment variables beat the .env file.
+os.environ["AI_PROVIDER"] = "fake"
+os.environ["GEMINI_API_KEY"] = ""
+
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
 from alembic import command  # noqa: E402

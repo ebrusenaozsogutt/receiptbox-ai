@@ -15,7 +15,21 @@ from fastapi import FastAPI, Request
 LOGGER_NAME = "receiptbox"
 
 # The only extra fields a log call may attach. Anything else is silently dropped.
-ALLOWED_EXTRA_FIELDS = ("method", "path", "status", "duration_ms", "error_type")
+ALLOWED_EXTRA_FIELDS = (
+    "method",
+    "path",
+    "status",
+    "duration_ms",
+    "error_type",
+    # AI provider calls (spec 14): never the content, only these.
+    "provider",
+    "model",
+    "prompt_version",
+    "latency_ms",
+    "input_tokens",
+    "output_tokens",
+    "outcome",
+)
 
 
 class JsonFormatter(logging.Formatter):

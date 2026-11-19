@@ -7,6 +7,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 MIN_JWT_SECRET_LENGTH = 32  # HS256 needs a key of at least 256 bits
 
+DEFAULT_MODEL_EXTRACT = "gemini-3.5-flash-lite"  # fast, generous free quota: receipts
+DEFAULT_MODEL_ASSISTANT = "gemini-3.5-flash"  # P14
+
 
 class Settings(BaseSettings):
     # ".env" when started from the repo root, "../.env" when started from backend/.
@@ -27,13 +30,28 @@ class Settings(BaseSettings):
 
     storage_root: str = "./storage"
 
+    # "gemini" (real, needs GEMINI_API_KEY) or "fake" (fixtures; used by all tests).
     ai_provider: str = "gemini"
-    # Model names always come from the environment (set in P05); never hard-coded in code.
-    ai_model_extract: str = ""
-    ai_model_assistant: str = ""
+    # Model names live here and in .env only, never in the provider code. An empty value in
+    # .env means "use the default". Defaults: Gemini free-tier models checked on 2026-11-19.
+    ai_model_extract: str = DEFAULT_MODEL_EXTRACT
+    ai_model_assistant: str = DEFAULT_MODEL_ASSISTANT
     gemini_api_key: SecretStr = SecretStr("")
+    ai_timeout_seconds: float = 30.0
+    # Where FakeProvider finds its fixtures (relative to backend/ when started from there).
+    ai_fake_fixtures_dir: str = "tests/fixtures/receipts"
 
     log_level: str = "INFO"
+
+    @field_validator("ai_model_extract", mode="before")
+    @classmethod
+    def _blank_extract_model_means_default(cls, value: object) -> object:
+        return value if isinstance(value, str) and value.strip() else DEFAULT_MODEL_EXTRACT
+
+    @field_validator("ai_model_assistant", mode="before")
+    @classmethod
+    def _blank_assistant_model_means_default(cls, value: object) -> object:
+        return value if isinstance(value, str) and value.strip() else DEFAULT_MODEL_ASSISTANT
 
     @field_validator("jwt_secret")
     @classmethod
