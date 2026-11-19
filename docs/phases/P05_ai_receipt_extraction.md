@@ -22,11 +22,11 @@ QR path, merchant normalisation, categorisation (P06), mobile review UI (P07).
 
 ## Acceptance criteria
 
-- [ ] With `AI_PROVIDER=fake`, endpoint returns fixture extraction + correct confidence for all fixtures.
-- [ ] Validation unit tests cover every rule (pass and fail).
-- [ ] Missing date in text → `date=null`, LOW (never guessed).
-- [ ] With a real Gemini key (manual run), 5 real receipts extract with sensible results; latency logged.
-- [ ] No provider import outside `app/ai/providers/` (enforced by a test that greps imports).
+- [x] With `AI_PROVIDER=fake`, endpoint returns fixture extraction + correct confidence for all fixtures. *(13 fixtures, `tests/api/test_extract_receipt.py`.)*
+- [x] Validation unit tests cover every rule (pass and fail).
+- [x] Missing date in text → `date=null`, LOW (never guessed). *(Also when the model invents a date: it is dropped.)*
+- [x] With a real Gemini key (manual run), 5 real receipts extract with sensible results; latency logged. *(5 SYNTHETIC receipts, as agreed with the owner; real receipt texts are not available yet. See PROGRESS.)*
+- [x] No provider import outside `app/ai/providers/` (enforced by a test that greps imports). *(`test_no_provider_leak.py`, one exempt test file, see P-046.)*
 
 ## Tests
 

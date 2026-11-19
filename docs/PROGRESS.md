@@ -11,7 +11,7 @@ Update after every phase. Newest entry on top of the log.
 | P02 | Backend authentication | ✅ Done | 2026-11-16 |
 | P03 | Mobile app shell & auth | ✅ Done | 2026-11-16 |
 | P04 | On-device capture: OCR, QR, PII masking, share | ✅ Done | 2026-11-19 |
-| P05 | AI provider layer & receipt extraction | ⬜ | |
+| P05 | AI provider layer & receipt extraction | ✅ Done (CI pending) | 2026-11-19 |
 | P06 | e-Invoice QR, merchant normalisation, categorisation | ⬜ | |
 | P07 | Receipt review flow, manual entry, documents | ⬜ | |
 | P08 | Bank screenshot import | ⬜ | |
@@ -35,6 +35,28 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner:
 - Known gaps / follow-ups:
 -->
+
+### 2026-11-19 — P05 AI provider layer & receipt extraction (done locally; CI pending)
+- Done:
+  - **Provider layer (`backend/app/ai/`)**: `AIProvider` protocol and `get_provider()`; `GeminiProvider` (`google-genai`, constrained JSON output, 1 retry on invalid schema, back-off 1/2/4 s on 429 and 5xx inside one 30 s budget, model and key from settings, one log line per call with provider, model, prompt version, latency and token counts and never the content); `FakeProvider` (answers from fixtures by a hash of the text, used by all tests and `AI_PROVIDER=fake`); prompt `prompts/receipt_extract.v1.md` (copy exactly, null when absent, no arithmetic, Turkish receipt conventions); the other three provider methods raise `NotImplementedError`.
+  - **Validation (`app/ai/validation.py`)**: every rule of spec 5.3 and the HIGH/MEDIUM/LOW levels of 5.4. The model returns strings; amounts, dates and times are parsed in code and must be found in the text. A missing date stays `null` (LOW), never guessed. An absurd total rejects the extraction. See DECISIONS P-040, P-044.
+  - **`POST /api/v1/extract/receipt`** `{masked_text, capture_date, source}` → `{observation_id, extraction, confidence}`; saves a `PENDING_REVIEW` observation with items in kuruş, `extraction_json`, `field_confidence_json`, `masked_text`, the spec 7.2 fingerprint and the prompt version. 20 requests/min/user, 20 KB limit; errors `AI_CONSENT_REQUIRED` (403), `TEXT_TOO_LARGE` (413), `EXTRACTION_REJECTED` (422), `EXTRACTION_FAILED` (502); nothing is saved on those.
+  - **AI consent enforced (the P04 known gap)**: `users.ai_consent` (migration 0003), `PUT /me/ai-consent`, 403 without it; the app sends the device's choice to the server at sign-in/start and has a new Settings switch "Yapay zekâ ile fiş okuma"; manual entry is not gated (P-041).
+  - **13 synthetic masked receipts** with fake-model answers and hand-written expected results in `backend/tests/fixtures/receipts/` (Migros, BİM, A101 with a discount, restaurant with service charge, pharmacy, electronics with `TAKSİT SAYISI`, no date, items that do not add up, fuel, a future date, an invented total, an absurd total that is rejected, a merchant name below the header). Real receipt texts go to `ai/datasets/` later (git-ignored).
+  - `ai/experiments/run_extract_manual.py` runs the real model on made-up receipts and prints results and latency.
+- Tests added: backend **438 tests** (was 285): `test_validation.py` (67: every rule passing and failing + all fixtures), `test_gemini_provider.py` (22, with a stand-in SDK client: retry, back-off, time budget, logging without content, settings), `test_extraction_service.py` (15), `tests/api/test_extract_receipt.py` (every fixture end to end, 401/403/413/422/429/502, per-user quota, logs contain no receipt text), `tests/api/test_ai_consent.py`, `test_no_provider_leak.py` (ast import check). Flutter **355 tests** (was 345): consent sync and the Settings switch. All tests use `FakeProvider`; `conftest.py` forces `AI_PROVIDER=fake`.
+- Checks run on 2026-11-19: `ruff check`, `ruff format --check`, `pytest` (438 passed, Docker database running), `flutter analyze` (no issues), `flutter test` (355 passed).
+- **Real Gemini (manual run, synthetic receipts, `gemini-3.5-flash-lite`)**: 5 receipts (Migros, BİM, restaurant, electronics with 6 installments, no date). Every answer that came back matched the hand-written expectation, all fields HIGH except the missing date/time (LOW, `null`). One run of the no-date receipt split "DOMATES 2 KG" into name "DOMATES" + quantity 2 (a sensible difference, not an error). Latency 2.2-12.8 s per receipt (average about 7-11 s; tokens about 1200 in / 200-320 out). Not every call succeeded: in the first run two receipts failed with a provider error (503 "overloaded") that was fine on the next try, and in the last run one hit the 30 s limit; the API answers `EXTRACTION_FAILED` then and the user enters the receipt by hand. Also tried end to end through the running Docker backend (register → 403 → consent → 200 in 7.5 s → delete account).
+- Manual test steps for the owner: README §3.2.3 (Swagger), plus the manual run command there.
+- Known gaps / follow-ups:
+  - Only synthetic fixtures; **real receipt texts are not tried yet**. Extraction quality on real, messy OCR text is unknown until the owner's real masked texts are added under `ai/datasets/` (P15 measures it).
+  - Gemini free tier: variable latency (2-13 s), occasional 503, a 30 s budget that is sometimes used up; the free tier may use submitted text for Google's product improvement (spec 14), so only synthetic text was sent. The free-tier daily limits are unverified (third-party pages only). `AI_THINKING_LEVEL=MINIMAL` looked faster once (3.7 s against 9.4 s) but was not measurable through the noise, so it is off.
+  - The mobile app does not call the endpoint yet (the review flow is P07); it only syncs and enforces the consent. P07 must show a progress state of up to about 30 s and the manual-entry fallback on `EXTRACTION_FAILED` / `AI_CONSENT_REQUIRED`.
+  - A device that declined on the consent screen switches the server's copy off at sign-in, even if another device had accepted: the latest choice on the signing-in device wins.
+  - The fingerprint uses only the first step of merchant normalisation; P06/P09 may recompute it. Duplicate detection (P09) does not exist yet: the same receipt twice makes two observations with the same fingerprint.
+  - Discount lines are not stored as items (the database has no negative amounts); they only count in the sum check.
+  - `AI_PROVIDER=fake` works from the source tree only (the Docker image does not contain the test fixtures).
+  - CI for this phase has not run yet (push pending).
 
 ### 2026-11-19 — P04 CI confirmed
 - CI run on `main` (`8f35836`): jobs `backend` and `mobile` both green (the mobile job runs `build_runner`, `flutter analyze` and the 345 Flutter tests on GitHub's runner; the emulator test is not part of CI). P04 is closed; the real-phone camera check stays open under known gaps.
@@ -61,7 +83,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
   - `receive_sharing_intent` crashes the app if another app shares a `content://` file without granting read access (it throws inside the plugin); normal share sheets always grant it. Only the first of several shared files is read; PDFs: first 2 pages only.
   - `capture_date` for a shared file is the copy's modified time (see P-038). The gallery picker's file time is used when Android provides it.
   - On this emulator the photo picker needed a "Done" tap after choosing a picture; real phones may select straight away.
-  - Images are not kept after reading (storing receipt images is P07); the "Fiş görsellerini sakla" setting has no effect yet. The AI consent value is still not checked (P05).
+  - Images are not kept after reading (storing receipt images is P07); the "Fiş görsellerini sakla" setting has no effect yet. The AI consent value is now enforced (P05).
   - The first Gradle build after adding the plugins took about 14 minutes on this PC; later builds take 1–2 minutes.
   - ~~CI for this phase has not run yet~~ → green on 2026-11-19, see the entry above.
 

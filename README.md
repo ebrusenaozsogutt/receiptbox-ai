@@ -182,6 +182,39 @@ With the backend running (after code changes: `docker compose -f infra/docker-co
 
 An access token lives 15 minutes (`AUTH_EXPIRED` afterwards: use *refresh*); a refresh token lives 30 days.
 
+### 3.2.3 Try the receipt extraction (P05)
+
+The phone does OCR and hides personal data; the backend turns the **masked text** into a checked extraction. In the P04 debug screen ("Okunan bilgiler") the "Maskelenmiş metin" box is what the backend receives. Open <http://localhost:8000/docs> (rebuild first after code changes: `docker compose -f infra/docker-compose.yml up -d --build backend`, then `docker compose -f infra/docker-compose.yml exec backend alembic upgrade head`).
+
+**One-time setup for the real model:** put your key in `.env` (never commit it): `GEMINI_API_KEY=...`. The model names are settings too (`AI_MODEL_EXTRACT`, defaults in `.env.example`). The free tier may use submitted text to improve Google's products (spec 14), so only paste made-up or already-masked text.
+
+1. **Register** and **Authorize** as in 3.2.2.
+2. **`POST /api/v1/extract/receipt`** with
+   ```json
+   {"masked_text": "MIGROS TICARET A.S.\nTARIH: 14.11.2026   SAAT: 18:42\nSUT 1L   69,90\nEKMEK   12,50\nTOPLAM   *82,40\nKREDI KARTI   82,40", "capture_date": "2026-11-18", "source": "GALLERY"}
+   ```
+   → **403** `AI_CONSENT_REQUIRED`. AI extraction needs your consent (the consent screen / Settings switch send it from the app; here you do it by hand).
+3. **`PUT /api/v1/me/ai-consent`** with `{"ai_consent": true}` → **200**.
+4. Send step 2 again → **200** with `observation_id`, the `extraction` (merchant, date, time, total, payment method, installment count, items) and a `confidence` of `HIGH` / `MEDIUM` / `LOW` for each field. The total is `"82.40"`: the model never calculates, and every value must be found in your text.
+5. Try breaking it, and look at the confidence:
+   - remove the date line → `date: null`, `date: LOW` (a missing date is never guessed);
+   - change `*82,40` to `*99,00` in `TOPLAM` but leave the items → items `LOW` (they do not add up);
+   - a total like `1.245.000,00` → **422** `EXTRACTION_REJECTED` (absurd amount, nothing saved);
+   - more than 20 KB of text → **413**; more than 20 requests in a minute → **429**.
+6. `PUT /api/v1/me/ai-consent` with `false` and repeat: **403** again. Manual entry never needs the consent.
+
+The result is saved as a `PENDING_REVIEW` observation (look at the `observations` and `receipt_items` tables in DBeaver; amounts are whole kuruş). The review screen is P07.
+
+**Without a key or a network** (demo mode, needs the source tree, not the Docker image): run the backend from `backend/` with `AI_PROVIDER=fake`; it answers only for the 13 made-up receipts in `backend/tests/fixtures/receipts/` (paste the content of one of the `.txt` files).
+
+**Real model on 5 made-up receipts** (prints the extraction, confidence, differences from the hand-written expectation, latency and token counts; the key is never printed):
+
+```powershell
+uv run --project backend python ai/experiments/run_extract_manual.py
+```
+
+All automated tests use the fake provider only: `AI_PROVIDER=fake` is forced in `backend/tests/conftest.py`, so `uv run pytest` never calls a real model, whatever is in your `.env`.
+
 ### 3.3 The Android app
 
 1. Start an emulator: Android Studio → **Virtual Device Manager → ▶**, or `flutter emulators --launch <emulator_id>`. Wait until you see the Android home screen.
