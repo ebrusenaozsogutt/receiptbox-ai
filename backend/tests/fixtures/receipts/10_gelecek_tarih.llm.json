@@ -1,0 +1,22 @@
+{
+  "merchant_raw": "GRATIS IC VE DIS TICARET A.S.",
+  "date": "14.11.2099",
+  "time": "13:10",
+  "total": "229,80",
+  "payment_method": "CARD",
+  "installment_count": null,
+  "items": [
+    {
+      "name_raw": "SAMPUAN 500ML",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "149,90"
+    },
+    {
+      "name_raw": "DIS MACUNU",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "79,90"
+    }
+  ]
+}

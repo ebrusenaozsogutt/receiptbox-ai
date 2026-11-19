@@ -1,0 +1,41 @@
+{
+  "extraction": {
+    "merchant_raw": "A101 YENI MAGAZACILIK A.S.",
+    "date": "2026-11-15",
+    "time": "09:17:00",
+    "total": "344.35",
+    "currency": "TRY",
+    "payment_method": "CARD",
+    "installment_count": null,
+    "items": [
+      {
+        "name_raw": "PEYNIR BEYAZ 500G",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "94.95"
+      },
+      {
+        "name_raw": "YUMURTA 15 LI",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "79.90"
+      },
+      {
+        "name_raw": "DETERJAN 3KG",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "189.50"
+      }
+    ]
+  },
+  "confidence": {
+    "merchant": "HIGH",
+    "date": "HIGH",
+    "time": "HIGH",
+    "total": "HIGH",
+    "payment_method": "HIGH",
+    "installment_count": "HIGH",
+    "items": "HIGH"
+  },
+  "issues": []
+}

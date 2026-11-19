@@ -1,0 +1,47 @@
+{
+  "extraction": {
+    "merchant_raw": "MIGROS TICARET A.S.",
+    "date": "2026-11-14",
+    "time": "18:42:00",
+    "total": "270.30",
+    "currency": "TRY",
+    "payment_method": "CARD",
+    "installment_count": null,
+    "items": [
+      {
+        "name_raw": "SUT 1L YARIM YAGLI",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "69.90"
+      },
+      {
+        "name_raw": "EKMEK",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "12.50"
+      },
+      {
+        "name_raw": "SEKER 1KG",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "48.00"
+      },
+      {
+        "name_raw": "CAY 500G",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "139.90"
+      }
+    ]
+  },
+  "confidence": {
+    "merchant": "HIGH",
+    "date": "HIGH",
+    "time": "HIGH",
+    "total": "HIGH",
+    "payment_method": "HIGH",
+    "installment_count": "HIGH",
+    "items": "HIGH"
+  },
+  "issues": []
+}

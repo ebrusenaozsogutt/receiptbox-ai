@@ -1,0 +1,16 @@
+{
+  "merchant_raw": "YILDIZ MARKET",
+  "date": "12.11.2026",
+  "time": "17:01",
+  "total": "1.245.000,00",
+  "payment_method": "CASH",
+  "installment_count": null,
+  "items": [
+    {
+      "name_raw": "SUT",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "32,50"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "merchant_raw": "TEKNOMART ELEKTRONIK A.S.",
+  "date": "08.11.2026",
+  "time": "16:48",
+  "total": "22.248,00",
+  "payment_method": "CARD",
+  "installment_count": 6,
+  "items": [
+    {
+      "name_raw": "SAMSUNG 55\" 4K TV 55CU8000",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "21.999,00"
+    },
+    {
+      "name_raw": "HDMI KABLO 2M",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "249,00"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "extraction": {
+    "merchant_raw": "SOK MARKET",
+    "date": "2026-11-11",
+    "time": "19:20:00",
+    "total": "165.00",
+    "currency": "TRY",
+    "payment_method": "CARD",
+    "installment_count": null,
+    "items": [
+      {
+        "name_raw": "EKMEK",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "10.00"
+      },
+      {
+        "name_raw": "SUT",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "35.00"
+      },
+      {
+        "name_raw": "YUMURTA",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "102.00"
+      }
+    ]
+  },
+  "confidence": {
+    "merchant": "HIGH",
+    "date": "HIGH",
+    "time": "HIGH",
+    "total": "HIGH",
+    "payment_method": "HIGH",
+    "installment_count": "HIGH",
+    "items": "LOW"
+  },
+  "issues": [
+    "items_sum_mismatch"
+  ]
+}

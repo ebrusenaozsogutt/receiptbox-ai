@@ -1,0 +1,34 @@
+{
+  "merchant_raw": "LEZZET DURAGI RESTORAN",
+  "date": "13.11.2026",
+  "time": "21:03",
+  "total": "731,50",
+  "payment_method": "CARD",
+  "installment_count": null,
+  "items": [
+    {
+      "name_raw": "ADANA KEBAP",
+      "quantity": "2",
+      "unit_price": "220,00",
+      "total_price": "440,00"
+    },
+    {
+      "name_raw": "AYRAN",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "35,00"
+    },
+    {
+      "name_raw": "KUNEFE",
+      "quantity": "2",
+      "unit_price": "95,00",
+      "total_price": "190,00"
+    },
+    {
+      "name_raw": "HIZMET BEDELI",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "66,50"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "extraction": {
+    "merchant_raw": "KAHVE DUKKANI",
+    "date": "2026-11-09",
+    "time": "10:12:00",
+    "total": "255.00",
+    "currency": "TRY",
+    "payment_method": "CASH",
+    "installment_count": null,
+    "items": [
+      {
+        "name_raw": "LATTE",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "95.00"
+      },
+      {
+        "name_raw": "CHEESECAKE",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "150.00"
+      }
+    ]
+  },
+  "confidence": {
+    "merchant": "HIGH",
+    "date": "HIGH",
+    "time": "HIGH",
+    "total": "LOW",
+    "payment_method": "HIGH",
+    "installment_count": "HIGH",
+    "items": "LOW"
+  },
+  "issues": [
+    "total_not_in_text",
+    "items_sum_mismatch"
+  ]
+}

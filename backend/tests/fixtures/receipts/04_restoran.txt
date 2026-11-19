@@ -1,0 +1,11 @@
+LEZZET DURAGI RESTORAN
+ISLETME: LEZZET GIDA SAN. TIC. LTD. STI.
+MASA: 12   GARSON: 3
+TARIH: 13.11.2026   SAAT: 21:03
+ADISYON NO: 7781
+ADANA KEBAP     2 x 220,00     440,00
+AYRAN                           35,00
+KUNEFE          2 x  95,00     190,00
+HIZMET BEDELI                   66,50
+TOPLAM                         731,50
+KREDI KARTI                    731,50

@@ -1,0 +1,9 @@
+KOSE MANAV
+KUCUKYALI
+FIS NO: 119
+DOMATES 2 KG        89,80
+SALATALIK 1 KG      42,00
+LIMON 1 KG          35,00
+TOPLAM             166,80
+NAKIT              200,00
+PARA USTU           33,20

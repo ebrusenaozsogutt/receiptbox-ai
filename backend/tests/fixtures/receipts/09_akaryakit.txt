@@ -1,0 +1,7 @@
+OPET ISTASYONU 4411
+GEBZE
+TARIH: 14.11.2026   SAAT: 07:55
+FIS NO: 3302
+KURSUNSUZ 95   32,40 LT x 43,15      1.398,06
+TOPLAM                               1.398,06
+KREDI KARTI                          1.398,06

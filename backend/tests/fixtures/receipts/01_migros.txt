@@ -1,0 +1,17 @@
+MIGROS TICARET A.S.
+ATASEHIR SUBESI
+Tel: [PHONE]
+TARIH: 14.11.2026   SAAT: 18:42
+FIS NO: 004512
+*SUT 1L YARIM YAGLI          69,90
+*EKMEK                       12,50
+*SEKER 1KG                   48,00
+*CAY 500G                   139,90
+-----------------------------------
+ARA TOPLAM                  270,30
+TOPKDV                       24,57
+TOPLAM                     *270,30
+KREDI KARTI                  270,30
+KART: [CARD]
+ONAY KODU: 123456
+TESEKKUR EDERIZ

@@ -1,0 +1,37 @@
+{
+  "extraction": {
+    "merchant_raw": "TEKNO CELL ILETISIM LTD. STI.",
+    "date": "2026-11-07",
+    "time": "14:22:00",
+    "total": "288.00",
+    "currency": "TRY",
+    "payment_method": "CARD",
+    "installment_count": null,
+    "items": [
+      {
+        "name_raw": "KILIF TELEFON",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "199.00"
+      },
+      {
+        "name_raw": "EKRAN KORUYUCU",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "89.00"
+      }
+    ]
+  },
+  "confidence": {
+    "merchant": "LOW",
+    "date": "HIGH",
+    "time": "HIGH",
+    "total": "HIGH",
+    "payment_method": "HIGH",
+    "installment_count": "HIGH",
+    "items": "HIGH"
+  },
+  "issues": [
+    "merchant_not_in_header"
+  ]
+}

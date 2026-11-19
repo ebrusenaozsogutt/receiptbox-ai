@@ -1,0 +1,41 @@
+{
+  "extraction": {
+    "merchant_raw": "SIFA ECZANESI",
+    "date": "2026-11-10",
+    "time": "15:30:00",
+    "total": "324.25",
+    "currency": "TRY",
+    "payment_method": "CASH",
+    "installment_count": null,
+    "items": [
+      {
+        "name_raw": "PARACETAMOL 500MG 20 TB",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "85.50"
+      },
+      {
+        "name_raw": "VITAMIN C 1000MG",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "142.00"
+      },
+      {
+        "name_raw": "BURUN SPREYI",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "96.75"
+      }
+    ]
+  },
+  "confidence": {
+    "merchant": "HIGH",
+    "date": "HIGH",
+    "time": "HIGH",
+    "total": "HIGH",
+    "payment_method": "HIGH",
+    "installment_count": "HIGH",
+    "items": "HIGH"
+  },
+  "issues": []
+}

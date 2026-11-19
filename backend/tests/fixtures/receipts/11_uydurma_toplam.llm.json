@@ -1,0 +1,22 @@
+{
+  "merchant_raw": "KAHVE DUKKANI",
+  "date": "09.11.2026",
+  "time": "10:12",
+  "total": "255,00",
+  "payment_method": "CASH",
+  "installment_count": null,
+  "items": [
+    {
+      "name_raw": "LATTE",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "95,00"
+    },
+    {
+      "name_raw": "CHEESECAKE",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "150,00"
+    }
+  ]
+}

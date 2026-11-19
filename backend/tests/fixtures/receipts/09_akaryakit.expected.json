@@ -1,0 +1,29 @@
+{
+  "extraction": {
+    "merchant_raw": "OPET ISTASYONU 4411",
+    "date": "2026-11-14",
+    "time": "07:55:00",
+    "total": "1398.06",
+    "currency": "TRY",
+    "payment_method": "CARD",
+    "installment_count": null,
+    "items": [
+      {
+        "name_raw": "KURSUNSUZ 95",
+        "quantity": "32.40",
+        "unit_price": "43.15",
+        "total_price": "1398.06"
+      }
+    ]
+  },
+  "confidence": {
+    "merchant": "HIGH",
+    "date": "HIGH",
+    "time": "HIGH",
+    "total": "HIGH",
+    "payment_method": "HIGH",
+    "installment_count": "HIGH",
+    "items": "HIGH"
+  },
+  "issues": []
+}

@@ -1,0 +1,47 @@
+{
+  "extraction": {
+    "merchant_raw": "BIM BIRLESIK MAGAZALAR A.S.",
+    "date": "2026-11-12",
+    "time": "12:05:00",
+    "total": "390.12",
+    "currency": "TRY",
+    "payment_method": "CASH",
+    "installment_count": null,
+    "items": [
+      {
+        "name_raw": "AYCICEK YAGI 5L",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "289.95"
+      },
+      {
+        "name_raw": "MAKARNA 500G",
+        "quantity": "2",
+        "unit_price": "12.25",
+        "total_price": "24.50"
+      },
+      {
+        "name_raw": "YOGURT 1KG",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "37.50"
+      },
+      {
+        "name_raw": "DOMATES KG",
+        "quantity": "0.850",
+        "unit_price": "44.90",
+        "total_price": "38.17"
+      }
+    ]
+  },
+  "confidence": {
+    "merchant": "HIGH",
+    "date": "HIGH",
+    "time": "HIGH",
+    "total": "HIGH",
+    "payment_method": "HIGH",
+    "installment_count": "HIGH",
+    "items": "HIGH"
+  },
+  "issues": []
+}

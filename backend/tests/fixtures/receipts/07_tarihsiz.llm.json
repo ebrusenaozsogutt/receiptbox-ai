@@ -1,0 +1,28 @@
+{
+  "merchant_raw": "KOSE MANAV",
+  "date": null,
+  "time": null,
+  "total": "166,80",
+  "payment_method": "CASH",
+  "installment_count": null,
+  "items": [
+    {
+      "name_raw": "DOMATES 2 KG",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "89,80"
+    },
+    {
+      "name_raw": "SALATALIK 1 KG",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "42,00"
+    },
+    {
+      "name_raw": "LIMON 1 KG",
+      "quantity": null,
+      "unit_price": null,
+      "total_price": "35,00"
+    }
+  ]
+}

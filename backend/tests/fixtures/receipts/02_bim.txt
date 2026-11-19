@@ -1,0 +1,14 @@
+BIM BIRLESIK MAGAZALAR A.S.
+M.NO: 1234  KASA: 02
+TARIH: 12/11/2026   SAAT: 12:05
+FIS NO: 0087
+AYCICEK YAGI 5L %20 *       289,95
+MAKARNA 500G %10 *
+ 2 AD x 12,25                24,50
+YOGURT 1KG %10 *             37,50
+DOMATES KG %10 *
+ 0,850 KG x 44,90            38,17
+TOPKDV                       59,03
+TOPLAM                      390,12
+NAKIT                       400,00
+PARA USTU                     9,88

@@ -1,0 +1,37 @@
+{
+  "extraction": {
+    "merchant_raw": "GRATIS IC VE DIS TICARET A.S.",
+    "date": null,
+    "time": "13:10:00",
+    "total": "229.80",
+    "currency": "TRY",
+    "payment_method": "CARD",
+    "installment_count": null,
+    "items": [
+      {
+        "name_raw": "SAMPUAN 500ML",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "149.90"
+      },
+      {
+        "name_raw": "DIS MACUNU",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "79.90"
+      }
+    ]
+  },
+  "confidence": {
+    "merchant": "HIGH",
+    "date": "LOW",
+    "time": "HIGH",
+    "total": "HIGH",
+    "payment_method": "HIGH",
+    "installment_count": "HIGH",
+    "items": "HIGH"
+  },
+  "issues": [
+    "date_in_future"
+  ]
+}
