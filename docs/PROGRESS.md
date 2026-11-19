@@ -11,7 +11,7 @@ Update after every phase. Newest entry on top of the log.
 | P02 | Backend authentication | ✅ Done | 2026-11-16 |
 | P03 | Mobile app shell & auth | ✅ Done | 2026-11-16 |
 | P04 | On-device capture: OCR, QR, PII masking, share | ✅ Done | 2026-11-19 |
-| P05 | AI provider layer & receipt extraction | ✅ Done (CI pending) | 2026-11-19 |
+| P05 | AI provider layer & receipt extraction | ✅ Done | 2026-11-19 |
 | P06 | e-Invoice QR, merchant normalisation, categorisation | ⬜ | |
 | P07 | Receipt review flow, manual entry, documents | ⬜ | |
 | P08 | Bank screenshot import | ⬜ | |
@@ -36,7 +36,10 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
-### 2026-11-19 — P05 AI provider layer & receipt extraction (done locally; CI pending)
+### 2026-11-19 — P05 CI confirmed
+- CI run on `main` (`d5d00a6`): jobs `backend` (438 tests on a fresh PostgreSQL, no API key, fake provider only) and `mobile` (355 Flutter tests) both green. P05 is closed.
+
+### 2026-11-19 — P05 AI provider layer & receipt extraction (done locally; CI confirmed later the same day)
 - Done:
   - **Provider layer (`backend/app/ai/`)**: `AIProvider` protocol and `get_provider()`; `GeminiProvider` (`google-genai`, constrained JSON output, 1 retry on invalid schema, back-off 1/2/4 s on 429 and 5xx inside one 30 s budget, model and key from settings, one log line per call with provider, model, prompt version, latency and token counts and never the content); `FakeProvider` (answers from fixtures by a hash of the text, used by all tests and `AI_PROVIDER=fake`); prompt `prompts/receipt_extract.v1.md` (copy exactly, null when absent, no arithmetic, Turkish receipt conventions); the other three provider methods raise `NotImplementedError`.
   - **Validation (`app/ai/validation.py`)**: every rule of spec 5.3 and the HIGH/MEDIUM/LOW levels of 5.4. The model returns strings; amounts, dates and times are parsed in code and must be found in the text. A missing date stays `null` (LOW), never guessed. An absurd total rejects the extraction. See DECISIONS P-040, P-044.
@@ -56,7 +59,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
   - The fingerprint uses only the first step of merchant normalisation; P06/P09 may recompute it. Duplicate detection (P09) does not exist yet: the same receipt twice makes two observations with the same fingerprint.
   - Discount lines are not stored as items (the database has no negative amounts); they only count in the sum check.
   - `AI_PROVIDER=fake` works from the source tree only (the Docker image does not contain the test fixtures).
-  - CI for this phase has not run yet (push pending).
+  - ~~CI for this phase has not run yet~~ → green on 2026-11-19, see the entry above.
 
 ### 2026-11-19 — P04 CI confirmed
 - CI run on `main` (`8f35836`): jobs `backend` and `mobile` both green (the mobile job runs `build_runner`, `flutter analyze` and the 345 Flutter tests on GitHub's runner; the emulator test is not part of CI). P04 is closed; the real-phone camera check stays open under known gaps.
