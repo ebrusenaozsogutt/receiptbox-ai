@@ -462,3 +462,50 @@ async def test_the_fingerprint_uses_the_canonical_merchant_name(
         obs_date=date(2026, 11, 14), obs_time="18:42:00",
     )  # fmt: skip
     assert stored == expected
+
+
+async def test_items_that_add_up_to_the_amount_before_tax_are_high_on_a_qr_invoice(
+    api_client: AsyncClient, provider: FakeProvider
+) -> None:
+    """A real e-Archive invoice lists the goods without tax: 2.118,64 + 18% KDV = 2.499,00. The
+    item lines match `malhizmettoplam`, not the amount to pay (seen on the emulator)."""
+    text = INVOICE_TEXT.replace("KDV %18                   380,36\n", "")
+    provider.add(
+        text,
+        invoice_answer(
+            items=[
+                RawReceiptItem(
+                    name_raw="KULAKLIK BLUETOOTH",
+                    quantity=None,
+                    unit_price=None,
+                    total_price="2.118,64",
+                )
+            ]
+        ),
+    )
+    headers = await user(api_client, consent=True)
+
+    result = (await api_client.post(URL, json=body(masked_text=text), headers=headers)).json()
+
+    assert result["confidence"]["items"] == "HIGH"
+
+
+async def test_items_that_match_neither_total_stay_low_on_a_qr_invoice(
+    api_client: AsyncClient, provider: FakeProvider
+) -> None:
+    text = INVOICE_TEXT.replace("2.118,64", "1.000,00")
+    provider.add(
+        text,
+        invoice_answer(
+            items=[
+                RawReceiptItem(
+                    name_raw="KULAKLIK", quantity=None, unit_price=None, total_price="1.000,00"
+                )
+            ]
+        ),
+    )
+    headers = await user(api_client, consent=True)
+
+    result = (await api_client.post(URL, json=body(masked_text=text), headers=headers)).json()
+
+    assert result["confidence"]["items"] == "LOW"

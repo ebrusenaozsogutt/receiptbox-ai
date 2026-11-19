@@ -36,6 +36,7 @@ from tests.conftest import create_user
         ("KOCTAS YAPI MARKETLERI SANAYI VE TICARET AS", "KOCTAS YAPI MARKETLERI"),
         ("LC WAIKIKI MAGAZACILIK HIZMETLERI TIC AS", "LC WAIKIKI"),
         ("OPET ISTASYONU 4411", "OPET"),
+        ("ÖRNEK ELEKTRONİK TỈCARET A.Ş.", "ÖRNEK"),  # ML Kit read İ as Ỉ
         ("IKEA ISTANBUL", "IKEA"),
         ("ADANA KEBAP", "ADANA KEBAP"),  # a city name inside the name is not removed
         ("USTA KEBAP ADANA", "USTA KEBAP"),  # ... only at the end

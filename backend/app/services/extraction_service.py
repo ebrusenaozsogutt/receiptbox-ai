@@ -266,7 +266,7 @@ class ExtractionService:
             for name in ("merchant", "time", "payment_method", "installment_count"):
                 confidence[name] = llm.confidence[name]
             # The items are checked against the QR total, the only total we trust here.
-            confidence["items"] = rate_items(items, llm.discount_minor, qr.total_minor, issues)
+            confidence["items"] = _rate_qr_items(items, llm.discount_minor, qr, issues)
             if llm.total_minor is not None and llm.total_minor != qr.total_minor:
                 issues.append("llm_total_differs_from_qr")
             if llm.extraction.date is not None and qr_date is not None:
@@ -400,6 +400,22 @@ class ExtractionService:
                 total_price_minor=item.total_price_minor,
             )
         return observation.id
+
+
+def _rate_qr_items(
+    items: list[ParsedItem], discount_minor: int, qr: GibQr, issues: list[str]
+) -> Confidence:
+    """Item lines of an invoice usually add up to the amount BEFORE tax (`malhizmettoplam`), not
+    to the amount to pay: either match is fine."""
+    attempt: list[str] = []
+    level = rate_items(items, discount_minor, qr.total_minor, attempt)
+    if level != Confidence.HIGH and qr.goods_total_minor:
+        before_tax: list[str] = []
+        alternative = rate_items(items, discount_minor, qr.goods_total_minor, before_tax)
+        if alternative == Confidence.HIGH:
+            return alternative
+    issues.extend(attempt)
+    return level
 
 
 def _check_size(text: str) -> None:

@@ -34,6 +34,8 @@ FUZZY_MIN_SORT_SCORE = 75
 FUZZY_MIN_LENGTH = 5
 
 _ASCII = str.maketrans("İŞĞÜÖÇ", "ISGUOC")
+# ML Kit sometimes reads a Turkish "İ" as "Ỉ" (I with a hook above); seen on the emulator.
+_OCR_FIXES = str.maketrans({"Ỉ": "İ", "ỉ": "i"})
 
 # Single words that are legal form or branch noise (ASCII, upper case). Spec 5.6 step 2 plus a few
 # that real receipts print (TICARET, SANAYI, LIMITED, ISTASYONU ...).
@@ -80,7 +82,7 @@ class CleanedName:
 
 def clean_name(raw: str) -> CleanedName:
     """Steps 1 and 2 of spec 5.6."""
-    full = normalize_alias_key(raw)
+    full = normalize_alias_key(raw.translate(_OCR_FIXES))
     tokens = full.split()
     if not tokens:
         return CleanedName(full="", stripped="")

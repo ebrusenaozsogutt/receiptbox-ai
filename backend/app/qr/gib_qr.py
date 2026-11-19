@@ -60,6 +60,7 @@ class GibQrError(Exception):
 @dataclass(frozen=True)
 class GibQr:
     total_minor: int
+    goods_total_minor: int | None  # `malhizmettoplam`: goods and services before tax
     date: date | None
     ettn: str | None
     seller_id: str | None  # VKN (10 digits) or TCKN (11 digits); lookup only, never stored
@@ -91,6 +92,7 @@ def parse_gib_qr(payload: Mapping[str, Any] | str) -> GibQr:
 
     return GibQr(
         total_minor=total_minor,
+        goods_total_minor=_money_minor(keys.get("malhizmettoplam")),
         date=parsed_date,
         ettn=ettn,
         seller_id=_seller_id(keys.get("vkntckn")),

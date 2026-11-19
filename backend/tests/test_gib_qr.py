@@ -223,3 +223,9 @@ def test_the_ettn_is_checked_and_lowercased() -> None:
     assert "ettn_invalid" in bad.issues
 
     assert parse_gib_qr(payload(ettn=None)).ettn is None  # no ETTN is allowed
+
+
+def test_the_goods_total_before_tax_is_returned_too() -> None:
+    assert parse_gib_qr(payload()).goods_total_minor == 211864
+    assert parse_gib_qr(payload(malhizmettoplam=None)).goods_total_minor is None
+    assert parse_gib_qr(payload(malhizmettoplam="abc")).goods_total_minor is None
