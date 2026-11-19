@@ -12,7 +12,7 @@ Update after every phase. Newest entry on top of the log.
 | P03 | Mobile app shell & auth | ✅ Done | 2026-11-16 |
 | P04 | On-device capture: OCR, QR, PII masking, share | ✅ Done | 2026-11-19 |
 | P05 | AI provider layer & receipt extraction | ✅ Done | 2026-11-19 |
-| P06 | e-Invoice QR, merchant normalisation, categorisation | ⬜ | |
+| P06 | e-Invoice QR, merchant normalisation, categorisation | ✅ Done (CI pending) | 2026-11-19 |
 | P07 | Receipt review flow, manual entry, documents | ⬜ | |
 | P08 | Bank screenshot import | ⬜ | |
 | P09 | Matching engine 1:1 | ⬜ | |
@@ -35,6 +35,30 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner:
 - Known gaps / follow-ups:
 -->
+
+### 2026-11-19 — P06 e-Invoice QR, merchant normalisation, categorisation (done locally; CI pending)
+- Done:
+  - **GİB QR (`backend/app/qr/gib_qr.py`)**: tolerant parser (case-insensitive keys, JSON object or text, amounts as numbers or text with dot or comma, several date formats, unknown keys ignored). `odenecek` is the total, `vergidahil` the fallback, `tarih` the date, `ettn` the `external_id`; the buyer's `avkntckn` is dropped again on the server; only whitelisted fields are saved, the seller's tax number is only used for a lookup. The phone keeps recognising the QR and removing the buyer's number (P04): nothing is duplicated (P-047).
+  - **`POST /extract/einvoice-qr`** `{qr_payload, masked_text?, capture_date}`: observation `source=EINVOICE_QR`, QR fields HIGH, fingerprint from the ETTN. A QR-only invoice makes **no AI call** and needs no consent; with the invoice text and the consent the AI adds merchant name and items (the QR keeps total and date). Errors `QR_INVALID`, `EXTRACTION_REJECTED`, `TEXT_TOO_LARGE`; shares the 20/min limit (P-048).
+  - **Merchant normaliser (`app/matching/merchant_normalizer.py`)**: spec 5.6 steps 1-5 as pure functions plus repository calls: cleaning (legal words, store numbers, trailing city, `.COM`), alias lookup (user before global, Turkish and ASCII spelling), rapidfuzz with a guard against subset matches, otherwise a NEW proposed name. No merchant row is created while reading a receipt (P-049, P-050).
+  - **Categorisation**: user rule > merchant default > `classify_category` (Gemini enum answer / Fake) > OTHER (P-051). Marketplaces (default OTHER) ask the AI when there are items. A failure never fails an extraction.
+  - **Both endpoints** store `extraction_json.suggestions` and return `suggestions {merchant, category}`.
+  - **Mobile**: `ExtractionApi` picks `/extract/einvoice-qr` when the capture has a GİB QR, else `/extract/receipt` (only with the local AI consent); a debug-only "Sunucuya gönder (debug)" panel on the result screen shows the server's answer (P-052).
+  - `ai/experiments/make_synthetic_samples.py` also makes `einvoice_qr.pdf`, a synthetic e-Archive invoice with a QR code (made-up buyer TCKN inside the QR and printed on the page).
+- Tests added: backend **636** (was 438): `test_gib_qr.py` (58 cases: amounts, dates, malformed JSON, privacy), `test_merchant_normalizer.py` (85 cases, 40 real-looking names incl. all the phase's examples, user aliases, cross-user isolation), `test_categorization.py` (19: precedence, consent, failures), `tests/api/test_extract_einvoice.py` (QR-only = zero AI calls, consent, privacy of the buyer number, errors, limits, suggestions), Gemini classification tests; Flutter **382** (was 355): endpoint choice, consent, error messages, the debug panel; the privacy guard now allows one explicit network file. FakeProvider only, no real AI call in any test.
+- Checks run on 2026-11-19: `ruff check`, `ruff format --check`, `pytest` (636 passed, Docker database running), `flutter analyze` (no issues), `flutter test` (382 passed).
+- **Checked on the emulator** (debug build, real backend, real Gemini, synthetic invoice): sharing `einvoice_qr.pdf` found the QR on the phone ("e-Fatura QR kodu bulundu"), hid the name and the T.C. kimlik no, and "Sunucuya gönder" returned total 2499.00, date 2026-11-14, a TECHNOLOGY category chosen by the AI and the confidence per field. Two bugs found there and fixed: ML Kit read "İ" as "Ỉ" (the merchant name was not cleaned), and invoice lines add up to the amount before tax, so the items were rated LOW against the amount to pay.
+- Manual test steps for the owner: README §3.2.4 (Swagger and emulator).
+- **Seed review for the owner (O-004 in DECISIONS)**: nothing in `merchants_seed.csv` was changed. Risky categories: Decathlon (CLOTHING), books (EDUCATION vs D&R ENTERTAINMENT), pay-TV (BILLS vs streaming SUBSCRIPTION), Arçelik HOME vs other electronics TECHNOLOGY, Tchibo, App Store / Google Play. Risky aliases: `PARIBU` (a crypto exchange too), generic words `TOTAL`, `NERO`, `DAMAT`, `VATAN`, `MARTI`, `GAIN`, `FLO`, `MAVI`, `PEGEM`, `VALVE`, very short ones (`BP`, `LG`, `HM`, `HGS`...). Missing: Beko, pharmacies, cargo companies, classified sites, most utilities.
+- Known gaps / follow-ups:
+  - **No real e-Archive QR was tried**; only synthetic payloads. The real GİB QR layouts (field names, number and date formats) may differ per software vendor: bring a real one (owner check below) and add it to the tests.
+  - The QR holds no merchant name: a QR-only invoice has merchant `LOW` and no category (OTHER, FALLBACK) until the text is read by the AI (consent) or the user names the shop in P07. Seller tax number -> merchant aliases (`VKN ...`) are looked up but nothing creates them yet (P07).
+  - A NEW merchant is only a proposed name; P07 must create it when the user confirms (`MerchantRepository.create`) and show the "Bu mağaza için hep böyle olsun mu?" question that stores a user rule (`set_user_rule` exists, no UI).
+  - Fuzzy matching and the generic-word risk: names that are a common word can match by exact alias (seed review). OCR spelling variants other than "Ỉ" may exist.
+  - The category AI call adds a second AI call (about 2-10 s) for unknown merchants; the review screen must tolerate about 30-40 s in total.
+  - The debug panel's AI-consent check uses the local switch only.
+  - CI for this phase has not run yet (push pending).
+- Manual check for the owner: scan the QR of a real e-Archive invoice from an online order (share the PDF to the app, press "Sunucuya gönder (debug)") and confirm date and total are exact.
 
 ### 2026-11-19 — P05 CI confirmed
 - CI run on `main` (`d5d00a6`): jobs `backend` (438 tests on a fresh PostgreSQL, no API key, fake provider only) and `mobile` (355 Flutter tests) both green. P05 is closed.

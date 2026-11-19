@@ -19,10 +19,10 @@ Creating user rules from the UI (P07), bank rows (P08).
 
 ## Acceptance criteria
 
-- [ ] QR parser tests with ≥ 6 payload variants (comma/dot decimals, missing fields, extra fields, malformed JSON → clear error).
-- [ ] Normaliser tests: ≥ 25 real-looking variants (`MIGROS TICARET AS`, `MİGROS SANAL MARKET`, `MIGROS MAGAZACILIK 1234 KONYA`, `A101 YENI MAGAZACILIK`, `SHELL&TURCAS`, `TRENDYOL.COM`, `STARBUCKS COFFEE`) map to the right canonical merchant.
-- [ ] Categoriser precedence tested (user rule beats default beats LLM).
-- [ ] A QR-only invoice creates an observation with no LLM call (asserted via FakeProvider call counter).
+- [x] QR parser tests with ≥ 6 payload variants (comma/dot decimals, missing fields, extra fields, malformed JSON → clear error). *(`test_gib_qr.py`, 58 cases, synthetic payloads.)*
+- [x] Normaliser tests: ≥ 25 real-looking variants (`MIGROS TICARET AS`, `MİGROS SANAL MARKET`, `MIGROS MAGAZACILIK 1234 KONYA`, `A101 YENI MAGAZACILIK`, `SHELL&TURCAS`, `TRENDYOL.COM`, `STARBUCKS COFFEE`) map to the right canonical merchant.
+- [x] Categoriser precedence tested (user rule beats default beats LLM).
+- [x] A QR-only invoice creates an observation with no LLM call (asserted via FakeProvider call counter).
 
 ## Tests
 

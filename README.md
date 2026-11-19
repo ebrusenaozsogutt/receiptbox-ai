@@ -215,6 +215,33 @@ uv run --project backend python ai/experiments/run_extract_manual.py
 
 All automated tests use the fake provider only: `AI_PROVIDER=fake` is forced in `backend/tests/conftest.py`, so `uv run pytest` never calls a real model, whatever is in your `.env`.
 
+### 3.2.4 Try the e-invoice QR, merchants and categories (P06)
+
+Open <http://localhost:8000/docs>. After code changes rebuild first: `docker compose -f infra/docker-compose.yml up -d --build backend` (P06 has no new migration). Register and **Authorize** as in 3.2.2. The suggestions need nothing else; the AI parts need the consent from 3.2.3 (`PUT /api/v1/me/ai-consent` with `true`).
+
+**Merchant and category suggestions on a receipt** (`POST /api/v1/extract/receipt`, the Migros text from 3.2.3): the answer now has a `suggestions` part:
+- `merchant`: `match` is `GLOBAL_ALIAS` and `canonical_name` is `Migros` (a known merchant); `FUZZY` for a close spelling, `NEW` for an unknown shop (only a proposed name, nothing is created), `NONE` without a name.
+- `category`: `key` `GROCERY`, `source` `MERCHANT_DEFAULT` (the seeded category). For an unknown shop the source is `LLM` (the model chose the category) and, if the model fails, `OTHER` with `FALLBACK`.
+Try a name you know in several spellings in the text (`MİGROS TİCARET AŞ`, `MIGROS MAGAZACILIK 1234 KONYA`, `SHELL&TURCAS`) and look at `canonical_name`.
+
+**e-Archive / e-Invoice QR** (`POST /api/v1/extract/einvoice-qr`), body:
+```json
+{"qr_payload": {"ettn": "11111111-2222-3333-4444-555555555555", "vkntckn": "9876543210", "senaryo": "EARSIVFATURA", "tarih": "14-11-2026", "no": "ORN2026000000456", "parabirimi": "TRY", "malhizmettoplam": "2118.64", "vergidahil": "2499.00", "odenecek": "2499.00"}, "capture_date": "2026-11-18"}
+```
+- **200**: `extraction.total` is `"2499.00"`, `date` `"2026-11-14"`, `confidence.total` and `date` are `HIGH`, `merchant` is `LOW` (the QR holds no merchant name), `ai_used` is `false`. No AI is called, so it also works **without** the AI consent.
+- Add `"masked_text": "ORNEK ELEKTRONIK TICARET A.S.\nKULAKLIK BLUETOOTH 2.118,64\nODENECEK TUTAR 2.499,00"` (with the consent on): the AI adds merchant name and items, `ai_used` is `true`; total and date still come from the QR.
+- Send `"avkntckn": "12345678901"` too (the buyer's identity number): it is dropped and nowhere in the answer or the database.
+- Try breaking it: `"qr_payload": "not json"` or `{"wifi": "x"}` → **422** `QR_INVALID`; `"parabirimi": "USD"` → **422**; `"odenecek": "1.245.000,00"` → **422** `EXTRACTION_REJECTED`.
+
+**On the emulator (debug build): the synthetic e-Archive invoice with a QR code**
+1. Put the sample on the emulator (made-up invoice, see 3.3 for generating samples): `adb push ai/datasets/synthetic/einvoice_qr.pdf /sdcard/Download/`
+2. Files app → Downloads → long-press `einvoice_qr.pdf` → **Share** → **ReceiptBox AI** → **Fiş veya fatura**.
+3. The result screen says **"e-Fatura QR kodu bulundu"**, hides the name and the T.C. kimlik no (`[NAME]`, `[TCKN]`).
+4. Scroll down: **Sunucu (yalnızca debug)** → **Sunucuya gönder (debug)**. Signed in, with the AI switch in Settings on (QR works without it too), you see: source "e-Fatura QR + metin", total **2499.00 TL**, date **2026-11-14**, a merchant and category suggestion ("Teknoloji (yapay zekâ)") and the confidence of each field. With the Settings switch off the answer says "yapay zekâ kullanılmadı" and has no merchant or items.
+5. Do the same with a normal receipt photo (Galeriden Ekle): the panel sends the masked text to `/extract/receipt` and shows the suggestions; with the Settings switch off it says that AI reading is off and sends nothing.
+
+This panel exists in debug builds only; the real review screen is P07.
+
 ### 3.3 The Android app
 
 1. Start an emulator: Android Studio → **Virtual Device Manager → ▶**, or `flutter emulators --launch <emulator_id>`. Wait until you see the Android home screen.
