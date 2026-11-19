@@ -36,7 +36,10 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
-### 2026-11-19 — P07 Receipt review flow, manual entry, documents (Milestone M1; done locally, CI result below)
+### 2026-11-19 — P07 CI confirmed
+- CI run on `main` (`67bf62c`): jobs `backend` (764 tests on a fresh PostgreSQL, fake provider only) and `mobile` (467 Flutter tests) both green. P07 and Milestone M1 are closed.
+
+### 2026-11-19 — P07 Receipt review flow, manual entry, documents (Milestone M1; done locally, CI confirmed in the entry above)
 - Done:
   - **Backend**
     - `POST /observations/{id}/confirm` (edited merchant, date, time, total, category, channel, note, items, `remember_category_for_merchant`): creates a NEW `PURCHASE` transaction, links the observation as `CONFIRMED`, saves a user category rule when asked. `installment_count > 1` only sets `payment_type = INSTALLMENT` (P10 does the rest). **No matching** (P09). `POST /observations/{id}/reject`, `GET /observations?status=PENDING_REVIEW`.
