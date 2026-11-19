@@ -5,6 +5,7 @@ class UserProfile {
     required this.email,
     required this.isAdultConfirmed,
     required this.createdAt,
+    this.aiConsent = false,
   });
 
   final String id;
@@ -12,12 +13,16 @@ class UserProfile {
   final bool isAdultConfirmed;
   final DateTime createdAt;
 
+  /// The server's copy of the AI consent (spec 15.3). AI extraction is refused without it.
+  final bool aiConsent;
+
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       id: json['id'] as String,
       email: json['email'] as String,
       isAdultConfirmed: json['is_adult_confirmed'] as bool,
       createdAt: DateTime.parse(json['created_at'] as String),
+      aiConsent: json['ai_consent'] as bool? ?? false,
     );
   }
 }

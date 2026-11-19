@@ -54,6 +54,11 @@ class FakeAuthApi implements AuthApi {
   ApiError? deleteError;
   bool? lastIsAdultConfirmed;
 
+  /// The server's copy of the AI consent, and what the app asked it to change.
+  bool serverAiConsent = false;
+  int setAiConsentCalls = 0;
+  ApiError? setAiConsentError;
+
   /// When set, login() waits for it: lets a test look at the "request in progress" state.
   Completer<void>? loginGate;
 
@@ -116,7 +121,16 @@ class FakeAuthApi implements AuthApi {
       email: email,
       isAdultConfirmed: true,
       createdAt: DateTime(2026, 11, 16),
+      aiConsent: serverAiConsent,
     );
+  }
+
+  @override
+  Future<UserProfile> setAiConsent(bool value) async {
+    setAiConsentCalls++;
+    if (setAiConsentError != null) throw setAiConsentError!;
+    serverAiConsent = value;
+    return me();
   }
 
   @override

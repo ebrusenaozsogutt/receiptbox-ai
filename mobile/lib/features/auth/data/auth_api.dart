@@ -18,6 +18,9 @@ abstract interface class AuthApi {
   Future<AuthTokens> login({required String email, required String password});
   Future<void> logout(String refreshToken);
   Future<UserProfile> me();
+
+  /// `PUT /me/ai-consent`: tells the server whether AI extraction is allowed.
+  Future<UserProfile> setAiConsent(bool value);
   Future<void> deleteMe();
 }
 
@@ -69,6 +72,15 @@ class DioAuthApi implements AuthApi {
   @override
   Future<UserProfile> me() async {
     final response = await _authenticated.get<Map<String, dynamic>>('/me');
+    return UserProfile.fromJson(response.data!);
+  }
+
+  @override
+  Future<UserProfile> setAiConsent(bool value) async {
+    final response = await _authenticated.put<Map<String, dynamic>>(
+      '/me/ai-consent',
+      data: {'ai_consent': value},
+    );
     return UserProfile.fromJson(response.data!);
   }
 

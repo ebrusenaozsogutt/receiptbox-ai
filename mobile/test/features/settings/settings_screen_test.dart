@@ -12,8 +12,13 @@ Future<TestApp> _openSettings(WidgetTester tester, {TestApp? app}) async {
   return testApp;
 }
 
+final _keepImagesSwitchFinder = find.descendant(
+  of: find.byKey(const Key('keep_images_switch')),
+  matching: find.byType(Switch),
+);
+
 Switch _receiptSwitch(WidgetTester tester) =>
-    tester.widget<Switch>(find.byType(Switch));
+    tester.widget<Switch>(_keepImagesSwitchFinder);
 
 void main() {
   testWidgets('shows the account e-mail and the sections', (tester) async {
@@ -49,7 +54,7 @@ void main() {
     testWidgets('turning it off is saved on the device', (tester) async {
       final app = await _openSettings(tester);
 
-      await tester.tap(find.byType(Switch));
+      await tester.tap(_keepImagesSwitchFinder);
       await tester.pumpAndSettle();
 
       expect(_receiptSwitch(tester).value, isFalse);
@@ -58,7 +63,7 @@ void main() {
 
     testWidgets('the choice survives a restart', (tester) async {
       final app = await _openSettings(tester);
-      await tester.tap(find.byType(Switch));
+      await tester.tap(_keepImagesSwitchFinder);
       await tester.pumpAndSettle();
 
       await tester.pumpWidget(const SizedBox()); // kill the app
@@ -69,10 +74,10 @@ void main() {
 
     testWidgets('can be turned back on', (tester) async {
       final app = await _openSettings(tester);
-      await tester.tap(find.byType(Switch));
+      await tester.tap(_keepImagesSwitchFinder);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(Switch));
+      await tester.tap(_keepImagesSwitchFinder);
       await tester.pumpAndSettle();
 
       expect(_receiptSwitch(tester).value, isTrue);

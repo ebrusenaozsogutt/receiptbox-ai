@@ -28,6 +28,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // The router now shows Login; this screen is gone.
   }
 
+  Future<void> _setAiConsent(bool value) async {
+    try {
+      await ref.read(authProvider.notifier).setAiConsent(value);
+    } on ApiError {
+      if (!mounted) return;
+      // The choice is saved on this device and will be sent again; say so.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Ayar bu cihaza kaydedildi ama sunucuya iletilemedi. '
+            'Bağlantı gelince yeniden denenecek.',
+          ),
+        ),
+      );
+    }
+  }
+
   Future<void> _confirmAndDelete() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -68,6 +85,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final email = ref.watch(authProvider).user?.email;
     final keepImages = ref.watch(keepReceiptImagesProvider);
+    final aiConsent = ref.watch(aiConsentProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ayarlar')),
@@ -86,6 +104,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const _SectionLabel('GİZLİLİK'),
           Card(
             child: SwitchListTile(
+              key: const Key('ai_consent_switch'),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.l,
+              ),
+              title: const Text('Yapay zekâ ile fiş okuma'),
+              subtitle: const Text(
+                'Açıkken, fişten okunan ve kişisel bilgileri silinmiş metin '
+                'harici bir yapay zekâ servisine gönderilir. Kapalıyken yalnızca '
+                'elle giriş yapabilirsin.',
+              ),
+              value: aiConsent,
+              onChanged: _setAiConsent,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s),
+          Card(
+            child: SwitchListTile(
+              key: const Key('keep_images_switch'),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.l,
               ),

@@ -33,6 +33,8 @@ class SettingsStore {
     await _prefs.setBool(_consentSeenKey, true);
   }
 
+  Future<void> setAiConsent(bool value) => _prefs.setBool(_aiConsentKey, value);
+
   Future<void> setKeepReceiptImages(bool value) =>
       _prefs.setBool(_keepReceiptImagesKey, value);
 
@@ -57,7 +59,22 @@ class ConsentSeen extends _$ConsentSeen {
 
   Future<void> accept({required bool aiConsent}) async {
     await ref.read(settingsStoreProvider).saveConsent(aiConsent: aiConsent);
+    ref.invalidate(aiConsentProvider); // the consent screen wrote a new value
     state = true;
+  }
+}
+
+/// The user's choice "masked text may be processed by an external AI provider" (spec 15.3),
+/// from the consent screen or the Settings switch. The server keeps its own copy and refuses
+/// AI extraction without it; the auth controller keeps the two equal.
+@Riverpod(keepAlive: true)
+class AiConsent extends _$AiConsent {
+  @override
+  bool build() => ref.read(settingsStoreProvider).aiConsent;
+
+  Future<void> set(bool value) async {
+    await ref.read(settingsStoreProvider).setAiConsent(value);
+    state = value;
   }
 }
 
