@@ -15,6 +15,8 @@ import 'package:receiptbox/features/capture/domain/capture_payload.dart';
 import 'package:receiptbox/features/capture/domain/extraction_result.dart';
 import 'package:receiptbox/features/health/data/health_repository.dart';
 import 'package:receiptbox/features/health/domain/health_status.dart';
+import 'package:receiptbox/features/transactions/data/transactions_api.dart';
+import 'purchase_fakes.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:receiptbox/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -159,6 +161,10 @@ class TestApp {
   final FakeSharedMediaSource sharedMedia = FakeSharedMediaSource();
   final FakeExtractionApi extraction = FakeExtractionApi();
 
+  // Purchases (P07).
+  final FakeTransactionsApi transactions = FakeTransactionsApi();
+  final FakeDocumentsApi documents = FakeDocumentsApi();
+
   /// What the camera plugin reports. Default: this phone has no camera.
   Future<List<CameraDescription>> Function() cameras = () async => [];
 
@@ -183,6 +189,8 @@ class TestApp {
     galleryPickerProvider.overrideWithValue(gallery),
     sharedMediaSourceProvider.overrideWithValue(sharedMedia),
     extractionApiProvider.overrideWithValue(extraction),
+    transactionsApiProvider.overrideWithValue(transactions),
+    documentsApiProvider.overrideWithValue(documents),
     captureTempDirProvider.overrideWithValue(NoopTempDir()),
     camerasLoaderProvider.overrideWithValue(() => cameras()),
     healthStatusProvider.overrideWith(

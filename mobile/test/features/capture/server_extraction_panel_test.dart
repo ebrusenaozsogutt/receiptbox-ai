@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:receiptbox/app.dart';
+import 'package:receiptbox/features/capture/data/capture_providers.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:receiptbox/core/privacy/pii_masker.dart';
 import 'package:receiptbox/features/capture/data/extraction_api.dart';
@@ -43,17 +46,13 @@ Future<TestApp> _openResult(
   app.pipeline.result = captured;
   await tester.pumpWidget(app.app());
   await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('nav_add_button')));
-  await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('add_action_/capture/gallery')));
-  await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('pick_image_button')));
-  await tester.pumpAndSettle();
-  if (captured.payload.kind == CaptureKind.receipt) {
-    await tester.tap(find.byKey(const Key('kind_receipt')));
-  } else {
-    await tester.tap(find.byKey(const Key('kind_bank')));
-  }
+  // Since P07 a receipt goes to the review screen; the debug "Okunan bilgiler" screen (with the
+  // server panel) is opened the way the debug link does it.
+  final container = ProviderScope.containerOf(
+    tester.element(find.byType(MaterialApp)),
+  );
+  container.read(captureFlowProvider.notifier).showForDebug(captured);
+  unawaited(container.read(routerProvider).push('/capture/result'));
   await tester.pumpAndSettle();
   return app;
 }

@@ -121,7 +121,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
               ),
             ),
       );
-      context.pushReplacement('/capture/result');
+      context.pushReplacement(captureRouteFor(CaptureKind.receipt));
     } on Object {
       if (!mounted) return;
       setState(() {

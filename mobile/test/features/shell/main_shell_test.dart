@@ -34,7 +34,7 @@ void main() {
 
   group('every tab opens its own screen', () {
     final tabs = {
-      'Harcamalar': 'Harcamaların burada listelenecek',
+      'Harcamalar': 'Henüz harcama yok',
       'Ürünler': 'Ürünlerin burada olacak',
       'Asistan': 'Asistan yakında burada',
     };
@@ -114,7 +114,8 @@ void main() {
           ),
           findsOneWidget,
         );
-        if (!action.route.startsWith('/capture/')) {
+        if (!action.route.startsWith('/capture/') &&
+            action.route != '/transactions/new') {
           expect(find.text('Bu özellik yakında'), findsOneWidget);
         }
         expect(

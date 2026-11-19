@@ -88,7 +88,7 @@ class _PickImageScreenState extends ConsumerState<PickImageScreen> {
               ),
             ),
       );
-      context.pushReplacement('/capture/result');
+      context.pushReplacement(captureRouteFor(kind));
     } on Object {
       if (!mounted) return;
       setState(() {

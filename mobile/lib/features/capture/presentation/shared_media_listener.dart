@@ -66,7 +66,7 @@ class _SharedMediaListenerState extends ConsumerState<SharedMediaListener> {
               ),
             ),
       );
-      unawaited(context.push('/capture/result'));
+      unawaited(context.push(captureRouteFor(kind)));
     } finally {
       _busy = false;
       // Another share may have arrived while the sheet was open.

@@ -33,7 +33,19 @@ Future<void> _openAddAction(WidgetTester tester, String route) async {
 
 void main() {
   group('gallery', () {
-    testWidgets('pick -> ask the kind -> read -> masked result', (
+    testWidgets('a receipt goes to the review screen', (tester) async {
+      await _openApp(tester);
+      await _openAddAction(tester, '/capture/gallery');
+      await tester.tap(find.byKey(const Key('pick_image_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('kind_receipt')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fişi kontrol et'), findsOneWidget);
+      expect(find.text('Okunan bilgiler'), findsNothing);
+    });
+
+    testWidgets('pick -> ask the kind -> read -> masked result (bank)', (
       tester,
     ) async {
       final app = await _openApp(tester);
@@ -44,11 +56,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Bu bir ne?'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('kind_receipt')));
+      await tester.tap(find.byKey(const Key('kind_bank')));
       await tester.pumpAndSettle();
 
       final input = app.pipeline.inputs.single;
-      expect(input.kind, CaptureKind.receipt);
+      expect(input.kind, CaptureKind.bankScreenshot);
       expect(input.source, CaptureSource.gallery);
       expect(input.captureDate, DateTime(2026, 11, 1));
       expect(input.isPdf, isFalse);

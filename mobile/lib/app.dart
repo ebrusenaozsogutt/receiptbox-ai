@@ -16,12 +16,14 @@ import 'features/capture/data/capture_providers.dart';
 import 'features/capture/presentation/camera_screen.dart';
 import 'features/capture/presentation/capture_result_screen.dart';
 import 'features/capture/presentation/pick_image_screen.dart';
+import 'features/capture/presentation/review/review_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/products/presentation/add_product_screen.dart';
 import 'features/products/presentation/products_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/shell/presentation/main_shell.dart';
 import 'features/transactions/presentation/manual_transaction_screen.dart';
+import 'features/transactions/presentation/transaction_detail_screen.dart';
 import 'features/transactions/presentation/transactions_screen.dart';
 
 part 'app.g.dart';
@@ -156,6 +158,11 @@ GoRouter router(Ref ref) {
         builder: (context, state) => const PickImageScreen.bank(),
       ),
       GoRoute(
+        path: '/capture/review',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const ReviewScreen(),
+      ),
+      GoRoute(
         path: '/capture/result',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const CaptureResultScreen(),
@@ -164,6 +171,26 @@ GoRouter router(Ref ref) {
         path: '/transactions/new',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ManualTransactionScreen(),
+      ),
+      GoRoute(
+        path: '/transactions/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            TransactionDetailScreen(purchaseId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/transactions/:id/edit',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            ManualTransactionScreen(purchaseId: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/documents/:id/view',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => DocumentViewerScreen(
+          documentId: state.pathParameters['id']!,
+          isPdf: state.uri.queryParameters['pdf'] == 'true',
+        ),
       ),
       GoRoute(
         path: '/products/new',
