@@ -133,6 +133,14 @@ class TextTooLargeError(AppError):
     default_message = "The text is too large (at most 20 KB)."
 
 
+class InvalidQrError(AppError):
+    """The QR content is not a usable GİB e-invoice QR."""
+
+    status_code = 422
+    code = "QR_INVALID"
+    default_message = "The QR code is not a readable e-Archive / e-Invoice QR."
+
+
 class ExtractionRejectedError(AppError):
     """The extraction was not credible (for example an absurd amount). Nothing was saved."""
 

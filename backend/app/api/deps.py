@@ -90,6 +90,16 @@ async def get_extraction_user(user: CurrentUser, request: Request) -> User:
 ExtractionUser = Annotated[User, Depends(get_extraction_user)]
 
 
+async def get_extraction_caller(user: CurrentUser, request: Request) -> User:
+    """Signed in + inside the rate limit, but NO consent required: the e-invoice QR path reads
+    the QR without any AI. (It uses the AI only for users who consented.)"""
+    request.app.state.extract_limiter.check(str(user.id))
+    return user
+
+
+ExtractionCaller = Annotated[User, Depends(get_extraction_caller)]
+
+
 def get_extraction_service(
     session: SessionDep, provider: Annotated[AIProvider, Depends(get_ai_provider)]
 ) -> ExtractionService:

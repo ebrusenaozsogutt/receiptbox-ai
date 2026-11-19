@@ -83,6 +83,7 @@ async def test_confidence_extraction_and_prompt_version_are_saved(
     assert saved["extraction"]["total"] == "165.00"
     assert saved["issues"] == ["items_sum_mismatch"]
     assert saved["meta"] == {
+        "ai_used": True,
         "provider": "fake",
         "model": "fake-fixtures",
         "prompt_version": "receipt_extract.v1",

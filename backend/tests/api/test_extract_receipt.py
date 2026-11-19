@@ -82,7 +82,7 @@ async def test_every_fixture_returns_the_expected_extraction_and_confidence(
     result = response.json()
     assert result["extraction"] == expected["extraction"]
     assert result["confidence"] == expected["confidence"]
-    assert set(result) == {"observation_id", "extraction", "confidence"}
+    assert set(result) == {"observation_id", "extraction", "confidence", "suggestions"}
 
     rows = await fetch_all(
         api_app,
