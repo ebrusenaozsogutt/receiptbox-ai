@@ -93,6 +93,26 @@ def test_a_good_answer_is_parsed_and_the_request_is_constrained() -> None:
     assert config.temperature == 0.0
     assert "Copy, never compute" in config.system_instruction
     assert config.response_schema.__name__ == "RawReceiptExtraction"
+    assert config.thinking_config is None  # not set unless the settings ask for it
+
+
+def test_the_thinking_level_comes_from_the_settings_and_is_passed_on() -> None:
+    provider, client, _ = make([GOOD_JSON], thinking_level="MINIMAL")
+
+    provider.extract_receipt(TEXT, HINTS)
+
+    assert str(client.calls[0]["config"].thinking_config.thinking_level).endswith("MINIMAL")
+
+
+def test_an_empty_thinking_level_setting_means_the_model_default() -> None:
+    provider = get_provider(
+        settings(
+            ai_provider="gemini",
+            gemini_api_key=SecretStr("not-a-real-key"),
+            ai_thinking_level="  ",
+        )
+    )
+    assert provider._thinking is None
 
 
 def test_an_invalid_answer_is_retried_once() -> None:

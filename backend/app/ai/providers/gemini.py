@@ -42,12 +42,16 @@ class GeminiProvider:
         api_key: str,
         model: str,
         timeout_seconds: float = 30.0,
+        thinking_level: str | None = None,
         client: Any | None = None,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.model = model
         self._timeout_seconds = timeout_seconds
+        self._thinking = (
+            types.ThinkingConfig(thinking_level=thinking_level) if thinking_level else None
+        )
         self._client = client if client is not None else genai.Client(api_key=api_key)
         self._sleep = sleep
         self._clock = clock
@@ -76,6 +80,7 @@ class GeminiProvider:
                             response_mime_type="application/json",
                             response_schema=RawReceiptExtraction,
                             temperature=0.0,
+                            thinking_config=self._thinking,
                             http_options=types.HttpOptions(timeout=max(1, int(remaining * 1000))),
                         ),
                     )

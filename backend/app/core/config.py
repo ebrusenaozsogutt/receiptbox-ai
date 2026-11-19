@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     ai_model_assistant: str = DEFAULT_MODEL_ASSISTANT
     gemini_api_key: SecretStr = SecretStr("")
     ai_timeout_seconds: float = 30.0
+    # How much the model "thinks" before answering (MINIMAL / LOW / MEDIUM / HIGH on Gemini 3.x
+    # models; other model families reject it). Empty = the model's own default. In the manual run
+    # of 2026-11-19 MINIMAL was sometimes much faster (3.7 s against 9.4 s) but the free tier's
+    # own variation (3-13 s, occasional 503) hid the effect, so it stays off until measured.
+    ai_thinking_level: str = ""
     # Where FakeProvider finds its fixtures (relative to backend/ when started from there).
     ai_fake_fixtures_dir: str = "tests/fixtures/receipts"
 

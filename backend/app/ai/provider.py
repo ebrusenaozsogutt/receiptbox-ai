@@ -113,5 +113,6 @@ def get_provider(settings: Settings) -> AIProvider:
             api_key=api_key,
             model=settings.ai_model_extract,
             timeout_seconds=settings.ai_timeout_seconds,
+            thinking_level=settings.ai_thinking_level.strip() or None,
         )
     raise ProviderConfigError("AI_PROVIDER must be 'gemini' or 'fake'.")
