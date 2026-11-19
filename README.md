@@ -240,7 +240,25 @@ Try a name you know in several spellings in the text (`MİGROS TİCARET AŞ`, `M
 4. Scroll down: **Sunucu (yalnızca debug)** → **Sunucuya gönder (debug)**. Signed in, with the AI switch in Settings on (QR works without it too), you see: source "e-Fatura QR + metin", total **2499.00 TL**, date **2026-11-14**, a merchant and category suggestion ("Teknoloji (yapay zekâ)") and the confidence of each field. With the Settings switch off the answer says "yapay zekâ kullanılmadı" and has no merchant or items.
 5. Do the same with a normal receipt photo (Galeriden Ekle): the panel sends the masked text to `/extract/receipt` and shows the suggestions; with the Settings switch off it says that AI reading is off and sends nothing.
 
-This panel exists in debug builds only; the real review screen is P07.
+This panel exists in debug builds only; the real review screen arrived in P07 (3.2.5) and the panel is reachable from its debug link.
+
+### 3.2.5 Try the review flow, manual entry and documents (P07)
+
+After pulling this phase rebuild the backend and apply the new migration (`receipt_items.position`): `docker compose -f infra/docker-compose.yml up -d --build backend`, then `docker compose -f infra/docker-compose.yml exec backend alembic upgrade head`. Rebuild and reinstall the app too (3.3). The AI switch in Settings must be on for receipts to be read.
+
+**On the emulator or a phone (debug build)**
+1. Put the synthetic samples in the gallery (see 3.3 / `ai/datasets/synthetic/`), then **(+) → Galeriden Ekle → Fotoğraf seç → Fiş veya fatura**. Wait up to about a minute: **"Fiş okunuyor…"** (the **İptal** button stops it).
+2. **"Fişi kontrol et"** opens. Fields the app is sure about have a green check; the ones it is not sure about have **KONTROL ET** on a warm background and the banner counts them. Type in a flagged field: its badge disappears and the count goes down. Open **Kalemler**: the last line says whether the items add up to the total.
+3. Change the **category** and press **Kaydet**: the question **"Bu mağaza için hep böyle olsun mu?"** appears *before* anything is saved. Answer **Evet, hep böyle**.
+4. You land on **Harcamalar** ("Harcama kaydedildi."). The purchase has a paperclip (the receipt picture). Open it: amount, category, evidence chip **Fiş**, items, the picture (tap it: full screen, pinch to zoom).
+5. Add the **same receipt again**: the category is already the one you chose, nothing is flagged for it. (Use another merchant to start fresh; there is no matching yet, so the same receipt twice is two purchases.)
+6. **Vazgeç** (or the back arrow) asks "Kaydetmeden çıkılsın mı?"; **Çık** rejects the receipt (`observations.status = REJECTED`).
+7. Share `einvoice_qr.pdf` to the app (3.2.4): the card says **e-Fatura PDF**, the channel is **Online**; after saving, the detail shows the chip **e-Fatura** and the PDF's first page.
+8. Switch the AI switch off in Settings and add a receipt: the form opens empty with "Yapay zekâ ile okuma kapalı…"; fill merchant and total and save (a **Manuel** purchase, the picture is still kept).
+9. **Harcamalar**: try the **Kategori** and **Tarih** filters, the search box, and check that the count and total under the filters are the sum of the rows you see. **+** (top right) or **(+) → Manuel Harcama** adds a purchase by hand. In a detail: the pencil edits, the bin deletes (after a question).
+10. Settings → switch **Fiş görsellerini sakla** off: a new receipt is saved without a picture.
+
+**Swagger** (<http://localhost:8000/docs>, Register and **Authorize** as in 3.2.2): `POST /api/v1/transactions` with `{"merchant_display": "Bakkal", "date": "2026-11-14", "total_minor": 1250, "category_key": "GROCERY", "channel": "IN_STORE"}` → 201; `GET /api/v1/transactions?category=GROCERY&q=bak` finds it (answer has `count` and `sum_minor`); `POST /api/v1/documents` (multipart: a jpg or pdf under 10 MB, `type`, `transaction_id`) → 201 and the file is in the `storage` volume; `POST /api/v1/documents/{id}/access-token` then open the returned address (after 5 minutes: 401). Everything of another user answers 404.
 
 ### 3.3 The Android app
 

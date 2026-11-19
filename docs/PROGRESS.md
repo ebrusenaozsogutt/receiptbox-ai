@@ -13,7 +13,7 @@ Update after every phase. Newest entry on top of the log.
 | P04 | On-device capture: OCR, QR, PII masking, share | ✅ Done | 2026-11-19 |
 | P05 | AI provider layer & receipt extraction | ✅ Done | 2026-11-19 |
 | P06 | e-Invoice QR, merchant normalisation, categorisation | ✅ Done | 2026-11-19 |
-| P07 | Receipt review flow, manual entry, documents | ⬜ | |
+| P07 | Receipt review flow, manual entry, documents | ✅ Done | 2026-11-19 |
 | P08 | Bank screenshot import | ⬜ | |
 | P09 | Matching engine 1:1 | ⬜ | |
 | P10 | Installments 1:N | ⬜ | |
@@ -35,6 +35,33 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner:
 - Known gaps / follow-ups:
 -->
+
+### 2026-11-19 — P07 Receipt review flow, manual entry, documents (Milestone M1; done locally, CI result below)
+- Done:
+  - **Backend**
+    - `POST /observations/{id}/confirm` (edited merchant, date, time, total, category, channel, note, items, `remember_category_for_merchant`): creates a NEW `PURCHASE` transaction, links the observation as `CONFIRMED`, saves a user category rule when asked. `installment_count > 1` only sets `payment_type = INSTALLMENT` (P10 does the rest). **No matching** (P09). `POST /observations/{id}/reject`, `GET /observations?status=PENDING_REVIEW`.
+    - Transactions: `GET /transactions` (date range, category, merchant, text search, limit/offset; answers also `count` and the net `sum_minor` of everything that matches), `GET /transactions/{id}` (evidence + items in receipt order + documents), `PATCH`, soft `DELETE` (also deletes its documents), `POST /transactions` (manual: a `MANUAL` observation + the transaction). Money is `*_minor` integers in these APIs.
+    - Documents: `StorageBackend` + `LocalStorage` (`STORAGE_ROOT/users/<user_id>/<uuid>`), `POST /documents` (multipart; type found from the file's first bytes, jpeg/png/pdf only, 10 MB, sha256), `POST /documents/{id}/access-token` (5 minutes, bound to document and user, a different token type from the login token), `GET /documents/{id}/content?token=`, `DELETE`. Deleting the account also deletes the files.
+    - Migration `0004`: `receipt_items.position` (items were returned in random order).
+  - **Mobile**
+    - **Review screen** (Figma "02 · Fiş Kontrol"): custom app bar, receipt card, banner ("N alan kontrol bekliyor" / all verified), the fields card (merchant, date + time, total, category sheet with 13 options, "Nereden alındı?" segmented control), green check on verified fields, "KONTROL ET" badge and warm background on MEDIUM/LOW ones (editing a field clears its flag), collapsible items card with editing and the "do the items add up to the total" line (same tolerance as the server), "Vazgeç" / "Kaydet".
+    - Reading state (up to a minute, can be cancelled). If the receipt cannot be read (`EXTRACTION_FAILED`, `EXTRACTION_REJECTED`, `QR_INVALID`, no network, AI reading switched off) the same form opens empty with a notice and is saved as a manual purchase (the picture is still kept).
+    - "Bu mağaza için hep böyle olsun mu?" is asked **before** the confirm request when the category was changed; the answer travels with it.
+    - "Fiş görsellerini sakla" now works: the capture pipeline keeps a privacy-cleaned JPEG (upright, at most 2000 px, no EXIF/GPS) or the original PDF in the temporary folder; after the purchase is saved it is uploaded (one retry) and deleted. A failed upload keeps the purchase and says so. **A bank screenshot is never kept** (a pipeline rule, tested).
+    - **Vazgeç / back** asks, rejects the observation on the server and deletes the kept picture.
+    - **Harcamalar**: list grouped by day, category filter, date-range filter, search, count and total of the filtered result, pull to refresh, "Daha fazla göster". **Detail**: amount, category, evidence chips (Fiş / e-Fatura / Banka / Manuel), items, stored picture or PDF first page loaded with an access token, full-screen viewer with zoom, edit (same form as manual entry), delete with confirmation. **Manuel Harcama** form (merchant, amount, date, time, category, channel, note); also opened by the "+" in the list header.
+    - Bank screenshots still open the P04 "Okunan bilgiler" screen (P08); a debug link on the review screen opens it for receipts too.
+- Tests added: backend **764** (was 636): documents (upload types and size, hash, token expiry, token for another document or user, deleting), observations (confirm / reject / list, rule, installment flag, double confirm, validation), transactions (filters, search, pagination, soft delete, manual, patch), cross-user isolation (404) for **every** new endpoint, migration, account deletion; Flutter **467** (was 382): review form and flags, money parsing, review screen (badges, banner count, editing clears flags, sum check, "hep böyle" dialog, save, errors, Vazgeç, manual fallback for each error), review controller with real files (upload, retry, deletion), pipeline keeping rules, list / detail / manual screens. FakeProvider only, no real AI call in any test.
+- Checks run on 2026-11-19: `ruff check`, `ruff format --check`, `pytest` (764 passed, Docker database running), `flutter analyze` (no issues), `flutter test` (467 passed).
+- **Checked on the emulator** (debug build, real backend with migration 0004, real Gemini, synthetic receipts): gallery market receipt → review (one field flagged, items add up) → category changed → "hep böyle" yes → saved → appears in Harcamalar with the paperclip → detail shows the picture; the **same receipt again** came back auto-categorised, all fields verified, green banner; shared `einvoice_qr.pdf` → "e-Fatura PDF" card, channel Online, saved with the e-Fatura chip, the PDF's first page shown and opened full screen; a failed reading (the machine briefly lost DNS) opened the manual form and saved with the picture; manual entry; Vazgeç rejected the observation on the server and left no file in the app's temporary folder. Found there and fixed: the text fields showed an inner border (the global input theme), the viewer's back arrow was invisible on black. **Not checked on the emulator**: editing and deleting a purchase (widget tests only), a PDF **with** several pages.
+- Manual test steps for the owner: README §3.2.5.
+- Known gaps / follow-ups:
+  - **Real phone / camera not tried** (no phone was connected; the emulator camera is not a real receipt). Owner check: photograph 5 real receipts with "Fiş Tara", fix one wrong field each time and add up the list by hand.
+  - No matching yet (P09): the same receipt added twice makes two purchases. The Home tab is still the P03 placeholder (P11).
+  - `merchants` has no owner column, so a merchant created at confirm is global; its name is only reachable through the creating user's private alias, and the name shown on a purchase is the text the user confirmed (P-056). The seller tax number of a QR invoice is not saved as an alias (the number is not stored, P-047).
+  - A receipt closed with the app killed mid-review stays `PENDING_REVIEW` on the server (listable with `GET /observations`); the temporary picture is cleared at the next start. Cancelling while the server is still reading leaves the same pending observation. A failed picture upload cannot be repeated later (no "add picture" screen yet).
+  - Category colours are provisional (6 from the Figma palette plus 7 derived, P-059); the list, detail and manual screens have no Figma frames and were built from the same tokens and components (DESIGN_TRACK rows 2 and 9).
+  - Sharing a file with a `file://` address from `/sdcard` (the adb way) is refused by Android; real shares use `content://` and work (P04). For the emulator check the PDF was shared from the app's own folder.
 
 ### 2026-11-19 — P06 CI confirmed
 - CI run on `main` (`961b3f5`): jobs `backend` (636 tests, fake provider only) and `mobile` (382 Flutter tests) both green. P06 is closed.

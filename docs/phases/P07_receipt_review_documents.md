@@ -26,12 +26,12 @@ Matching/merge, installments UI, products, refunds.
 
 ## Acceptance criteria
 
-- [ ] Photograph a receipt → review → save → appears in Harcamalar with correct amount and category, image viewable.
-- [ ] QR invoice path works end-to-end.
-- [ ] Manual entry works.
-- [ ] Editing category with "hep böyle olsun" → next receipt from same merchant auto-categorised.
-- [ ] User B cannot access user A's observation/transaction/document (404) — tests.
-- [ ] Document token expires after 5 minutes and is single-document.
+- [x] Photograph a receipt → review → save → appears in Harcamalar with correct amount and category, image viewable. _(checked on the emulator with a gallery receipt; the real camera on a phone is still to be checked by the owner)_
+- [x] QR invoice path works end-to-end.
+- [x] Manual entry works.
+- [x] Editing category with "hep böyle olsun" → next receipt from same merchant auto-categorised.
+- [x] User B cannot access user A's observation/transaction/document (404) — tests.
+- [x] Document token expires after 5 minutes and is single-document.
 
 ## Tests
 
