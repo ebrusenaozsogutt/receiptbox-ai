@@ -157,6 +157,21 @@ class ExtractionFailedError(AppError):
     default_message = "The receipt could not be read right now. You can enter it manually."
 
 
+# ---- documents (P07) ---------------------------------------------------------------------
+
+
+class FileTooLargeError(AppError):
+    status_code = 413
+    code = "FILE_TOO_LARGE"
+    default_message = "The file is too large (at most 10 MB)."
+
+
+class UnsupportedFileTypeError(AppError):
+    status_code = 415
+    code = "UNSUPPORTED_FILE_TYPE"
+    default_message = "Only jpeg, png and pdf files are accepted."
+
+
 def error_response(
     status_code: int, code: str, message: str, headers: dict[str, str] | None = None
 ) -> JSONResponse:

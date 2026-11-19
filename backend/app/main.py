@@ -5,12 +5,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import auth, extract, health
+from app.api import auth, documents, extract, health
 from app.core.config import Settings, get_settings
 from app.core.database import create_engine, create_session_factory
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging, install_access_log
 from app.security.rate_limit import SlidingWindowRateLimiter
+from app.storage.backend import LocalStorage
 
 API_PREFIX = "/api/v1"
 
@@ -37,12 +38,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Spec 15.2 / P05: 20 extractions per minute per user. The provider is created lazily.
     app.state.extract_limiter = SlidingWindowRateLimiter(limit=20, window_seconds=60)
     app.state.ai_provider = None
+    app.state.storage = LocalStorage(settings.storage_root)
 
     register_error_handlers(app)
     install_access_log(app)
     app.include_router(health.router, prefix=API_PREFIX)
     app.include_router(auth.router, prefix=API_PREFIX)
     app.include_router(extract.router, prefix=API_PREFIX)
+    app.include_router(documents.router, prefix=API_PREFIX)
     return app
 
 

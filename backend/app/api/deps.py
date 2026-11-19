@@ -19,7 +19,9 @@ from app.repositories.users import UserRepository
 from app.security.rate_limit import SlidingWindowRateLimiter
 from app.security.tokens import decode_access_token
 from app.services.auth import AuthService
+from app.services.document_service import DocumentService
 from app.services.extraction_service import ExtractionService
+from app.storage.backend import StorageBackend
 
 # auto_error=False: a missing header is reported by us (401 + our error shape), not by FastAPI
 # (which would answer 403). The scheme also gives Swagger UI its "Authorize" button.
@@ -107,3 +109,21 @@ def get_extraction_service(
 
 
 ExtractionServiceDep = Annotated[ExtractionService, Depends(get_extraction_service)]
+
+
+# ---- documents (P07) --------------------------------------------------------------------------
+
+
+def get_storage(request: Request) -> StorageBackend:
+    return request.app.state.storage
+
+
+def get_document_service(
+    session: SessionDep,
+    storage: Annotated[StorageBackend, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings_from_app)],
+) -> DocumentService:
+    return DocumentService(session, storage, settings)
+
+
+DocumentServiceDep = Annotated[DocumentService, Depends(get_document_service)]
