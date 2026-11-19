@@ -9,11 +9,13 @@ class AppSpacing {
   const AppSpacing._();
 
   static const double none = 0;
+  static const double badgeV = 3; // vertical padding of a badge pill
   static const double xxs = 4;
   static const double xs = 6;
   static const double s = 8;
   static const double m = 12;
   static const double inputGap = 14; // between form fields, inside input boxes
+  static const double rowV = 11; // vertical padding of a list row inside a card
   static const double l = 16;
   static const double xl = 20; // horizontal screen margin
   static const double xxl = 24;
@@ -33,6 +35,9 @@ class AppRadius {
   static const double m = 12; // buttons, inputs
   static const double l = 16; // cards
   static const double xl = 24; // bottom sheets
+  static const double banner = 14; // review banner
+  static const double thumbnail = 10; // receipt thumbnail, highlighted item row
+  static const double pill = 999; // badges
   static const double segment =
       9; // selected segment inside a segmented control
   static const double navAddButton = 18; // the raised (+) button
@@ -90,6 +95,18 @@ class AppSizes {
 
   /// Height of the text boxes on the capture result screen (masked / original text).
   static const double resultTextMaxHeight = 320;
+
+  /// Receipt review screen (Figma "02 · Fiş Kontrol").
+  static const double receiptThumbWidth = 56;
+  static const double receiptThumbHeight = 72;
+  static const double categoryDot = 10;
+  static const double fieldCheck =
+      18; // green check / chevron at the end of a field
+  static const double actionBarHeight = 80;
+  static const double segmentedHeight = 40;
+  static const double timeFieldWidth = 110;
+  static const double documentThumb =
+      88; // receipt image on the transaction detail
 }
 
 class AppShadows {

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,6 +11,7 @@ import '../../../core/ocr/pdf_page_renderer.dart';
 import '../../../core/ocr/qr_service.dart';
 import '../domain/capture_payload.dart';
 import '../../../core/networking/dio_provider.dart';
+import '../../../core/storage/settings_store.dart';
 import 'capture_pipeline.dart';
 import 'extraction_api.dart';
 import 'media_sources.dart';
@@ -84,6 +86,11 @@ class SharedInbox extends _$SharedInbox {
 Future<List<CameraDescription>> Function() camerasLoader(Ref ref) =>
     availableCameras;
 
+/// Where a finished capture is shown: receipts and invoices go to the review screen, bank
+/// screenshots to the "Okunan bilgiler" screen (their import arrives in P08).
+String captureRouteFor(CaptureKind kind) =>
+    kind == CaptureKind.receipt ? '/capture/review' : '/capture/result';
+
 /// Where the capture currently is. The result screen shows whatever this says.
 sealed class CaptureFlowState {
   const CaptureFlowState();
@@ -124,6 +131,12 @@ class CaptureFlow extends _$CaptureFlow {
   /// without waiting and open the result screen right away.
   Future<void> process(CaptureInput input) async {
     if (state is CaptureProcessing) return;
+    // One place decides what is kept: only receipts, only if the user keeps receipt images.
+    input = input.copyWith(
+      keepImage:
+          input.kind == CaptureKind.receipt &&
+          ref.read(keepReceiptImagesProvider),
+    );
     final retryRoute = _retryRoute(input);
     state = CaptureProcessing(retryRoute: retryRoute);
     try {
@@ -143,8 +156,38 @@ class CaptureFlow extends _$CaptureFlow {
     }
   }
 
+  /// Forget the outcome AND delete the kept image, if any (nobody took it over).
   void reset() {
-    if (ref.mounted) state = const CaptureIdle();
+    if (!ref.mounted) return;
+    final current = state;
+    if (current is CaptureDone) {
+      unawaited(_deleteQuietly(current.result.retainedImage));
+    }
+    state = const CaptureIdle();
+  }
+
+  /// The review screen takes over the outcome and with it the duty to delete the kept image.
+  CaptureResult? handOver() {
+    if (!ref.mounted) return null;
+    final current = state;
+    if (current is! CaptureDone) return null;
+    state = const CaptureIdle();
+    return current.result;
+  }
+
+  /// Debug only: show the outcome again on the "Okunan bilgiler" screen (without the kept
+  /// image, which stays with the review screen).
+  void showForDebug(CaptureResult result) {
+    if (!ref.mounted) return;
+    state = CaptureDone(result.withoutRetainedImage());
+  }
+
+  static Future<void> _deleteQuietly(File? file) async {
+    try {
+      if (file != null && await file.exists()) await file.delete();
+    } on FileSystemException {
+      // The temp folder is cleared at the next start.
+    }
   }
 
   static String _retryRoute(CaptureInput input) {

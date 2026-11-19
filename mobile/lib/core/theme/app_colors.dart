@@ -45,6 +45,15 @@ class AppColors {
   static const Color catSubscription = Color(0xFF2AA3B8);
   static const Color catOther = Color(0xFF8A9693);
 
+  // PROVISIONAL: these six categories have no color in Figma yet (docs/design/DESIGN_TRACK.md).
+  // Replace them with the designed values when the design track delivers them.
+  static const Color catFuel = Color(0xFF9A6B2F);
+  static const Color catHome = Color(0xFF6E8B3D);
+  static const Color catHealth = Color(0xFFB4527F);
+  static const Color catEntertainment = Color(0xFFE0B22E);
+  static const Color catEducation = Color(0xFF5B63D3);
+  static const Color catBills = Color(0xFF6B7A90);
+
   /// Shadow tint of the raised (+) button: rgba(13, 94, 87, 0.30) in Figma.
   static const Color primaryShadow = Color(0x4D0D5E57);
 

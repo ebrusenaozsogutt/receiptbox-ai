@@ -61,6 +61,7 @@ class CaptureResult {
     required this.maskedCounts,
     required this.pageCount,
     this.debugOriginalText,
+    this.retainedImage,
   });
 
   final CapturePayload payload;
@@ -73,6 +74,22 @@ class CaptureResult {
   /// the masked text on the debug screen. Null in release builds: there the original text is
   /// not even kept in memory after masking. It is never written anywhere.
   final String? debugOriginalText;
+
+  /// The image to keep as proof of purchase, only when the user keeps receipt images AND this
+  /// is a receipt (never for a bank screenshot). A photo: the resized, upright copy WITHOUT EXIF
+  /// data (no GPS location). A PDF: the original file. A private copy in the app's temporary
+  /// folder: whoever receives the result must delete it (it is uploaded in P07 and then removed).
+  final File? retainedImage;
+
+  /// The same outcome without the kept image (for a screen that must not own the file).
+  CaptureResult withoutRetainedImage() => CaptureResult(
+    payload: payload,
+    maskedCounts: maskedCounts,
+    pageCount: pageCount,
+    debugOriginalText: debugOriginalText,
+  );
+
+  bool get retainedIsPdf => retainedImage?.path.endsWith('.pdf') ?? false;
 
   int get maskedTotal =>
       maskedCounts.values.fold(0, (sum, count) => sum + count);
@@ -87,6 +104,7 @@ class CaptureInput {
     required this.captureDate,
     this.isPdf = false,
     this.deleteInput = true,
+    this.keepImage = false,
   });
 
   final File file;
@@ -98,6 +116,20 @@ class CaptureInput {
   /// The file is a copy that belongs to the app (camera / picker / share cache): delete it
   /// when done. Images are not stored in P04 (that is P07).
   final bool deleteInput;
+
+  /// Keep a clean copy of the image after reading (see [CaptureResult.retainedImage]). Ignored
+  /// for bank screenshots, which are never kept.
+  final bool keepImage;
+
+  CaptureInput copyWith({bool? keepImage}) => CaptureInput(
+    file: file,
+    isPdf: isPdf,
+    kind: kind,
+    source: source,
+    captureDate: captureDate,
+    deleteInput: deleteInput,
+    keepImage: keepImage ?? this.keepImage,
+  );
 }
 
 enum CaptureFailure { noTextFound, unsupportedFile, readFailed }

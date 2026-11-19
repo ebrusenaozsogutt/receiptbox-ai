@@ -44,6 +44,8 @@ class CapturePipeline {
 
   Future<CaptureResult> process(CaptureInput input) async {
     final createdFiles = <File>[];
+    File? retained;
+    var succeeded = false;
     try {
       final temp = await tempDir.ensure();
 
@@ -67,6 +69,7 @@ class CapturePipeline {
       }
 
       Map<String, dynamic>? qrPayload;
+      File? firstPrepared;
       final pageTexts = <String>[];
       for (final page in pages) {
         final File prepared;
@@ -76,6 +79,7 @@ class CapturePipeline {
           throw const CaptureException(CaptureFailure.unsupportedFile);
         }
         createdFiles.add(prepared);
+        firstPrepared ??= prepared;
 
         try {
           qrPayload ??= await qr.findGibPayload(prepared.path);
@@ -93,6 +97,11 @@ class CapturePipeline {
       }
 
       final masked = masker.mask(original);
+      // A bank screenshot is NEVER kept (spec 15.3, invariant 8), whatever the caller asked.
+      if (input.keepImage && input.kind == CaptureKind.receipt) {
+        retained = await _keepCopy(input, firstPrepared!, temp);
+      }
+      succeeded = true;
       return CaptureResult(
         payload: CapturePayload(
           kind: input.kind,
@@ -104,13 +113,23 @@ class CapturePipeline {
         maskedCounts: masked.counts,
         pageCount: pages.length,
         debugOriginalText: keepOriginalForDebug ? original : null,
+        retainedImage: retained,
       );
     } finally {
+      if (!succeeded && retained != null) await _deleteQuietly(retained);
       for (final file in createdFiles) {
         await _deleteQuietly(file);
       }
       if (input.deleteInput) await _deleteQuietly(input.file);
     }
+  }
+
+  /// The copy that outlives [process]: a PDF as it is, a photo as the clean prepared JPEG.
+  Future<File> _keepCopy(CaptureInput input, File prepared, Directory temp) {
+    final extension = input.isPdf ? 'pdf' : 'jpg';
+    final target =
+        '${temp.path}${Platform.pathSeparator}keep_${DateTime.now().microsecondsSinceEpoch}.$extension';
+    return (input.isPdf ? input.file : prepared).copy(target);
   }
 
   Future<void> _deleteQuietly(File file) async {

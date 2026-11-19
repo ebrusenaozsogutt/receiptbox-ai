@@ -236,6 +236,62 @@ void main() {
     expect(file.existsSync(), isTrue);
   });
 
+  group('keeping the image for the review screen (P07)', () {
+    CaptureInput keepInput(File file, {CaptureKind kind = CaptureKind.receipt, bool isPdf = false}) =>
+        CaptureInput(
+          file: file,
+          isPdf: isPdf,
+          kind: kind,
+          source: CaptureSource.gallery,
+          captureDate: DateTime(2026, 11, 18),
+          keepImage: true,
+        );
+
+    test('a receipt photo is kept as a clean JPEG copy', () async {
+      final result = await pipeline(text: FakeTextEngine(receipt))
+          .process(keepInput(await inputImage()));
+
+      final kept = result.retainedImage!;
+      expect(kept.existsSync(), isTrue);
+      expect(kept.path.endsWith('.jpg'), isTrue);
+      expect(result.retainedIsPdf, isFalse);
+      // Only the kept copy is left in the temporary folder.
+      expect(Directory('${root.path}/capture_tmp').listSync(), hasLength(1));
+    });
+
+    test('nothing is kept unless it is asked for', () async {
+      final result = await pipeline(text: FakeTextEngine(receipt))
+          .process(input(await inputImage()));
+      expect(result.retainedImage, isNull);
+    });
+
+    test('a bank screenshot is never kept, even when asked', () async {
+      final result = await pipeline(text: FakeTextEngine(receipt)).process(
+        keepInput(await inputImage(), kind: CaptureKind.bankScreenshot),
+      );
+      expect(result.retainedImage, isNull);
+      expect(Directory('${root.path}/capture_tmp').listSync(), isEmpty);
+    });
+
+    test('a PDF is kept as the original file', () async {
+      final pdfFile = await File('${root.path}/fatura.pdf').writeAsBytes([1, 2, 3]);
+      final result = await pipeline(text: FakeTextEngine(receipt))
+          .process(keepInput(pdfFile, isPdf: true));
+
+      expect(result.retainedIsPdf, isTrue);
+      expect(await result.retainedImage!.readAsBytes(), [1, 2, 3]);
+    });
+
+    test('nothing stays behind when the reading fails', () async {
+      final failing = FakeTextEngine(receipt)..fail = true;
+      await expectLater(
+        pipeline(text: failing).process(keepInput(await inputImage())),
+        throwsA(isA<CaptureException>()),
+      );
+      expect(Directory('${root.path}/capture_tmp').listSync(), isEmpty);
+    });
+  });
+
   test('CaptureTempDir.clear removes leftovers of an earlier run', () async {
     final dir = await tempDir.ensure();
     await File('${dir.path}/left_over.jpg').writeAsBytes([1]);

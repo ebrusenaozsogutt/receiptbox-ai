@@ -1,3 +1,5 @@
+import '../../../core/utils/money_format.dart';
+
 /// What the backend answered for one capture (`POST /extract/receipt` or `/extract/einvoice-qr`).
 /// Only what the debug panel shows; P07 builds the real review screen on top of the same JSON.
 class ExtractionResult {
@@ -14,6 +16,10 @@ class ExtractionResult {
     required this.categorySource,
     required this.aiUsed,
     required this.usedQr,
+    this.time,
+    this.totalMinor,
+    this.lines = const [],
+    this.installmentCount,
   });
 
   final String observationId;
@@ -36,6 +42,16 @@ class ExtractionResult {
   /// The AI provider read the text (always true for receipts; for QR only with consent).
   final bool aiUsed;
   final bool usedQr;
+
+  /// "18:42:00", when the receipt has a (credible) time.
+  final String? time;
+
+  /// The total in kuruş (the API sends it as text like "270.30").
+  final int? totalMinor;
+
+  /// The receipt lines the model found.
+  final List<ExtractedLine> lines;
+  final int? installmentCount;
 
   factory ExtractionResult.fromJson(
     Map<String, dynamic> json, {
@@ -62,6 +78,27 @@ class ExtractionResult {
       categorySource: category['source'] as String,
       aiUsed: json['ai_used'] as bool? ?? true,
       usedQr: usedQr,
+      time: extraction['time'] as String?,
+      totalMinor: _minor(extraction['total']),
+      lines: [
+        for (final item in extraction['items'] as List<dynamic>)
+          ExtractedLine(
+            name: (item as Map<String, dynamic>)['name_raw'] as String,
+            totalMinor: _minor(item['total_price']),
+          ),
+      ],
+      installmentCount: extraction['installment_count'] as int?,
     );
   }
+
+  static int? _minor(Object? decimalText) =>
+      decimalText is String ? parseMoneyToMinor(decimalText) : null;
+}
+
+/// A receipt line from the extraction (before the user edits it).
+class ExtractedLine {
+  const ExtractedLine({required this.name, required this.totalMinor});
+
+  final String name;
+  final int? totalMinor;
 }
