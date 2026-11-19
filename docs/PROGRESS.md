@@ -12,7 +12,7 @@ Update after every phase. Newest entry on top of the log.
 | P03 | Mobile app shell & auth | ✅ Done | 2026-11-16 |
 | P04 | On-device capture: OCR, QR, PII masking, share | ✅ Done | 2026-11-19 |
 | P05 | AI provider layer & receipt extraction | ✅ Done | 2026-11-19 |
-| P06 | e-Invoice QR, merchant normalisation, categorisation | ✅ Done (CI pending) | 2026-11-19 |
+| P06 | e-Invoice QR, merchant normalisation, categorisation | ✅ Done | 2026-11-19 |
 | P07 | Receipt review flow, manual entry, documents | ⬜ | |
 | P08 | Bank screenshot import | ⬜ | |
 | P09 | Matching engine 1:1 | ⬜ | |
@@ -36,7 +36,10 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
-### 2026-11-19 — P06 e-Invoice QR, merchant normalisation, categorisation (done locally; CI pending)
+### 2026-11-19 — P06 CI confirmed
+- CI run on `main` (`961b3f5`): jobs `backend` (636 tests, fake provider only) and `mobile` (382 Flutter tests) both green. P06 is closed.
+
+### 2026-11-19 — P06 e-Invoice QR, merchant normalisation, categorisation (done locally; CI confirmed later the same day)
 - Done:
   - **GİB QR (`backend/app/qr/gib_qr.py`)**: tolerant parser (case-insensitive keys, JSON object or text, amounts as numbers or text with dot or comma, several date formats, unknown keys ignored). `odenecek` is the total, `vergidahil` the fallback, `tarih` the date, `ettn` the `external_id`; the buyer's `avkntckn` is dropped again on the server; only whitelisted fields are saved, the seller's tax number is only used for a lookup. The phone keeps recognising the QR and removing the buyer's number (P04): nothing is duplicated (P-047).
   - **`POST /extract/einvoice-qr`** `{qr_payload, masked_text?, capture_date}`: observation `source=EINVOICE_QR`, QR fields HIGH, fingerprint from the ETTN. A QR-only invoice makes **no AI call** and needs no consent; with the invoice text and the consent the AI adds merchant name and items (the QR keeps total and date). Errors `QR_INVALID`, `EXTRACTION_REJECTED`, `TEXT_TOO_LARGE`; shares the 20/min limit (P-048).
@@ -57,7 +60,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
   - Fuzzy matching and the generic-word risk: names that are a common word can match by exact alias (seed review). OCR spelling variants other than "Ỉ" may exist.
   - The category AI call adds a second AI call (about 2-10 s) for unknown merchants; the review screen must tolerate about 30-40 s in total.
   - The debug panel's AI-consent check uses the local switch only.
-  - CI for this phase has not run yet (push pending).
+  - ~~CI for this phase has not run yet~~ → green on 2026-11-19, see the entry above.
 - Manual check for the owner: scan the QR of a real e-Archive invoice from an online order (share the PDF to the app, press "Sunucuya gönder (debug)") and confirm date and total are exact.
 
 ### 2026-11-19 — P05 CI confirmed
