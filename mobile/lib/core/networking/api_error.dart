@@ -50,6 +50,16 @@ String messageForCode(String code, {int? retryAfterSeconds}) {
           : 'Çok fazla deneme yaptın. $retryAfterSeconds saniye sonra tekrar dene.';
     case 'VALIDATION_ERROR':
       return 'Girdiğin bilgiler geçersiz. Kontrol edip tekrar dene.';
+    case 'AI_CONSENT_REQUIRED':
+      return "Yapay zekâ ile okuma kapalı. Ayarlar'dan açabilirsin.";
+    case 'EXTRACTION_FAILED':
+      return 'Fiş şu an okunamadı. Tekrar dene ya da elle ekle.';
+    case 'EXTRACTION_REJECTED':
+      return 'Fiş güvenilir okunamadı. Elle ekleyebilirsin.';
+    case 'QR_INVALID':
+      return "QR kodu okunabilir bir e-Arşiv / e-Fatura QR'ı değil.";
+    case 'TEXT_TOO_LARGE':
+      return 'Metin çok uzun (en fazla 20 KB).';
     case 'NOT_FOUND':
       return 'İstenen kayıt bulunamadı.';
     case 'INTERNAL_ERROR':

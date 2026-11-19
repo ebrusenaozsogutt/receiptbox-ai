@@ -9,10 +9,17 @@ import '../../../core/ocr/ocr_service.dart';
 import '../../../core/ocr/pdf_page_renderer.dart';
 import '../../../core/ocr/qr_service.dart';
 import '../domain/capture_payload.dart';
+import '../../../core/networking/dio_provider.dart';
 import 'capture_pipeline.dart';
+import 'extraction_api.dart';
 import 'media_sources.dart';
 
 part 'capture_providers.g.dart';
+
+/// The backend's extraction endpoints (used by the debug panel; P07 uses it for real).
+@Riverpod(keepAlive: true)
+ExtractionApi extractionApi(Ref ref) =>
+    DioExtractionApi(ref.watch(dioProvider));
 
 @Riverpod(keepAlive: true)
 CaptureTempDir captureTempDir(Ref ref) => CaptureTempDir(getTemporaryDirectory);

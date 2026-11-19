@@ -65,7 +65,7 @@ void main() {
       expect(masked.data, isNot(contains('0532')));
       // Debug build: the original is shown next to it, with a warning.
       expect(find.text('Orijinal metin (yalnızca debug)'), findsOneWidget);
-      expect(find.textContaining('hiçbir yere gönderilmedi'), findsOneWidget);
+      expect(find.textContaining('hiçbir yere gönderilmez'), findsOneWidget);
     });
 
     testWidgets('closing the kind sheet reads nothing', (tester) async {
@@ -208,7 +208,11 @@ void main() {
       await tester.tap(find.byKey(const Key('pick_image_button')));
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.byKey(const Key('result_done_button')));
+      await tester.dragUntilVisible(
+        find.byKey(const Key('result_done_button')),
+        find.byType(ListView),
+        const Offset(0, -300),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('result_done_button')));
       await tester.pumpAndSettle();

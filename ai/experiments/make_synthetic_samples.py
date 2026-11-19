@@ -13,6 +13,8 @@ Files written:
     receipt_gib_qr.jpg       an e-Arşiv style receipt with a GİB QR code (buyer TCKN inside it)
     bank_screenshot.jpg      a made-up banking-app list with fake IBAN, balance and card number
     invoice_2pages.pdf       a two-page PDF invoice (rasterised pages)
+    einvoice_qr.pdf          a one-page e-Arsiv invoice PDF with a GIB QR code (P06): the QR holds
+                             a made-up buyer TCKN that the app must remove
     not_a_receipt.jpg        a photo-like gradient without any text (must give "no text found")
 """
 
@@ -145,6 +147,42 @@ def make_pdf(path: Path) -> None:
     pages[0].save(path, save_all=True, append_images=pages[1:], resolution=150)
 
 
+def make_einvoice_qr_pdf(path: Path) -> None:
+    """A one-page e-Arsiv invoice with a GIB QR code. Everything is made up; the buyer TCKN is
+    the well-known test number 10000000146 (valid checksum, belongs to nobody)."""
+    payload = {
+        "ettn": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "vkntckn": "9876543210",
+        "avkntckn": "10000000146",  # the BUYER: must be removed on the phone
+        "senaryo": "EARSIVFATURA",
+        "tip": "SATIS",
+        "tarih": "14-11-2026",
+        "no": "ORN2026000000456",
+        "parabirimi": "TRY",
+        "malhizmettoplam": "2118.64",
+        "vergidahil": "2499.00",
+        "odenecek": "2499.00",
+    }
+    qr = qrcode.make(json.dumps(payload, separators=(",", ":"))).convert("RGB").resize((380, 380))
+    page = Image.new("RGB", (1240, 1754), "white")  # A4 at 150 dpi
+    lines = [
+        ("ÖRNEK ELEKTRONİK TİCARET A.Ş.", "arialbd.ttf", 54),
+        ("Vergi No: 9876543210   Kadıköy Vergi Dairesi", "arial.ttf", 36),
+        ("e-Arşiv Fatura", "arialbd.ttf", 44),
+        ("Fatura No: ORN2026000000456", "arial.ttf", 38),
+        ("Fatura Tarihi: 14-11-2026", "arial.ttf", 38),
+        ("Sayın Mehmet Örnek", "arial.ttf", 38),
+        ("TCKN: 10000000146", "arial.ttf", 38),
+        ("", "arial.ttf", 30),
+        ("Kulaklık Bluetooth              1 adet        2.118,64 TL", "arial.ttf", 38),
+        ("KDV %18                                         380,36 TL", "arial.ttf", 38),
+        ("Ödenecek Tutar: 2.499,00 TL", "arialbd.ttf", 44),
+    ]
+    y = draw_lines(page, lines, x=80, y=100, gap=26)
+    page.paste(qr, (80, y + 60))
+    page.save(path, resolution=150)
+
+
 def make_no_text(path: Path) -> None:
     img = Image.new("RGB", (800, 800))
     px = img.load()
@@ -161,6 +199,7 @@ def main() -> None:
     make_gib_receipt(OUT / "receipt_gib_qr.jpg")
     make_bank_screenshot(OUT / "bank_screenshot.jpg")
     make_pdf(OUT / "invoice_2pages.pdf")
+    make_einvoice_qr_pdf(OUT / "einvoice_qr.pdf")
     make_no_text(OUT / "not_a_receipt.jpg")
     for file in sorted(OUT.iterdir()):
         print(f"{file.name}  {file.stat().st_size // 1024} KB")

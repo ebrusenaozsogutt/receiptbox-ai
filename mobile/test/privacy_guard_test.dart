@@ -12,6 +12,8 @@ const _guardedFolders = [
   'lib/features/capture',
 ];
 
+const _extractionApiFile = 'features/capture/data/extraction_api.dart';
+
 final _loggingCalls = RegExp(
   r'\bprint\s*\(|\bdebugPrint\s*\(|\bdeveloper\.log\s*\(|\blog\s*\(|\bdebugger\s*\(|stdout\.|stderr\.|FlutterError\.reportError',
 );
@@ -52,19 +54,54 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
-  test('OCR, masking and capture code do not use the network', () {
-    final violations = <String>[];
-    for (final folder in _guardedFolders) {
-      for (final file in _dartFilesIn(folder)) {
-        final lines = _withoutComments(file.readAsStringSync()).split('\n');
-        for (var i = 0; i < lines.length; i++) {
-          if (_networkImports.hasMatch(lines[i])) {
-            violations.add('${file.path}:${i + 1}  ${lines[i].trim()}');
+  test(
+    'OCR, masking and capture code do not use the network (one exception)',
+    () {
+      final violations = <String>[];
+      for (final folder in _guardedFolders) {
+        for (final file in _dartFilesIn(folder)) {
+          // The ONE place that sends something: masked text / the cleaned QR to the backend
+          // (P05/P06). The next test checks that it cannot send the original text.
+          if (file.path.replaceAll(r'\', '/').endsWith(_extractionApiFile)) {
+            continue;
+          }
+          final lines = _withoutComments(file.readAsStringSync()).split('\n');
+          for (var i = 0; i < lines.length; i++) {
+            if (_networkImports.hasMatch(lines[i])) {
+              violations.add('${file.path}:${i + 1}  ${lines[i].trim()}');
+            }
           }
         }
       }
+      expect(violations, isEmpty, reason: violations.join('\n'));
+    },
+  );
+
+  test('only the pipeline, the payload and the result screen ever touch the original text', () {
+    // `debugOriginalText` is the unmasked OCR text (debug builds only). Anything that sends data
+    // (extraction_api.dart) or shows server results must never reference it.
+    const allowed = {
+      'lib/features/capture/data/capture_pipeline.dart',
+      'lib/features/capture/domain/capture_payload.dart',
+      'lib/features/capture/presentation/capture_result_screen.dart',
+    };
+    final users = <String>[];
+    for (final entity in Directory('lib').listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      final path = entity.path.replaceAll(r'\', '/');
+      if (entity.readAsStringSync().contains('debugOriginalText') &&
+          !allowed.contains(path)) {
+        users.add(path);
+      }
     }
-    expect(violations, isEmpty, reason: violations.join('\n'));
+    expect(users, isEmpty, reason: users.join('\n'));
+  });
+
+  test('extraction_api.dart sends only the masked text and the cleaned QR', () {
+    final source = File('lib/$_extractionApiFile').readAsStringSync();
+    expect(source, contains('payload.maskedText'));
+    expect(source, isNot(contains('debugOriginalText')));
+    expect(source, isNot(contains('File(')));
   });
 
   test('the guarded folders exist (so the guards above are not vacuous)', () {

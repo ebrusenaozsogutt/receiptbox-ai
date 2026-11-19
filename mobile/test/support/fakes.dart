@@ -10,6 +10,9 @@ import 'package:receiptbox/core/storage/token_store.dart';
 import 'package:receiptbox/features/auth/data/auth_api.dart';
 import 'package:receiptbox/features/auth/domain/user_profile.dart';
 import 'package:receiptbox/features/capture/data/capture_providers.dart';
+import 'package:receiptbox/features/capture/data/extraction_api.dart';
+import 'package:receiptbox/features/capture/domain/capture_payload.dart';
+import 'package:receiptbox/features/capture/domain/extraction_result.dart';
 import 'package:receiptbox/features/health/data/health_repository.dart';
 import 'package:receiptbox/features/health/domain/health_status.dart';
 import 'package:material_ui/material_ui.dart';
@@ -154,6 +157,7 @@ class TestApp {
   final FakeCapturePipeline pipeline = FakeCapturePipeline();
   final FakeGalleryPicker gallery = FakeGalleryPicker();
   final FakeSharedMediaSource sharedMedia = FakeSharedMediaSource();
+  final FakeExtractionApi extraction = FakeExtractionApi();
 
   /// What the camera plugin reports. Default: this phone has no camera.
   Future<List<CameraDescription>> Function() cameras = () async => [];
@@ -178,6 +182,7 @@ class TestApp {
     capturePipelineProvider.overrideWithValue(pipeline),
     galleryPickerProvider.overrideWithValue(gallery),
     sharedMediaSourceProvider.overrideWithValue(sharedMedia),
+    extractionApiProvider.overrideWithValue(extraction),
     captureTempDirProvider.overrideWithValue(NoopTempDir()),
     camerasLoaderProvider.overrideWithValue(() => cameras()),
     healthStatusProvider.overrideWith(
@@ -215,5 +220,42 @@ class TestApp {
       ),
       preferences: {'consent_seen': true, 'has_account': true},
     );
+  }
+}
+
+/// The backend's extraction endpoints replaced: tests decide the answer.
+class FakeExtractionApi implements ExtractionApi {
+  final calls = <({CapturePayload payload, bool aiConsent})>[];
+  Object? error;
+  Completer<void>? gate;
+  ExtractionResult result = const ExtractionResult(
+    observationId: 'obs-1',
+    merchant: 'MIGROS TICARET A.S.',
+    date: '2026-11-14',
+    total: '270.30',
+    itemCount: 4,
+    confidence: {
+      'merchant': 'HIGH',
+      'date': 'HIGH',
+      'total': 'HIGH',
+      'items': 'LOW',
+    },
+    merchantMatch: 'GLOBAL_ALIAS',
+    merchantName: 'Migros',
+    categoryKey: 'GROCERY',
+    categorySource: 'MERCHANT_DEFAULT',
+    aiUsed: true,
+    usedQr: false,
+  );
+
+  @override
+  Future<ExtractionResult> extract(
+    CapturePayload payload, {
+    required bool aiConsent,
+  }) async {
+    calls.add((payload: payload, aiConsent: aiConsent));
+    if (gate != null) await gate!.future;
+    if (error != null) throw error!;
+    return result;
   }
 }

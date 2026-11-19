@@ -14,6 +14,7 @@ import '../../../core/widgets/loading_view.dart';
 import '../../../core/widgets/message_banner.dart';
 import '../data/capture_providers.dart';
 import '../domain/capture_payload.dart';
+import 'server_extraction_panel.dart';
 
 /// What the phone read from the picture, AFTER masking. In P04 nothing is sent anywhere:
 /// P05 sends [CapturePayload] to the backend, P07 turns it into a review screen.
@@ -130,10 +131,14 @@ class _ResultBody extends StatelessWidget {
         ],
         const SizedBox(height: AppSpacing.l),
         const MessageBanner(
-          'Bu bilgiler henüz hiçbir yere gönderilmedi. Sonraki aşamada incelenip '
-          'kaydedilecek.',
+          'Bu bilgiler kendiliğinden hiçbir yere gönderilmez. Sonraki aşamada '
+          'incelenip kaydedilecek.',
           kind: MessageBannerKind.info,
         ),
+        if (kDebugMode && payload.kind == CaptureKind.receipt) ...[
+          const SizedBox(height: AppSpacing.l),
+          ServerExtractionPanel(payload: payload),
+        ],
         const SizedBox(height: AppSpacing.xxl),
         FilledButton(
           key: const Key('result_done_button'),
