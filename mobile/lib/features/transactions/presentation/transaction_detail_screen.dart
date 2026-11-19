@@ -201,6 +201,7 @@ class _DetailBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Kalemler (${detail.lines.length})', style: AppTextStyles.titleS),
+                const SizedBox(height: AppSpacing.s),
                 for (final line in detail.lines)
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: AppSpacing.rowV),
@@ -250,6 +251,7 @@ class _DocumentThumb extends ConsumerWidget {
             data: (bytes) => Image.memory(
               bytes,
               fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
               errorBuilder: (_, _, _) => const _ThumbIcon(Icons.broken_image_outlined),
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -302,7 +304,11 @@ class DocumentViewerScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: AppColors.cameraBackground,
         foregroundColor: AppColors.cameraForeground,
-        title: const Text('Belge'),
+        iconTheme: const IconThemeData(color: AppColors.cameraForeground),
+        title: Text(
+          'Belge',
+          style: AppTextStyles.titleM.copyWith(color: AppColors.cameraForeground),
+        ),
       ),
       body: SafeArea(
         child: preview.when(

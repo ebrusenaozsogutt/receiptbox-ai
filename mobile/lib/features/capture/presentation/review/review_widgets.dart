@@ -136,7 +136,18 @@ class _BoxTextInputState extends State<BoxTextInput> {
             keyboardType: widget.keyboardType,
             inputFormatters: widget.inputFormatters,
             style: widget.style ?? AppTextStyles.body,
-            decoration: InputDecoration.collapsed(
+            // The box around it is drawn by ReviewFieldBox, so every border of the app-wide
+            // input theme is switched off here.
+            decoration: InputDecoration(
+              isCollapsed: true,
+              filled: false,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
               hintText: widget.hint,
               hintStyle: AppTextStyles.body.copyWith(color: AppColors.textSubtle),
             ),
