@@ -401,7 +401,7 @@ async def test_me_returns_the_profile_and_never_the_password(
 
     assert response.status_code == 200
     body = response.json()
-    assert set(body) == {"id", "email", "is_adult_confirmed", "created_at"}
+    assert set(body) == {"id", "email", "is_adult_confirmed", "ai_consent", "created_at"}
     assert body["email"] == tokens["email"]
     assert body["is_adult_confirmed"] is True
     assert "password" not in response.text

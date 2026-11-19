@@ -39,4 +39,9 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     is_adult_confirmed: bool
+    ai_consent: bool
     created_at: datetime
+
+
+class AiConsentRequest(BaseModel):
+    ai_consent: bool

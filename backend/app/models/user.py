@@ -16,6 +16,9 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_adult_confirmed: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=false()
     )
+    # Spec 15.3: AI extraction needs the user's consent that masked text goes to an external
+    # AI provider. Off until the app reports the user's choice (PUT /me/ai-consent).
+    ai_consent: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
 
 
 class RefreshToken(UUIDPrimaryKeyMixin, TimestampMixin, UserOwnedMixin, Base):

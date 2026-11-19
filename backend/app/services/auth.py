@@ -173,6 +173,10 @@ class AuthService:
 
     # ---- account -----------------------------------------------------------------------
 
+    async def set_ai_consent(self, user_id: uuid.UUID, value: bool) -> None:
+        await self._users.set_ai_consent(user_id, value)
+        await self._session.commit()
+
     async def delete_account(self, user_id: uuid.UUID) -> None:
         """Delete the user (cascades remove every row they own), then their files."""
         await self._users.delete(user_id)

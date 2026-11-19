@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request, Response, status
 
 from app.api.deps import AuthServiceDep, CurrentUser
 from app.schemas.auth import (
+    AiConsentRequest,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
@@ -78,6 +79,17 @@ async def logout(body: LogoutRequest, service: AuthServiceDep) -> Response:
 
 @router.get("/me", response_model=UserResponse, responses=_UNAUTHORIZED)
 async def get_me(current_user: CurrentUser) -> UserResponse:
+    return UserResponse.model_validate(current_user)
+
+
+@router.put("/me/ai-consent", response_model=UserResponse, responses=_UNAUTHORIZED)
+async def put_ai_consent(
+    body: AiConsentRequest, current_user: CurrentUser, service: AuthServiceDep
+) -> UserResponse:
+    """Records whether the user agreed that masked text is processed by an external AI provider
+    (spec 15.3). Without it /extract/* answers 403 AI_CONSENT_REQUIRED; manual entry still works."""
+    await service.set_ai_consent(current_user.id, body.ai_consent)
+    current_user.ai_consent = body.ai_consent
     return UserResponse.model_validate(current_user)
 
 

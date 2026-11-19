@@ -6,14 +6,20 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.provider import AIProvider, ProviderConfigError, get_provider
 from app.core.config import Settings
 from app.core.database import get_session
-from app.core.errors import InvalidTokenError
+from app.core.errors import (
+    AiConsentRequiredError,
+    ExtractionFailedError,
+    InvalidTokenError,
+)
 from app.models import User
 from app.repositories.users import UserRepository
 from app.security.rate_limit import SlidingWindowRateLimiter
 from app.security.tokens import decode_access_token
 from app.services.auth import AuthService
+from app.services.extraction_service import ExtractionService
 
 # auto_error=False: a missing header is reported by us (401 + our error shape), not by FastAPI
 # (which would answer 403). The scheme also gives Swagger UI its "Authorize" button.
@@ -55,3 +61,39 @@ async def get_current_user(
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+# ---- AI extraction (P05) ----------------------------------------------------------------------
+
+
+def get_ai_provider(request: Request) -> AIProvider:
+    """The provider is built on first use and kept, so the app starts without an API key."""
+    provider = request.app.state.ai_provider
+    if provider is None:
+        try:
+            provider = get_provider(request.app.state.settings)
+        except ProviderConfigError:
+            raise ExtractionFailedError() from None
+        request.app.state.ai_provider = provider
+    return provider
+
+
+async def get_extraction_user(user: CurrentUser, request: Request) -> User:
+    """Signed in + consented + inside the rate limit. Consent comes first so that a refused
+    request does not use up the user's quota. Manual entry never goes through this."""
+    if not user.ai_consent:
+        raise AiConsentRequiredError()
+    request.app.state.extract_limiter.check(str(user.id))
+    return user
+
+
+ExtractionUser = Annotated[User, Depends(get_extraction_user)]
+
+
+def get_extraction_service(
+    session: SessionDep, provider: Annotated[AIProvider, Depends(get_ai_provider)]
+) -> ExtractionService:
+    return ExtractionService(session, provider)
+
+
+ExtractionServiceDep = Annotated[ExtractionService, Depends(get_extraction_service)]

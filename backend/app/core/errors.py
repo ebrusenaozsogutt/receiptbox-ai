@@ -115,6 +115,40 @@ class RateLimitedError(AppError):
         self.retry_after_seconds = retry_after_seconds
 
 
+# ---- AI extraction (P05) -----------------------------------------------------------------
+
+
+class AiConsentRequiredError(AppError):
+    """The user has not agreed that masked text goes to an external AI provider (spec 15.3).
+    Manual entry does not need the consent."""
+
+    status_code = 403
+    code = "AI_CONSENT_REQUIRED"
+    default_message = "AI extraction needs your consent. You can still add purchases manually."
+
+
+class TextTooLargeError(AppError):
+    status_code = 413
+    code = "TEXT_TOO_LARGE"
+    default_message = "The text is too large (at most 20 KB)."
+
+
+class ExtractionRejectedError(AppError):
+    """The extraction was not credible (for example an absurd amount). Nothing was saved."""
+
+    status_code = 422
+    code = "EXTRACTION_REJECTED"
+    default_message = "The receipt could not be read reliably. You can enter it manually."
+
+
+class ExtractionFailedError(AppError):
+    """The AI provider failed (timeout, quota, bad answer). Nothing was saved."""
+
+    status_code = 502
+    code = "EXTRACTION_FAILED"
+    default_message = "The receipt could not be read right now. You can enter it manually."
+
+
 def error_response(
     status_code: int, code: str, message: str, headers: dict[str, str] | None = None
 ) -> JSONResponse:

@@ -39,6 +39,9 @@ class UserRepository:
             update(User).where(User.id == user_id).values(password_hash=password_hash)
         )
 
+    async def set_ai_consent(self, user_id: uuid.UUID, value: bool) -> None:
+        await self._session.execute(update(User).where(User.id == user_id).values(ai_consent=value))
+
     async def delete(self, user_id: uuid.UUID) -> bool:
         """Delete the user; foreign-key cascades remove every row they own."""
         result = await self._session.execute(delete(User).where(User.id == user_id))
