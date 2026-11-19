@@ -23,6 +23,7 @@ from tests.p07_helpers import (
     execute,
     insert_transaction,
     new_account,
+    path_exists,
     stored_files,
     upload_files,
 )
