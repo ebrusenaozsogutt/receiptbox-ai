@@ -21,6 +21,7 @@ from app.security.tokens import decode_access_token
 from app.services.auth import AuthService
 from app.services.document_service import DocumentService
 from app.services.extraction_service import ExtractionService
+from app.services.transaction_service import TransactionService
 from app.storage.backend import StorageBackend
 
 # auto_error=False: a missing header is reported by us (401 + our error shape), not by FastAPI
@@ -127,3 +128,15 @@ def get_document_service(
 
 
 DocumentServiceDep = Annotated[DocumentService, Depends(get_document_service)]
+
+
+# ---- review and transactions (P07) ------------------------------------------------------------
+
+
+def get_transaction_service(
+    session: SessionDep, storage: Annotated[StorageBackend, Depends(get_storage)]
+) -> TransactionService:
+    return TransactionService(session, storage)
+
+
+TransactionServiceDep = Annotated[TransactionService, Depends(get_transaction_service)]

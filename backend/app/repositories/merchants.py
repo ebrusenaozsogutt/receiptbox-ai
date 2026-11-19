@@ -136,6 +136,20 @@ class MerchantRepository:
         assert info is not None
         return info
 
+    async def add_user_alias(
+        self, user_id: uuid.UUID, merchant_id: uuid.UUID, alias_keys: Iterable[str]
+    ) -> None:
+        """Teach the app that these spellings mean this merchant for THIS user only."""
+        _require_uuid(user_id)
+        for key in dict.fromkeys(alias_keys):
+            statement = (
+                pg_insert(MerchantAlias)
+                .values(merchant_id=merchant_id, alias_normalized=key, user_id=user_id)
+                .on_conflict_do_nothing()
+            )
+            await self._session.execute(statement)
+        await self._session.flush()
+
     async def category_id(self, key: CategoryKey) -> uuid.UUID:
         return (
             await self._session.execute(select(Category.id).where(Category.key == key))

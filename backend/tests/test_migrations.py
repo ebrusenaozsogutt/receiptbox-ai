@@ -55,4 +55,4 @@ def test_seed_migration_downgrades_on_its_own(migrated_database: str) -> None:
 def test_database_is_left_at_head(migrated_database: str) -> None:
     rows = _fetch(migrated_database, "SELECT version_num FROM alembic_version")
 
-    assert rows == [("0003",)]
+    assert rows == [("0004",)]

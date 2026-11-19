@@ -139,6 +139,9 @@ class ReceiptItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Uuid, ForeignKey("observations.id", ondelete="CASCADE"), nullable=False
     )
     name_raw: Mapped[str] = mapped_column(Text, nullable=False)
+    # The order of the lines on the receipt (0, 1, 2 ...). Not in spec 6.1: without it the lines of
+    # one receipt come back in a random order, because they are all written in one transaction.
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
     quantity: Mapped[Decimal] = mapped_column(
         Numeric(12, 3), nullable=False, server_default=text("1")
     )  # not money: may be fractional (kg, litres)

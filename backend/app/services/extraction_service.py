@@ -390,10 +390,11 @@ class ExtractionService:
             extraction_json=saved,
             field_confidence_json={name: level.value for name, level in confidence.items()},
         )
-        for item in items:
+        for position, item in enumerate(items):
             await self._observations.add_receipt_item(
                 user_id,
                 observation.id,
+                position=position,
                 name_raw=item.name_raw,
                 quantity=item.quantity if item.quantity is not None else Decimal(1),
                 unit_price_minor=item.unit_price_minor,

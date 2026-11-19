@@ -72,3 +72,58 @@ def stored_files(root: Path) -> list[Path]:
 
 def path_exists(path: Path) -> bool:
     return path.exists()
+
+
+FIXTURE_DIR = Path(__file__).parent / "fixtures" / "receipts"
+
+
+def fixture_text(name: str) -> str:
+    return (FIXTURE_DIR / f"{name}.txt").read_text(encoding="utf-8")
+
+
+async def extract_receipt(client: AsyncClient, account: Account, name: str = "01_migros") -> dict:
+    """Read a fixture receipt through the real endpoint (FakeProvider): returns the response."""
+    response = await client.post(
+        "/api/v1/extract/receipt",
+        json={"masked_text": fixture_text(name), "capture_date": "2026-11-18", "source": "GALLERY"},
+        headers=account.headers,
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def confirm_body(**overrides: object) -> dict[str, object]:
+    body: dict[str, object] = {
+        "merchant_display": "Migros",
+        "date": "2026-11-14",
+        "time": "18:42:00",
+        "total_minor": 27030,
+        "category_key": "GROCERY",
+        "channel": "IN_STORE",
+        "note": None,
+        "items": [
+            {
+                "name_raw": "Süt 1L",
+                "quantity": "1",
+                "unit_price_minor": None,
+                "total_price_minor": 6990,
+            },
+            {
+                "name_raw": "Ekmek",
+                "quantity": None,
+                "unit_price_minor": None,
+                "total_price_minor": 20040,
+            },
+        ],
+        "remember_category_for_merchant": False,
+    }
+    body.update(overrides)
+    return body
+
+
+async def confirm(client: AsyncClient, account: Account, observation_id: str, **overrides: object):  # noqa: ANN201
+    return await client.post(
+        f"/api/v1/observations/{observation_id}/confirm",
+        json=confirm_body(**overrides),
+        headers=account.headers,
+    )

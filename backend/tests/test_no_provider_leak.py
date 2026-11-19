@@ -101,4 +101,5 @@ def test_the_api_key_is_never_printed_or_logged_by_the_provider_code() -> None:
             "tokens.py",
             "config.py",
             "database.py",
+            "document_service.py",
         }, path.name

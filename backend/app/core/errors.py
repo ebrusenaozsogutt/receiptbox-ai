@@ -141,6 +141,13 @@ class InvalidQrError(AppError):
     default_message = "The QR code is not a readable e-Archive / e-Invoice QR."
 
 
+class ObservationNotPendingError(ConflictError):
+    """The observation was already confirmed or rejected."""
+
+    code = "OBSERVATION_NOT_PENDING"
+    default_message = "This receipt has already been saved or discarded."
+
+
 class ExtractionRejectedError(AppError):
     """The extraction was not credible (for example an absurd amount). Nothing was saved."""
 
