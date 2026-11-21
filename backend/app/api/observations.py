@@ -8,7 +8,13 @@ from fastapi import APIRouter, Query, Response, status
 from app.api.deps import CurrentUser, TransactionServiceDep
 from app.models.enums import ObservationStatus
 from app.schemas.errors import ErrorResponse
-from app.schemas.transactions import ConfirmRequest, ObservationOut, TransactionDetail
+from app.schemas.transactions import (
+    ConfirmBatchRequest,
+    ConfirmBatchResponse,
+    ConfirmRequest,
+    ObservationOut,
+    TransactionDetail,
+)
 
 router = APIRouter(prefix="/observations", tags=["observations"])
 
@@ -29,6 +35,20 @@ async def list_observations(
 ) -> list[ObservationOut]:
     """The user's observations in one status (default: waiting for review), newest first."""
     return await service.list_observations(user.id, status_filter, limit=limit, offset=offset)
+
+
+@router.post(
+    "/confirm-batch",
+    response_model=ConfirmBatchResponse,
+    responses={**_UNAUTHORIZED, **_NOT_FOUND},
+)
+async def confirm_batch(
+    body: ConfirmBatchRequest, user: CurrentUser, service: TransactionServiceDep
+) -> ConfirmBatchResponse:
+    """Save the selected bank rows as purchases. Every id must be yours (404 for any other,
+    nothing is saved). A credit row stays an observation flagged "possible refund"; rows that
+    cannot be saved come back in `skipped` with a reason."""
+    return await service.confirm_batch(user.id, body)
 
 
 @router.post(

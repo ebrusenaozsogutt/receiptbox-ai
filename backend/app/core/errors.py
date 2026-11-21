@@ -164,6 +164,15 @@ class ExtractionFailedError(AppError):
     default_message = "The receipt could not be read right now. You can enter it manually."
 
 
+class BankScreenNotSupportedError(AppError):
+    """The screenshot is a current-account screen (ATM, transfers, fees), not a card transaction
+    list or a POS slip. Nothing was saved (DECISIONS D-014)."""
+
+    status_code = 422
+    code = "BANK_SCREEN_NOT_SUPPORTED"
+    default_message = "This screen is not a card transaction list."
+
+
 # ---- documents (P07) ---------------------------------------------------------------------
 
 

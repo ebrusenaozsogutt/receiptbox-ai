@@ -1,14 +1,18 @@
-"""Extraction endpoints (spec 16): POST /extract/receipt and POST /extract/einvoice-qr."""
+"""Extraction endpoints (spec 16): receipt, e-invoice QR and bank screenshot."""
 
 from fastapi import APIRouter
 
-from app.api.deps import ExtractionCaller, ExtractionServiceDep, ExtractionUser
+from app.api.deps import BankServiceDep, ExtractionCaller, ExtractionServiceDep, ExtractionUser
 from app.schemas.errors import ErrorResponse
 from app.schemas.extraction import (
+    BankRowOut,
+    ExtractBankRequest,
+    ExtractBankResponse,
     ExtractEinvoiceRequest,
     ExtractEinvoiceResponse,
     ExtractReceiptRequest,
     ExtractReceiptResponse,
+    SkippedRowOut,
 )
 
 router = APIRouter(prefix="/extract", tags=["extraction"])
@@ -84,4 +88,67 @@ async def extract_einvoice_qr(
         confidence=outcome.confidence,
         suggestions=outcome.suggestions,
         ai_used=outcome.ai_used,
+    )
+
+
+@router.post(
+    "/bank-screenshot",
+    response_model=ExtractBankResponse,
+    responses={
+        401: {"model": ErrorResponse, "description": "AUTH_INVALID_TOKEN or AUTH_EXPIRED"},
+        403: {"model": ErrorResponse, "description": "AI_CONSENT_REQUIRED"},
+        413: {"model": ErrorResponse, "description": "TEXT_TOO_LARGE (over 20 KB)"},
+        422: {
+            "model": ErrorResponse,
+            "description": "BANK_SCREEN_NOT_SUPPORTED (a current-account screen)",
+        },
+        429: {"model": ErrorResponse, "description": "RATE_LIMITED (20 per minute)"},
+        502: {"model": ErrorResponse, "description": "EXTRACTION_FAILED (AI provider problem)"},
+    },
+)
+async def extract_bank_screenshot(
+    body: ExtractBankRequest, user: ExtractionUser, service: BankServiceDep
+) -> ExtractBankResponse:
+    """Masked text of a bank screenshot -> its rows, each saved as a PENDING_REVIEW observation.
+
+    The screenshot itself never reaches the server. Card-bill payments, loyalty points, totals and
+    zero amounts come back in `skipped` and are not saved. A row imported before has status
+    DUPLICATE. Needs the AI consent (PUT /me/ai-consent).
+    """
+    outcome = await service.extract(
+        user.id,
+        masked_text=body.masked_text,
+        bank_hint=body.bank_hint,
+        capture_date=body.capture_date,
+    )
+    return ExtractBankResponse(
+        bank_key=outcome.bank_key,
+        rows=[
+            BankRowOut(
+                observation_id=item.observation_id,
+                merchant_raw=item.row.merchant_raw,
+                amount_minor=item.row.amount_minor,
+                direction=item.row.direction,
+                kind=item.row.kind,  # type: ignore[arg-type]
+                date=item.row.obs_date,
+                time=item.row.obs_time,
+                installment_seq=item.row.installment_seq,
+                installment_count=item.row.installment_count,
+                is_pending=item.row.is_pending,
+                status=item.status.value,  # type: ignore[arg-type]
+                possible_refund=item.row.kind == "REFUND",
+                confidence=item.row.confidence,
+                suggestions=item.suggestions,
+            )
+            for item in outcome.rows
+        ],
+        skipped=[
+            SkippedRowOut(
+                merchant_raw=row.merchant_raw,
+                amount_minor=row.amount_minor,
+                date=row.obs_date,
+                reason=row.reason,
+            )
+            for row in outcome.skipped
+        ],
     )

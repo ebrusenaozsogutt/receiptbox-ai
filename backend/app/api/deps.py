@@ -19,6 +19,7 @@ from app.repositories.users import UserRepository
 from app.security.rate_limit import SlidingWindowRateLimiter
 from app.security.tokens import decode_access_token
 from app.services.auth import AuthService
+from app.services.bank_service import BankService
 from app.services.document_service import DocumentService
 from app.services.extraction_service import ExtractionService
 from app.services.transaction_service import TransactionService
@@ -110,6 +111,15 @@ def get_extraction_service(
 
 
 ExtractionServiceDep = Annotated[ExtractionService, Depends(get_extraction_service)]
+
+
+def get_bank_service(
+    session: SessionDep, provider: Annotated[AIProvider, Depends(get_ai_provider)]
+) -> BankService:
+    return BankService(session, provider)
+
+
+BankServiceDep = Annotated[BankService, Depends(get_bank_service)]
 
 
 # ---- documents (P07) --------------------------------------------------------------------------

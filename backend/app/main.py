@@ -1,5 +1,6 @@
 """FastAPI application factory."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -11,6 +12,7 @@ from app.core.database import create_engine, create_session_factory
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging, install_access_log
 from app.security.rate_limit import SlidingWindowRateLimiter
+from app.services.retention import null_old_masked_text
 from app.storage.backend import LocalStorage
 
 API_PREFIX = "/api/v1"
@@ -24,6 +26,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        # Spec 5.5: masked screenshot text older than 30 days is removed. A failure here must
+        # never stop the server from starting.
+        try:
+            async with app.state.session_factory() as session:
+                await null_old_masked_text(session)
+        except Exception:  # noqa: BLE001
+            logging.getLogger("receiptbox.retention").warning("retention_cleanup_failed")
         yield
         await engine.dispose()
 

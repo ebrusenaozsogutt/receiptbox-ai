@@ -47,6 +47,41 @@ class ConfirmRequest(BaseModel):
     remember_category_for_merchant: bool = False
 
 
+class BatchEdit(BaseModel):
+    """What the user changed on one bank row before saving. Only the fields that are sent win."""
+
+    merchant_display: _Name | None = None
+    date: dt.date | None = None
+    total_minor: int | None = Field(default=None, gt=0, lt=MAX_TOTAL_MINOR)
+    category_key: CategoryKey | None = None
+    note: _Note | None = None
+    remember_category_for_merchant: bool = False
+
+
+class ConfirmBatchRequest(BaseModel):
+    """Save several bank rows at once (the "Seçilenleri Kaydet" button)."""
+
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=100)
+    edits: dict[uuid.UUID, BatchEdit] = Field(default_factory=dict)
+
+    @field_validator("ids")
+    @classmethod
+    def _unique(cls, value: list[uuid.UUID]) -> list[uuid.UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("an id appears twice")
+        return value
+
+
+class BatchSkipped(BaseModel):
+    """A selected row that was not turned into a purchase. POSSIBLE_REFUND: a credit stays an
+    observation (refunds are P12). NOT_PENDING: already saved or rejected. MISSING_DATE,
+    MISSING_AMOUNT, MISSING_MERCHANT: the row has none and the request gave none.
+    NOT_A_BANK_ROW: receipts are saved with confirm."""
+
+    observation_id: uuid.UUID
+    reason: str
+
+
 class ManualTransactionRequest(BaseModel):
     merchant_display: _Name
     date: dt.date
@@ -149,3 +184,8 @@ class ObservationOut(BaseModel):
     items: list[ItemOut]
     transaction_id: uuid.UUID | None
     created_at: dt.datetime
+
+
+class ConfirmBatchResponse(BaseModel):
+    created: list[TransactionDetail]
+    skipped: list[BatchSkipped]

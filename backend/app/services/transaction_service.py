@@ -19,6 +19,7 @@ from app.matching.merchant_normalizer import MerchantMatch, MerchantNormalizer, 
 from app.models import Observation, Transaction
 from app.models.enums import (
     CategoryKey,
+    Channel,
     Direction,
     ObservationSource,
     ObservationStatus,
@@ -30,6 +31,9 @@ from app.repositories.observations import ObservationRepository
 from app.repositories.transactions import TransactionRepository, TransactionRow
 from app.schemas.documents import DocumentOut
 from app.schemas.transactions import (
+    BatchSkipped,
+    ConfirmBatchRequest,
+    ConfirmBatchResponse,
     ConfirmRequest,
     EvidenceOut,
     ItemOut,
@@ -124,6 +128,55 @@ class TransactionService:
         observation.transaction_id = transaction.id
         await self._session.commit()
         return await self._detail(user_id, transaction.id)
+
+    async def confirm_batch(
+        self, user_id: uuid.UUID, body: ConfirmBatchRequest
+    ) -> ConfirmBatchResponse:
+        """Bank rows -> purchases (P08). Every id must be the caller's (404 otherwise, before
+        anything is saved). A DEBIT row becomes a purchase; a CREDIT row stays an observation
+        flagged "possible refund" (P12). Rows that cannot be saved come back in `skipped`."""
+        observations = [await self._observations.require(user_id, i) for i in body.ids]
+        created: list[uuid.UUID] = []
+        skipped: list[BatchSkipped] = []
+        for observation in observations:
+            edit = body.edits.get(observation.id)
+            reason = _batch_skip_reason(observation, edit)
+            if reason is not None:
+                skipped.append(BatchSkipped(observation_id=observation.id, reason=reason))
+                continue
+            suggestion = (observation.extraction_json or {}).get("suggestions", {})
+            suggested = suggestion.get("category", {}).get("key", CategoryKey.OTHER.value)
+            display = (edit.merchant_display if edit else None) or observation.merchant_raw or ""
+            category = (edit.category_key if edit else None) or CategoryKey(suggested)
+            merchant_id = await self._merchant_for(user_id, display, observation.merchant_raw)
+            transaction = await self._transactions.add(
+                user_id,
+                merchant_id=merchant_id,
+                merchant_display=display,
+                category_id=await self._merchants.category_id(category),
+                purchase_date=(edit.date if edit and edit.date else observation.obs_date),
+                purchase_time=observation.obs_time,
+                total_minor=(
+                    edit.total_minor if edit and edit.total_minor else observation.amount_minor
+                ),
+                payment_type=(
+                    PaymentType.INSTALLMENT
+                    if (observation.installment_count or 0) > 1
+                    else PaymentType.SINGLE
+                ),
+                channel=Channel.UNKNOWN,
+                note=(edit.note if edit else None) or None,
+            )
+            if edit and edit.remember_category_for_merchant and merchant_id is not None:
+                await self._merchants.set_user_rule(user_id, merchant_id, category)
+            observation.status = ObservationStatus.CONFIRMED
+            observation.transaction_id = transaction.id
+            created.append(transaction.id)
+        await self._session.commit()
+        return ConfirmBatchResponse(
+            created=[await self._detail(user_id, transaction_id) for transaction_id in created],
+            skipped=skipped,
+        )
 
     # ---- transactions -------------------------------------------------------------------------
 
@@ -306,6 +359,22 @@ class TransactionService:
             items=[ItemOut.model_validate(item) for item in items],
             documents=[DocumentOut.model_validate(d) for d in documents],
         )
+
+
+def _batch_skip_reason(observation: Observation, edit: Any) -> str | None:
+    if observation.source != ObservationSource.BANK_SCREENSHOT:
+        return "NOT_A_BANK_ROW"
+    if observation.status != ObservationStatus.PENDING_REVIEW:
+        return "NOT_PENDING"
+    if observation.direction == Direction.CREDIT:
+        return "POSSIBLE_REFUND"
+    if observation.obs_date is None and not (edit and edit.date):
+        return "MISSING_DATE"
+    if not observation.amount_minor and not (edit and edit.total_minor):
+        return "MISSING_AMOUNT"
+    if not (observation.merchant_raw or (edit and edit.merchant_display)):
+        return "MISSING_MERCHANT"
+    return None
 
 
 def _transaction_out(row: TransactionRow) -> TransactionOut:
