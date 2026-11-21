@@ -11,7 +11,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Observation, ReceiptItem
-from app.models.enums import ObservationStatus
+from app.models.enums import ObservationSource, ObservationStatus
 from app.repositories.base import UserScopedRepository
 
 
@@ -81,3 +81,27 @@ class ObservationRepository(UserScopedRepository[Observation]):
         )
         for position, item in enumerate(items):
             await self.add_receipt_item(user_id, observation_id, position=position, **item)
+
+    async def active_by_fingerprints(
+        self, user_id: uuid.UUID, source: ObservationSource, fingerprints: list[str]
+    ) -> dict[str, uuid.UUID]:
+        """fingerprint -> id of the user's earlier observation of the same source that is still
+        pending or confirmed (rejected and duplicate ones do not count). The oldest wins."""
+        if not fingerprints:
+            return {}
+        statement = (
+            select(Observation.fingerprint, Observation.id)
+            .where(
+                Observation.user_id == user_id,
+                Observation.source == source,
+                Observation.fingerprint.in_(fingerprints),
+                Observation.status.in_(
+                    [ObservationStatus.PENDING_REVIEW, ObservationStatus.CONFIRMED]
+                ),
+            )
+            .order_by(Observation.created_at.desc())
+        )
+        found: dict[str, uuid.UUID] = {}
+        for fingerprint, observation_id in (await self._session.execute(statement)).all():
+            found[fingerprint] = observation_id
+        return found

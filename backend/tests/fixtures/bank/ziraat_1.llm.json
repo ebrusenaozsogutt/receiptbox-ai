@@ -1,0 +1,44 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "20/10 ORNEK SUT ÜRÜNLERİ 02.Tak BURSA",
+      "amount_text": "28.518,87 TL",
+      "date_text": "20 Kas 2026",
+      "time": null,
+      "installment_text": "2/4 Taksidi",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "19/11 ORNEK SUT ÜRÜNLERİ O1.Tak BURSA",
+      "amount_text": "15.556,37 TL",
+      "date_text": "19 Kas 2026",
+      "time": null,
+      "installment_text": "1/4 Taksidi",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Ödeme - Tesekkür Ederiz -",
+      "amount_text": "+41,12 TL",
+      "date_text": "19 Kas 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Ödeme - Tesekkür Ederiz -",
+      "amount_text": "+3.051,37 TL",
+      "date_text": "19 Kas 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Ödeme - Tesekkür Ederiz -",
+      "amount_text": "+101.535,58 TL",
+      "date_text": "19 Kas 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

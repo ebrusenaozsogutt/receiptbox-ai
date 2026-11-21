@@ -1,0 +1,29 @@
+{
+  "bank_hint": "akbank",
+  "capture_date": "2026-11-21",
+  "rows": [
+    {
+      "amount_minor": 25000,
+      "kind": "REFUND",
+      "direction": "CREDIT",
+      "date": "2026-11-15",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 149900,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-14",
+      "installment_seq": 2,
+      "installment_count": 6,
+      "time": null,
+      "is_pending": false
+    }
+  ],
+  "skipped": [
+    "PAYMENT"
+  ]
+}

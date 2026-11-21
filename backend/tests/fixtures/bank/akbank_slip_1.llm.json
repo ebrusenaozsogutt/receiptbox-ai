@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "ORNEKSAN HAS. 0000000",
+      "amount_text": "105,638.12 TL",
+      "date_text": null,
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "TOYPA MAGAZACILIK TICARET",
+      "amount_text": "-234,53 TL",
+      "date_text": "4 Kas 2026",
+      "time": null,
+      "installment_text": "(2/2)",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "TRENDYOL.COM",
+      "amount_text": "+159,69 TL",
+      "date_text": "4 Kas 2026",
+      "time": null,
+      "installment_text": "(3/3)",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "TRENDYOL.COM",
+      "amount_text": "-739,28 TL",
+      "date_text": "4 Kas 2026",
+      "time": null,
+      "installment_text": "(3/3)",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "GOOGLE*ADS0000000000",
+      "amount_text": "-245,37 TL",
+      "date_text": "28 Eki 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK BILISIM YAZILIM L",
+      "amount_text": "-346,93 TL",
+      "date_text": "28 Eki 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Cep Şube Ödeme",
+      "amount_text": "+611,37 TL",
+      "date_text": "28 Eki 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

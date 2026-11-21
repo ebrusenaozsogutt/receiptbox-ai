@@ -1,0 +1,52 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "ORNEKKENT GIDA VE İHTİYA",
+      "amount_text": "-9.839,65 TL",
+      "date_text": "12 Kas 2026",
+      "time": null,
+      "installment_text": "(2/3)",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEKKENT GIDA VE İHTİYA",
+      "amount_text": "-17.691,37 TL",
+      "date_text": "8 Kas 2026",
+      "time": null,
+      "installment_text": "(3/3)",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "KAYA GIDA A.S",
+      "amount_text": "-40.668,03 TL",
+      "date_text": "8 Kas 2026",
+      "time": null,
+      "installment_text": "(3/3)",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Cep Şube Ödeme",
+      "amount_text": "+98.123,52 TL",
+      "date_text": "6 Kas 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEKKENT GIDA VE İHTİYA",
+      "amount_text": "-34.161,37 TL",
+      "date_text": "6 Kas 2026",
+      "time": null,
+      "installment_text": "(1/3)",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "BAKIRCI GIDA PAZARLAMA NA",
+      "amount_text": "-1.584,19 TL",
+      "date_text": "6 Kas 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

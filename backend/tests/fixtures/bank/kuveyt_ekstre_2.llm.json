@@ -1,0 +1,76 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "ORNEK STORE BURSA KENT BURSA TR",
+      "amount_text": "+1.464,76 TL",
+      "date_text": "20.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK MARKET AYMANAS BURSA TR",
+      "amount_text": "31,87 TL",
+      "date_text": "20.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEKCELIK AVM LTD ŞT BURSA TR",
+      "amount_text": "207,76 TL",
+      "date_text": "20.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "BOYNER BURSA KULESITE BURSA TR",
+      "amount_text": "1.802,07 TL",
+      "date_text": "20.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "MİGROS-5M KULE SİTE AVM K BURSA TR",
+      "amount_text": "101,04 TL",
+      "date_text": "20.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "1111-X222-ORNEK SK MERAM/ BURSA TR",
+      "amount_text": "79,45 TL",
+      "date_text": "21.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "9956-F823-çiĞİL SK MERAM/ BURSA TR",
+      "amount_text": "26,99 TL",
+      "date_text": "21.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "TÜRKSAT Fat.Tahs.",
+      "amount_text": "452,16 TL",
+      "date_text": "21.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Ekstre Toplamı",
+      "amount_text": "29.307,35 TL",
+      "date_text": null,
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

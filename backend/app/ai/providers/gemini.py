@@ -19,14 +19,20 @@ from google import genai
 from google.genai import errors, types
 from pydantic import ValidationError
 
-from app.ai.prompts import CATEGORY_CLASSIFY, RECEIPT_EXTRACT, load_prompt
+from app.ai.prompts import (
+    BANK_ROWS,
+    CATEGORY_CLASSIFY,
+    RECEIPT_EXTRACT,
+    load_bank_prompt,
+    load_prompt,
+)
 from app.ai.provider import (
     ExtractionHints,
     ProviderOutputError,
     ProviderUnavailableError,
     log_call,
 )
-from app.ai.schemas import RawReceiptExtraction
+from app.ai.schemas import RawBankExtraction, RawBankRow, RawReceiptExtraction
 from app.models.enums import CategoryKey
 
 BACKOFF_SECONDS = (1.0, 2.0, 4.0)
@@ -163,8 +169,18 @@ class GeminiProvider:
                 outcome=outcome,
             )
 
-    def extract_bank_rows(self, masked_text: str, bank_key: str | None) -> list[Any]:
-        raise NotImplementedError("Bank screenshots arrive in P08.")
+    def extract_bank_rows(self, masked_text: str, bank_key: str | None) -> list[RawBankRow]:
+        """The rows on a bank screenshot. A supported bank's hints (`prompts/banks/<bank>.md`) are
+        added to the system prompt; any other bank is read with the general prompt only."""
+        extraction: RawBankExtraction = self._generate(
+            masked_text,
+            system_prompt=load_bank_prompt(bank_key),
+            prompt_version=BANK_ROWS,
+            mime_type="application/json",
+            schema=RawBankExtraction,
+            parse=lambda text: RawBankExtraction.model_validate_json(text),
+        )
+        return extraction.rows
 
     def run_assistant(self, messages: list[Any], tools: list[Any], executor: Any) -> Any:
         raise NotImplementedError("The assistant arrives in P14.")

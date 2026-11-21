@@ -1,0 +1,52 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "TRENDYOL.COM",
+      "amount_text": "-391,50 TL",
+      "date_text": "11 Kas 2026",
+      "time": null,
+      "installment_text": "(1/3)",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "TRENDYOL.COM Ödül Kullanımı",
+      "amount_text": "-18,35 Bonus",
+      "date_text": "11 Kas 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "SAASAPP.IO",
+      "amount_text": "-39,57 TL",
+      "date_text": "9 Kas 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "A101-1111-X222-ORNEK SOKA",
+      "amount_text": "-69,62 TL",
+      "date_text": "9 Kas 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK MARKET AYMANAS",
+      "amount_text": "-53,83 TL",
+      "date_text": "8 Kas 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "SAASAPP.IO",
+      "amount_text": "-39,55 TL",
+      "date_text": "6 Kas 2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

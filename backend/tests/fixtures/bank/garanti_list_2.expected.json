@@ -1,0 +1,59 @@
+{
+  "bank_hint": "garanti",
+  "capture_date": "2026-11-21",
+  "rows": [
+    {
+      "amount_minor": 39150,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-11",
+      "installment_seq": 1,
+      "installment_count": 3,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 3957,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-09",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 6962,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-09",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 5383,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-08",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 3955,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-06",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    }
+  ],
+  "skipped": [
+    "NON_TL_AMOUNT"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "ORNEK GIDA ENERJI KIMYA TAR",
+      "amount_text": "28,403.63 TL",
+      "date_text": null,
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

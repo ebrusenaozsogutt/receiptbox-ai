@@ -1,0 +1,17 @@
+{
+  "bank_hint": "akbank",
+  "capture_date": "2026-11-21",
+  "rows": [
+    {
+      "amount_minor": 10563812,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": null,
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    }
+  ],
+  "skipped": []
+}

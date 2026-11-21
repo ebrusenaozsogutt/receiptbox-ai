@@ -1,0 +1,60 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "ORNEK MARKET AYMANAS BURSA TR",
+      "amount_text": "30,04 TL",
+      "date_text": "30.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "1111-X222-ORNEK SK MERAM/ BURSA TR",
+      "amount_text": "68,16 TL",
+      "date_text": "30.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "1111-X222-ORNEK SK MERAM/ BURSA TR",
+      "amount_text": "111,47TL",
+      "date_text": "30.10.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK KURS CANKAYA BURSA TR",
+      "amount_text": "123,37 TL",
+      "date_text": "18.10.2026",
+      "time": null,
+      "installment_text": "2/5 Taksit",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Taksit - ORNEK OYUNCAK BURSA TR",
+      "amount_text": "306,37 TL",
+      "date_text": "15.10.2026",
+      "time": null,
+      "installment_text": "2/5 Taksit",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK KIRTASIYE BURSA TUR",
+      "amount_text": "296,48TL",
+      "date_text": "08.09.2026",
+      "time": null,
+      "installment_text": "3/5 Taksit",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK DANS VE SANAT BURSA TR",
+      "amount_text": "977,37 TL",
+      "date_text": "20.07.2026",
+      "time": null,
+      "installment_text": "5/5 Taksit",
+      "is_pending": false
+    }
+  ]
+}

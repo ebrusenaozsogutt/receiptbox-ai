@@ -1,0 +1,31 @@
+{
+  "bank_hint": null,
+  "capture_date": "2026-11-21",
+  "rows": [
+    {
+      "amount_minor": 2851887,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-20",
+      "installment_seq": 2,
+      "installment_count": 4,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 1555637,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-19",
+      "installment_seq": 1,
+      "installment_count": 4,
+      "time": null,
+      "is_pending": false
+    }
+  ],
+  "skipped": [
+    "PAYMENT",
+    "PAYMENT",
+    "PAYMENT"
+  ]
+}

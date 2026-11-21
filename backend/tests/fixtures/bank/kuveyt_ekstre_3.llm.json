@@ -1,0 +1,52 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "pttavm.com",
+      "amount_text": "+114,40 TL",
+      "date_text": "06.04.2026",
+      "time": null,
+      "installment_text": "6/6 Taksit",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK DANS VE SANAT BURSA TR",
+      "amount_text": "977,37 TL",
+      "date_text": "20.07.2026",
+      "time": null,
+      "installment_text": "3/5 Taksit",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK OYUNCAK KNY KULE BURSA TR",
+      "amount_text": "427,76TL",
+      "date_text": "24.07.2026",
+      "time": null,
+      "installment_text": "3/5 Taksit",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "PAYCELL/TRENDYOL ISTANBUL TR",
+      "amount_text": "223,44TL",
+      "date_text": "27.08.2026",
+      "time": null,
+      "installment_text": "2/3 Taksit",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Toplam",
+      "amount_text": "29.307,35 TL",
+      "date_text": null,
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK DENEME BURSA TR",
+      "amount_text": "475,80 TL",
+      "date_text": "01.09.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

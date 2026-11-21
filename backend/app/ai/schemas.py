@@ -53,6 +53,30 @@ class RawReceiptExtraction(BaseModel):
     items: list[RawReceiptItem]
 
 
+# ---- bank screenshot rows (spec 5.5) ---------------------------------------------------------
+
+
+class RawBankRow(BaseModel):
+    """One row of a bank screen as the model copied it. Plain text again: `amount_text` keeps the
+    sign and the currency word as printed ("-16.128,33 TL", "+160.855,99 TL", "-27,84 Bonus"),
+    because the sign is how the direction is read and the word tells TL from points."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    merchant_raw: str
+    amount_text: str
+    date_text: str | None
+    time: str | None
+    installment_text: str | None
+    is_pending: bool
+
+
+class RawBankExtraction(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    rows: list[RawBankRow]
+
+
 # ---- the validated result (spec 5.2) ---------------------------------------------------------
 
 

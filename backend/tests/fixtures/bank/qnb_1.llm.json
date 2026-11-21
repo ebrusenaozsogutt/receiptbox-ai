@@ -1,0 +1,36 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "Islem Oereti CSAV",
+      "amount_text": "1.950,06TL",
+      "date_text": "02/11/2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Ticai Kat uyclk icct",
+      "amount_text": "1.221,37 TL",
+      "date_text": "04/11/2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Islem Oereti BSMV",
+      "amount_text": "159./2 1L",
+      "date_text": "02/11/2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Ek Kart Toplamı",
+      "amount_text": "130.324,99 TL",
+      "date_text": null,
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

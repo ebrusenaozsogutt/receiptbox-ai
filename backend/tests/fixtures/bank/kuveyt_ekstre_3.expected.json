@@ -1,0 +1,50 @@
+{
+  "bank_hint": "kuveyt",
+  "capture_date": "2026-11-21",
+  "rows": [
+    {
+      "amount_minor": 11440,
+      "kind": "REFUND",
+      "direction": "CREDIT",
+      "date": "2026-04-06",
+      "installment_seq": 6,
+      "installment_count": 6,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 97737,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-07-20",
+      "installment_seq": 3,
+      "installment_count": 5,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 42776,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-07-24",
+      "installment_seq": 3,
+      "installment_count": 5,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 22344,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-08-27",
+      "installment_seq": 2,
+      "installment_count": 3,
+      "time": null,
+      "is_pending": false
+    }
+  ],
+  "skipped": [
+    "AMOUNT_NOT_IN_TEXT",
+    "HEADER_OR_TOTAL"
+  ]
+}

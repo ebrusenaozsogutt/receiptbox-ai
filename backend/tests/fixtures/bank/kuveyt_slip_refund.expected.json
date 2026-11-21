@@ -1,0 +1,17 @@
+{
+  "bank_hint": "kuveyt",
+  "capture_date": "2026-11-21",
+  "rows": [
+    {
+      "amount_minor": 12184,
+      "kind": "REFUND",
+      "direction": "CREDIT",
+      "date": "2026-09-07",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": "14:02",
+      "is_pending": false
+    }
+  ],
+  "skipped": []
+}

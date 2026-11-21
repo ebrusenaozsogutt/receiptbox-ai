@@ -1,0 +1,68 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "Kredi Kartı Borç Ödeme",
+      "amount_text": "+22.818,59 TL",
+      "date_text": "02.09.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "PAYCELL/TRENDYOL ISTANBUL TR",
+      "amount_text": "294,04 TL",
+      "date_text": "03.09.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK TEKSTIL BURSA TR",
+      "amount_text": "733,37 TL",
+      "date_text": "04.09.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "LC WAIKIKI KULE CITY BURSA TUR",
+      "amount_text": "1.840,14 TL",
+      "date_text": "04.09.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Altın Firsatlar Okula Dönüş Kampanyasi",
+      "amount_text": "0,00 TL",
+      "date_text": "04.09.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK KURUMSAL HİZMEISTANBUL TR",
+      "amount_text": "16,62 TL",
+      "date_text": "04.09.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "BOYNER - KULEsİTE BURSA TR",
+      "amount_text": "3.851,00 TL",
+      "date_text": "04.09.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Altın Firsatlar Okula Dönüş KampanyasI",
+      "amount_text": "0,00 TL",
+      "date_text": "04.09.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

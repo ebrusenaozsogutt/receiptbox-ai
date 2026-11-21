@@ -1,0 +1,59 @@
+{
+  "bank_hint": "akbank",
+  "capture_date": "2026-11-21",
+  "rows": [
+    {
+      "amount_minor": 652590,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-20",
+      "installment_seq": 1,
+      "installment_count": 3,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 3521362,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-19",
+      "installment_seq": 1,
+      "installment_count": 3,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 13343,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-18",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 13206,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-18",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 538564,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": null,
+      "installment_seq": 4,
+      "installment_count": 4,
+      "time": null,
+      "is_pending": false
+    }
+  ],
+  "skipped": [
+    "PAYMENT"
+  ]
+}

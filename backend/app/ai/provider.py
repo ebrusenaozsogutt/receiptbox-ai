@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Protocol
 
-from app.ai.schemas import RawReceiptExtraction
+from app.ai.schemas import RawBankRow, RawReceiptExtraction
 from app.core.config import Settings
 from app.models.enums import CategoryKey
 
@@ -61,10 +61,11 @@ class AIProvider(Protocol):
 
     def extract_receipt(self, masked_text: str, hints: ExtractionHints) -> RawReceiptExtraction: ...
 
-    # Later phases (P08 bank screenshots, P06 categories, P14 assistant).
-    def extract_bank_rows(self, masked_text: str, bank_key: str | None) -> list[Any]: ...
+    def extract_bank_rows(self, masked_text: str, bank_key: str | None) -> list[RawBankRow]: ...
 
     def classify_category(self, merchant: str, items: list[str]) -> CategoryKey: ...
+
+    # Later phase (P14).
 
     def run_assistant(self, messages: list[Any], tools: list[Any], executor: Any) -> Any: ...
 

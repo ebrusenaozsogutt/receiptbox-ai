@@ -1,0 +1,89 @@
+{
+  "bank_hint": "kuveyt",
+  "capture_date": "2026-11-21",
+  "rows": [
+    {
+      "amount_minor": 146476,
+      "kind": "REFUND",
+      "direction": "CREDIT",
+      "date": "2026-10-20",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 3187,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-10-20",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 20776,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-10-20",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 180207,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-10-20",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 10104,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-10-20",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 7945,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-10-21",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 2699,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-10-21",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    },
+    {
+      "amount_minor": 45216,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-10-21",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    }
+  ],
+  "skipped": [
+    "HEADER_OR_TOTAL"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "ORNEK BURSA GIDA TEM. (01/03)",
+      "amount_text": "6.525,90 TL",
+      "date_text": "20.11.2026",
+      "time": null,
+      "installment_text": "Taksit: 01/03",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "İNTERNET Şb-Ödemeniz için Te..",
+      "amount_text": "-6.101,37 TL",
+      "date_text": "20.11.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEKSAN IH.AS.1001344 (01/03)",
+      "amount_text": "35.213,62 TL",
+      "date_text": "19.11.2026",
+      "time": null,
+      "installment_text": "Taksit: O1/03",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Türk Telekom Ses/ 0000000000",
+      "amount_text": "133,43 TL",
+      "date_text": "18.11.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Türk Telekom Ses/ 0000000000",
+      "amount_text": "132,06 TL",
+      "date_text": "18.11.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK IFFCO (04/04)",
+      "amount_text": "5.385,64 TL",
+      "date_text": null,
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

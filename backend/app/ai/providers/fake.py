@@ -13,14 +13,14 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.ai.prompts import CATEGORY_CLASSIFY, RECEIPT_EXTRACT
+from app.ai.prompts import BANK_ROWS, CATEGORY_CLASSIFY, RECEIPT_EXTRACT
 from app.ai.provider import (
     ExtractionHints,
     ProviderConfigError,
     ProviderOutputError,
     log_call,
 )
-from app.ai.schemas import RawReceiptExtraction
+from app.ai.schemas import RawBankExtraction, RawBankRow, RawReceiptExtraction
 from app.core.text import normalize_alias_key
 from app.models.enums import CategoryKey
 
@@ -46,8 +46,12 @@ class FakeProvider:
         self,
         answers: dict[str, RawReceiptExtraction] | None = None,
         categories: dict[str, CategoryKey] | None = None,
+        bank_answers: dict[str, RawBankExtraction] | None = None,
     ) -> None:
         self._answers = dict(answers or {})
+        self._bank_answers = dict(bank_answers or {})
+        self.bank_calls = 0  # bank screenshot extractions
+        self.bank_hints: list[str | None] = []  # the bank_key of each bank call
         self._categories = {_merchant_key(m): k for m, k in (categories or {}).items()}
         self.calls = 0  # receipt extractions; tests look at this
         self.classify_calls = 0  # category classifications
@@ -60,20 +64,23 @@ class FakeProvider:
         if not path.is_dir():
             raise ProviderConfigError("The fake provider's fixtures directory does not exist.")
         answers: dict[str, RawReceiptExtraction] = {}
+        bank_answers: dict[str, RawBankExtraction] = {}
         for text_file in sorted(path.glob("*.txt")):
             answer_file = text_file.with_suffix(".llm.json")
             if not answer_file.exists():
                 continue
-            answer = RawReceiptExtraction.model_validate(
-                json.loads(answer_file.read_text(encoding="utf-8"))
-            )
-            answers[text_key(text_file.read_text(encoding="utf-8"))] = answer
+            data = json.loads(answer_file.read_text(encoding="utf-8"))
+            text = text_file.read_text(encoding="utf-8")
+            if "rows" in data:  # a bank screenshot fixture
+                bank_answers[text_key(text)] = RawBankExtraction.model_validate(data)
+            else:
+                answers[text_key(text)] = RawReceiptExtraction.model_validate(data)
         categories: dict[str, CategoryKey] = {}
         category_file = path / "categories.json"
         if category_file.exists():
             raw = json.loads(category_file.read_text(encoding="utf-8"))
             categories = {merchant: CategoryKey(key) for merchant, key in raw.items()}
-        return cls(answers, categories)
+        return cls(answers, categories, bank_answers)
 
     def add(self, masked_text: str, answer: RawReceiptExtraction) -> None:
         self._answers[text_key(masked_text)] = answer
@@ -94,8 +101,25 @@ class FakeProvider:
             raise ProviderOutputError("The fake provider has no fixture for this text.")
         return answer.model_copy(deep=True)
 
-    def extract_bank_rows(self, masked_text: str, bank_key: str | None) -> list[Any]:
-        raise NotImplementedError("Bank screenshots arrive in P08.")
+    def add_bank(self, masked_text: str, answer: RawBankExtraction) -> None:
+        self._bank_answers[text_key(masked_text)] = answer
+
+    def extract_bank_rows(self, masked_text: str, bank_key: str | None) -> list[RawBankRow]:
+        self.bank_calls += 1
+        self.bank_hints.append(bank_key)
+        answer = self._bank_answers.get(text_key(masked_text))
+        log_call(
+            provider=self.name,
+            model=self.model,
+            prompt_version=BANK_ROWS,
+            latency_ms=0,
+            input_tokens=None,
+            output_tokens=None,
+            outcome="ok" if answer is not None else "no_fixture",
+        )
+        if answer is None:
+            raise ProviderOutputError("The fake provider has no fixture for this text.")
+        return [row.model_copy(deep=True) for row in answer.rows]
 
     def add_category(self, merchant: str, key: CategoryKey) -> None:
         self._categories[_merchant_key(merchant)] = key

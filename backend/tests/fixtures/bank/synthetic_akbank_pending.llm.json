@@ -1,0 +1,28 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "ORNEK KAFE ANKARA",
+      "amount_text": "85,00 TL",
+      "date_text": "Bugün",
+      "time": null,
+      "installment_text": null,
+      "is_pending": true
+    },
+    {
+      "merchant_raw": "ORNEK MARKET ISTANBUL",
+      "amount_text": "120,50 TL",
+      "date_text": "Bugün",
+      "time": null,
+      "installment_text": null,
+      "is_pending": true
+    },
+    {
+      "merchant_raw": "ORNEK GIYIM IZMIR",
+      "amount_text": "499,90 TL",
+      "date_text": "Dün",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

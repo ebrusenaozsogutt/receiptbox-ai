@@ -1,0 +1,17 @@
+{
+  "bank_hint": "garanti",
+  "capture_date": "2026-11-21",
+  "rows": [
+    {
+      "amount_minor": 10248137,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-06",
+      "installment_seq": null,
+      "installment_count": 3,
+      "time": null,
+      "is_pending": false
+    }
+  ],
+  "skipped": []
+}

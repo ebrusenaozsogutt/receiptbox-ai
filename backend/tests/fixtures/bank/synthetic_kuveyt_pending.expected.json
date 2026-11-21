@@ -1,0 +1,27 @@
+{
+  "bank_hint": "kuveyt",
+  "capture_date": "2026-11-21",
+  "rows": [
+    {
+      "amount_minor": 12500,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-21",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": true
+    },
+    {
+      "amount_minor": 7500,
+      "kind": "PURCHASE",
+      "direction": "DEBIT",
+      "date": "2026-11-20",
+      "installment_seq": null,
+      "installment_count": null,
+      "time": null,
+      "is_pending": false
+    }
+  ],
+  "skipped": []
+}

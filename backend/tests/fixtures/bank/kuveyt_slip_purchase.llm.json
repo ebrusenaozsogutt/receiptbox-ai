@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "ORNEK KIRTASIYE BURSA TR",
+      "amount_text": "1.476,96 TL",
+      "date_text": "08.09.2026",
+      "time": "13:58",
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

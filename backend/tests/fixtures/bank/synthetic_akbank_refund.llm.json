@@ -1,0 +1,28 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "ORNEK GIYIM IZMIR IADE",
+      "amount_text": "-250,00 TL",
+      "date_text": "15.11.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "ORNEK TEKNOLOJI ISTANBUL (02/06)",
+      "amount_text": "1.499,00 TL",
+      "date_text": "14.11.2026",
+      "time": null,
+      "installment_text": "Taksit: 02/06",
+      "is_pending": false
+    },
+    {
+      "merchant_raw": "Kart borcu ödeme",
+      "amount_text": "-5.000,00 TL",
+      "date_text": "10.11.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}

@@ -311,10 +311,8 @@ def test_classification_failures_are_provider_errors() -> None:
         provider.classify_category("X", [])
 
 
-def test_the_other_methods_are_not_implemented_yet() -> None:
+def test_the_assistant_is_not_implemented_yet() -> None:
     provider, _, _ = make([])
-    with pytest.raises(NotImplementedError):
-        provider.extract_bank_rows("x", None)
     with pytest.raises(NotImplementedError):
         provider.run_assistant([], [], None)
 

@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "merchant_raw": "ORNEK KAFE ISTANBUL TR",
+      "amount_text": "125,00 TL",
+      "date_text": "21.11.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": true
+    },
+    {
+      "merchant_raw": "ORNEK KITAP KONYA TR",
+      "amount_text": "75,00 TL",
+      "date_text": "20.11.2026",
+      "time": null,
+      "installment_text": null,
+      "is_pending": false
+    }
+  ]
+}
