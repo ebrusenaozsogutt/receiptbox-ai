@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/networking/api_error.dart';
 import '../../../core/networking/dio_provider.dart';
+import '../../capture/domain/bank_models.dart';
 import '../domain/purchase_models.dart';
 import '../domain/spending_category.dart';
 
@@ -31,6 +32,12 @@ abstract interface class TransactionsApi {
   /// Save a reviewed receipt: a NEW transaction from the observation.
   Future<PurchaseDetail> confirm(String observationId, PurchaseInput input);
   Future<void> reject(String observationId);
+
+  /// Save the selected bank rows as purchases (P08). [edits] holds what the user changed.
+  Future<BatchResult> confirmBatch(
+    List<String> ids,
+    Map<String, BankRowEdit> edits,
+  );
 }
 
 /// Receipt images and invoice PDFs (backend `/documents`).
@@ -127,6 +134,35 @@ class DioTransactionsApi implements TransactionsApi {
   @override
   Future<void> reject(String observationId) =>
       _guard(() => _dio.post<void>('/observations/$observationId/reject'));
+
+  @override
+  Future<BatchResult> confirmBatch(
+    List<String> ids,
+    Map<String, BankRowEdit> edits,
+  ) => _guard(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/observations/confirm-batch',
+      data: {
+        'ids': ids,
+        'edits': {
+          for (final entry in edits.entries)
+            if (ids.contains(entry.key))
+              entry.key: {
+                if (entry.value.merchant != null &&
+                    entry.value.merchant!.trim().isNotEmpty)
+                  'merchant_display': entry.value.merchant!.trim(),
+                if (entry.value.date != null)
+                  'date': dateToApi(entry.value.date!),
+                if (entry.value.amountMinor != null)
+                  'total_minor': entry.value.amountMinor,
+                if (entry.value.category != null)
+                  'category_key': entry.value.category!.key,
+              },
+        },
+      },
+    );
+    return BatchResult.fromJson(response.data!);
+  });
 }
 
 class DioDocumentsApi implements DocumentsApi {

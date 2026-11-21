@@ -58,6 +58,9 @@ String messageForCode(String code, {int? retryAfterSeconds}) {
       return 'Fiş güvenilir okunamadı. Elle ekleyebilirsin.';
     case 'QR_INVALID':
       return "QR kodu okunabilir bir e-Arşiv / e-Fatura QR'ı değil.";
+    case 'BANK_SCREEN_NOT_SUPPORTED':
+      return 'Bu ekran bir kart hareketi listesi değil. Kart hareketlerinin göründüğü '
+          'ekranı seç.';
     case 'TEXT_TOO_LARGE':
       return 'Metin çok uzun (en fazla 20 KB).';
     case 'NOT_FOUND':

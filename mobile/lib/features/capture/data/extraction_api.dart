@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../core/networking/api_error.dart';
+import '../domain/bank_models.dart';
 import '../domain/capture_payload.dart';
 import '../domain/extraction_result.dart';
 
@@ -14,11 +15,11 @@ class AiConsentOffException implements Exception {
       'şimdilik fişi elle ekleyebilirsin.';
 }
 
-/// Bank screenshots are handled in a later phase (P08).
+/// `extract` reads receipts and invoices; a bank screenshot goes to `extractBank` (P08).
 class ExtractionNotAvailableException implements Exception {
   const ExtractionNotAvailableException();
 
-  String get message => 'Banka ekran görüntüleri sonraki aşamada eklenecek.';
+  String get message => 'Banka ekran görüntüleri ayrı bir ekranda okunur.';
 }
 
 /// Sends a [CapturePayload] to the right extraction endpoint:
@@ -28,6 +29,15 @@ abstract interface class ExtractionApi {
   /// [ExtractionNotAvailableException] or an [ApiError] with a Turkish message.
   Future<ExtractionResult> extract(
     CapturePayload payload, {
+    required bool aiConsent,
+  });
+
+  /// The rows of a bank screenshot (only its MASKED text is sent; the image never leaves the
+  /// phone). [bankHint] is the key of a supported bank or null. Throws [AiConsentOffException]
+  /// or an [ApiError] (`BANK_SCREEN_NOT_SUPPORTED` for a current-account screen).
+  Future<BankImport> extractBank(
+    CapturePayload payload, {
+    required String? bankHint,
     required bool aiConsent,
   });
 }
@@ -76,6 +86,32 @@ class DioExtractionApi implements ExtractionApi {
         options: Options(receiveTimeout: _receiveTimeout),
       );
       return ExtractionResult.fromJson(response.data!, usedQr: usesQr);
+    } on Object catch (error) {
+      throw apiErrorFrom(error);
+    }
+  }
+
+  @override
+  Future<BankImport> extractBank(
+    CapturePayload payload, {
+    required String? bankHint,
+    required bool aiConsent,
+  }) async {
+    if (!aiConsent) throw const AiConsentOffException();
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/extract/bank-screenshot',
+        data: {
+          'masked_text': payload.maskedText,
+          'bank_hint': ?bankHint,
+          'capture_date': payload.captureDate.toIso8601String().substring(
+            0,
+            10,
+          ),
+        },
+        options: Options(receiveTimeout: _receiveTimeout),
+      );
+      return BankImport.fromJson(response.data!);
     } on Object catch (error) {
       throw apiErrorFrom(error);
     }
