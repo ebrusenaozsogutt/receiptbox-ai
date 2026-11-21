@@ -5,6 +5,11 @@
   `Kişisel Hizmet`, `Akaryakıt`, `Kart Ödemesi`) first, the amount on the same line, and the
   **merchant** on the second line (`TRENDYOL.COM`, `DERESALLAR GIDA VE İHTİYA`). The merchant is the
   second line, never the category word. `Market (İade)` means a refund.
+- In the text, the line with the **category word and the amount comes first** (`4 Eğitim -382,24
+  TL`) and the lines of the same row follow it: the month and the year (`Kas`, `2026`) and then the
+  merchant with its marker (`TOYPA MAGAZACILIK TICARET (2/2)`). So a merchant line belongs to the
+  amount line ABOVE it. A merchant line at the very beginning of the text that has no amount line
+  before it is the bottom of a row that is cut off at the top of the screenshot: ignore it.
 - The **date** of a row is printed as a day number, then a short month, then the year, often on
   three separate lines (`12`, `Kas`, `2026`). Return `12 Kas 2026`.
 - Amounts: `-16.128,33 TL` money spent (minus), `+160.855,99 TL` money that came back (plus).

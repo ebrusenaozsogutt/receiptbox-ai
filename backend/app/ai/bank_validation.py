@@ -24,7 +24,7 @@ from app.ai.schemas import Confidence, RawBankRow
 from app.core.money import MoneyParseError, parse_money_to_minor
 from app.core.text import turkish_upper
 from app.models.enums import Direction
-from app.services.date_resolver import resolve_date
+from app.services.date_resolver import NOT_RESOLVED, appears_in_text, resolve_date
 from app.services.installment_marker import parse_installment_marker, strip_marker
 
 MAX_AMOUNT_MINOR = 100_000_000  # 1,000,000 TRY, as for receipts
@@ -156,6 +156,11 @@ def validate_bank_rows(
         marker = parse_installment_marker(raw.installment_text) or parse_installment_marker(text)
         merchant = strip_marker(text, parse_installment_marker(text)).strip(" -:,/")
         resolved = resolve_date(raw.date_text, capture_date)
+        if resolved.value is not None and not appears_in_text(
+            resolved.value, raw.date_text, masked_text
+        ):
+            resolved = NOT_RESOLVED  # the model made the date up: better none than a wrong one
+            issues.append("date_not_in_text")
         obs_date = resolved.value
 
         shown = merchant or raw.merchant_raw.strip()

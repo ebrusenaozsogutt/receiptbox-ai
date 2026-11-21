@@ -35,8 +35,9 @@ def text_with(*amounts: str, extra: str = "") -> str:
 
 
 def one(row: RawBankRow, text: str | None = None, bank: str | None = None):  # noqa: ANN201
-    result = validate_bank_rows([row], text or text_with(row.amount_text), bank, CAPTURE)
-    return result
+    # the date text is part of the screenshot text unless a test says otherwise
+    screen = text or text_with(row.amount_text, extra=row.date_text or "")
+    return validate_bank_rows([row], screen, bank, CAPTURE)
 
 
 class TestAmounts:
@@ -194,7 +195,7 @@ class TestDates:
 
     def test_year_boundary(self) -> None:
         result = validate_bank_rows(
-            [raw(date_text="30 Aralık")], "ORNEK\n120,50 TL", None, date(2027, 1, 2)
+            [raw(date_text="30 Aralık")], "ORNEK\n120,50 TL\n30 Aralık", None, date(2027, 1, 2)
         )
         assert result.rows[0].obs_date == date(2026, 12, 30)
 
@@ -203,6 +204,30 @@ class TestDates:
         assert row.obs_date is None
         assert row.confidence["date"] == Confidence.LOW
         assert "date_missing" in row.issues
+
+    def test_a_date_that_is_not_in_the_text_is_dropped(self) -> None:
+        """The model invented a date from OCR garbage: better no date than a wrong one."""
+        row = one(raw(date_text="12.02.2026"), "ORNEK\n120,50 TL\n*S12028 11:41").rows[0]
+        assert row.obs_date is None
+        assert "date_not_in_text" in row.issues
+        assert row.confidence["date"] == Confidence.LOW
+
+    def test_day_and_month_name_on_separate_lines_are_enough(self) -> None:
+        text = "12 Market -120,50 TL\nKas\n2026 ORNEK MARKET"
+        row = one(raw(date_text="12 Kas 2026", amount="-120,50 TL"), text).rows[0]
+        assert row.obs_date == date(2026, 11, 12)
+
+    def test_a_day_without_its_month_in_the_text_is_not_enough(self) -> None:
+        text = "12 Market -120,50 TL\nORNEK MARKET"
+        assert one(raw(date_text="12 Kas 2026", amount="-120,50 TL"), text).rows[0].obs_date is None
+
+    def test_a_relative_word_must_be_in_the_text(self) -> None:
+        assert one(raw(date_text="Bugün"), "ORNEK\n120,50 TL").rows[0].obs_date is None
+
+    def test_numeric_dates_must_match_the_text(self) -> None:
+        text = "ORNEK\n120,50 TL\n20.11.2026"
+        assert one(raw(date_text="20.11.2026"), text).rows[0].obs_date == date(2026, 11, 20)
+        assert one(raw(date_text="21.11.2026"), text).rows[0].obs_date is None
 
     def test_unreadable_date_is_none(self) -> None:
         assert one(raw(date_text="geçen hafta")).rows[0].obs_date is None

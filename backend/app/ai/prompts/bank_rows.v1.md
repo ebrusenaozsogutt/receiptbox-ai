@@ -44,6 +44,11 @@ pieces, or contain OCR mistakes (for example `O` for `0`, a dot for a comma, `Ge
 - A sign in front of the amount is how the app says whether money left the card or came back; copy
   it. Rows that come back (`+`, `İade`) are returned like any other row.
 - Rows partly cut off at the top or bottom of the screenshot: return them only if the merchant and
-  the amount are both complete.
+  the amount are both complete (the date may then be null). Text at the very top that has no amount
+  before it, for example a merchant line with a year and `(3/3)`, belongs to a row that is cut off:
+  ignore it. Never give a row the merchant of a neighbouring row.
+- The line order of the OCR text is not always the order of the screen. Match every amount with
+  the merchant, date and installment marker of the SAME row: they are printed together, in the
+  same block of the text.
 - A screenshot may show the same transaction in two places (a list and a detail card): return it
   once.

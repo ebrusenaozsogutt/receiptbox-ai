@@ -41,7 +41,7 @@ def _fold(text: str) -> str:
     return turkish_upper(text).translate(_ASCII)
 
 
-_MONTHS = {
+MONTH_WORDS = {
     "OCAK": 1,
     "OCA": 1,
     "SUBAT": 2,
@@ -69,7 +69,7 @@ _MONTHS = {
 }
 
 # Monday = 0 ... Sunday = 6 (date.weekday()).
-_WEEKDAYS = {
+WEEKDAY_WORDS = {
     "PAZARTESI": 0,
     "PZT": 0,
     "SALI": 1,
@@ -114,7 +114,7 @@ def resolve_date(text: str | None, capture_date: date) -> ResolvedDate:
         return _full(year, int(match[2]), int(match[1]), capture_date)
 
     for match in _DAY_MONTH_NAME.finditer(folded):
-        month = _MONTHS.get(match[2])
+        month = MONTH_WORDS.get(match[2])
         if month is None:
             continue
         if match[3]:
@@ -125,6 +125,35 @@ def resolve_date(text: str | None, capture_date: date) -> ResolvedDate:
     if match:
         return _without_year(int(match[1]), int(match[2]), capture_date)
     return NOT_RESOLVED
+
+
+def appears_in_text(value: date, date_text: str | None, screen_text: str) -> bool:
+    """Is the resolved date really on the screen? The model may invent a date from OCR garbage
+    (a time or a code read as "12/02"). A relative word must be in the text, a numeric date must be
+    written in it (day.month.year or day.month), and a date with a month name needs the day number
+    and the month word both in the text (apps often print them on separate lines)."""
+    folded = " ".join(_fold(screen_text).split())
+    words = set(re.findall(r"[A-Z]+", folded))
+    asked = set(re.findall(r"[A-Z]+", _fold(date_text or "")))
+    relative = {"BUGUN", "DUN", "EVVELSI", "ONCEKI"} | set(WEEKDAY_WORDS)
+    if asked & relative:
+        return bool(asked & relative & words)
+
+    for match in _NUMERIC_FULL.finditer(folded):
+        year = int(match[3])
+        year += 2000 if year < 100 else 0
+        if (year, int(match[2]), int(match[1])) == (value.year, value.month, value.day):
+            return True
+    for match in _ISO.finditer(folded):
+        if (int(match[1]), int(match[2]), int(match[3])) == (value.year, value.month, value.day):
+            return True
+    for match in _NUMERIC_SHORT.finditer(folded):
+        if (int(match[1]), int(match[2])) == (value.day, value.month):
+            return True
+
+    numbers = {int(n) for n in re.findall(r"(?<![\d.,/])\d{1,2}(?![\d.,/:])", folded)}
+    month_words = {word for word, month in MONTH_WORDS.items() if month == value.month}
+    return value.day in numbers and bool(month_words & words)
 
 
 def _relative(folded: str, capture_date: date) -> ResolvedDate | None:
@@ -139,7 +168,7 @@ def _relative(folded: str, capture_date: date) -> ResolvedDate | None:
     # so weekday names are only taken from texts that have no digit.
     if not re.search(r"\d", folded):
         for word in words:
-            weekday = _WEEKDAYS.get(word)
+            weekday = WEEKDAY_WORDS.get(word)
             if weekday is not None:
                 days_ago = (capture_date.weekday() - weekday) % 7 or 7
                 return ResolvedDate(capture_date - timedelta(days=days_ago), "RELATIVE")
