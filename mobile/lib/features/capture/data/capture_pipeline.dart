@@ -96,7 +96,10 @@ class CapturePipeline {
         throw const CaptureException(CaptureFailure.noTextFound);
       }
 
-      final masked = masker.mask(original);
+      final masked = masker.mask(
+        original,
+        bank: input.kind == CaptureKind.bankScreenshot,
+      );
       // A bank screenshot is NEVER kept (spec 15.3, invariant 8), whatever the caller asked.
       if (input.keepImage && input.kind == CaptureKind.receipt) {
         retained = await _keepCopy(input, firstPrepared!, temp);

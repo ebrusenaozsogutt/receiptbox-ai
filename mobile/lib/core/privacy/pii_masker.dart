@@ -13,6 +13,13 @@
 /// readability, a missed one leaks personal data. Receipt totals, dates and times are left
 /// alone (they never match the patterns above).
 ///
+/// With `bank: true` (bank screenshots, P08) a few more rules run, because those screens carry
+/// more personal data than a receipt: the card holder's name printed next to the card number on
+/// a POS slip, the other party's name in FAST/EFT/havale lines, statement and card totals
+/// ("Ekstre Toplamı", "Genel Toplam"...), account headers ("101- 69 ... TL"), "Hes.No" /
+/// "Tes.No" numbers and partly hidden cards that still show their first four digits. They are
+/// not applied to receipts, where "GENEL TOPLAM" is the amount that is needed.
+///
 /// Only COUNTS per type are returned besides the text (for metrics). The text that goes in is
 /// never stored or logged by this class.
 library;
@@ -47,7 +54,7 @@ class MaskResult {
 class PiiMasker {
   const PiiMasker();
 
-  MaskResult mask(String input) {
+  MaskResult mask(String input, {bool bank = false}) {
     final counts = <PiiType, int>{};
     void count(PiiType type) => counts[type] = (counts[type] ?? 0) + 1;
 
@@ -57,12 +64,15 @@ class PiiMasker {
         .split('\n');
     final masked = <String>[];
     var maskNextLine = false; // a name label stood alone on the previous line
+    final nameLines = bank ? _slipNameLines(lines) : const <int>{};
 
-    for (final line in lines) {
+    for (var index = 0; index < lines.length; index++) {
+      final line = lines[index];
       final folded = foldForMatching(line);
 
       // 1. Balance / limit / account-number lines go away completely.
-      if (_balanceLine.hasMatch(folded)) {
+      if (_balanceLine.hasMatch(folded) ||
+          (bank && _bankBalanceLine.hasMatch(folded))) {
         masked.add(PiiType.balance.token);
         count(PiiType.balance);
         maskNextLine = false;
@@ -70,6 +80,12 @@ class PiiMasker {
       }
 
       // 2. Names.
+      if (nameLines.contains(index)) {
+        masked.add(PiiType.name.token);
+        count(PiiType.name);
+        maskNextLine = false;
+        continue;
+      }
       if (maskNextLine && line.trim().isNotEmpty) {
         masked.add(PiiType.name.token);
         count(PiiType.name);
@@ -97,6 +113,17 @@ class PiiMasker {
         }
       }
 
+      // The other party of a FAST / EFT / havale transfer.
+      if (bank) {
+        final transfer = _transferParty.firstMatch(current);
+        if (transfer != null && transfer.group(1)!.trim().isNotEmpty) {
+          current =
+              '${PiiType.name.token} ${current.substring(transfer.end - transfer.group(2)!.length)}';
+          count(PiiType.name);
+        }
+        current = _replace(current, _bankAccountNumber, PiiType.balance, count);
+      }
+
       // 3-7. Inline patterns, most specific first.
       current = _replace(current, _email, PiiType.email, count);
       current = _replace(current, _iban, PiiType.iban, count);
@@ -115,6 +142,10 @@ class PiiMasker {
         count,
         accept: _isLuhnCard,
       );
+      if (bank) {
+        // "9792 ******", "5170*******3717": the first digits of the card are still visible.
+        current = _replace(current, _cardFirstDigits, PiiType.card, count);
+      }
       current = _replace(
         current,
         _tckn,
@@ -181,10 +212,36 @@ class PiiMasker {
 
   // ---- patterns ----------------------------------------------------------------------------
 
-  // Folded (see foldForMatching), so they match with or without Turkish letters.
+  // Folded (see foldForMatching), so they match with or without Turkish letters. "baki?e" also
+  // catches the OCR slip "Bakipe".
   static final _balanceLine = RegExp(
-    r'\bbakiye(?:si|niz)?\b|\bkullanilabilir\b|\blimit(?:i|iniz|leri|ler)?\b|'
+    r'\bbaki[a-z]?e(?:si|niz)?\b|\bkullanilabilir\b|\blimit(?:i|iniz|leri|ler)?\b|'
     r'\btoplam borc\b|\bhesap (?:no|numarasi)\b',
+  );
+
+  /// Bank screens only: statement / card totals and the account header line. ("Gencl" and
+  /// "Fk Kart" are OCR slips of "Genel" and "Ek Kart".)
+  static final _bankBalanceLine = RegExp(
+    r'\bekstre toplam\w*|\bkart toplam\w*|\bgen\w{1,2}l toplam\w*|\bson odeme\b|'
+    r'\basgari\b|\btoplam altin puan\b|\bdonem borc\w*|\bekstre borc\w*|'
+    r'^\s*\d{3}\s?-\s?\d+\b.*\d,\d{2}\s?tl',
+  );
+
+  // "Hes.No:123", "Tes.No:123" (subscriber number), "Abone No 123": the number only.
+  static final _bankAccountNumber = RegExp(
+    r'\b(?:hes|tes|abone|tesisat)\.?\s?(?:no|numarasi)\s*[:.]?\s*\d[\d\-]*',
+    caseSensitive: false,
+  );
+
+  // Text before "-FAST-", "EFT", "HAVALE": the name of the person or company on the other side.
+  static final _transferParty = RegExp(
+    r'^(.*?)[\s\-]*(fast|eft|havale)\b',
+    caseSensitive: false,
+  );
+
+  // "9792 ******", "5170*******3717": the first digits of the card are still visible.
+  static final _cardFirstDigits = RegExp(
+    r'(?<![\d*•])\d{4}[ \-]?[*xX•]+[\d*xX•]*',
   );
   static final _nameLabel = RegExp(
     r'\b(?:sayin|ad soyad|adi soyadi|kart sahibi|hesap sahibi|musteri)\b',
@@ -246,6 +303,44 @@ class PiiMasker {
         _sep +
         r'\d{2}(?!\d)',
   );
+
+  // ---- bank slips: the card holder's name ----------------------------------------------------
+
+  static final _hiddenCard = RegExp(r'\*{3,}|•{3,}');
+  static final _nameLike = RegExp(
+    r"^[A-ZÇĞİIÖŞÜa-zçğıöşü][A-ZÇĞİIÖŞÜa-zçğıöşü.'’]+(?: [A-ZÇĞİIÖŞÜa-zçğıöşü][A-ZÇĞİIÖŞÜa-zçğıöşü.'’]+){1,3}$",
+  );
+
+  /// Lines of a POS slip that are the card holder's name: letters only, two to four words, right
+  /// after the (hidden) card number or "Satış", or right before "Toplam Tutar" / the sale amount.
+  static Set<int> _slipNameLines(List<String> lines) {
+    final result = <int>{};
+    String? previous;
+    for (var i = 0; i < lines.length; i++) {
+      final text = lines[i].trim();
+      if (text.isEmpty) continue;
+      final folded = foldForMatching(text);
+      if (_nameLike.hasMatch(text) && previous != null) {
+        var next = '';
+        for (var j = i + 1; j < lines.length; j++) {
+          if (lines[j].trim().isNotEmpty) {
+            next = foldForMatching(lines[j].trim());
+            break;
+          }
+        }
+        final afterCard =
+            _hiddenCard.hasMatch(previous) || previous.startsWith('satis');
+        final beforeAmount = RegExp(
+          r'^(?:toplam tutar|taksitli satis tutari|tutar)',
+        ).hasMatch(next);
+        if ((afterCard || beforeAmount) && !_notAName.hasMatch(folded)) {
+          result.add(i);
+        }
+      }
+      previous = _hiddenCard.hasMatch(text) ? text : folded;
+    }
+    return result;
+  }
 
   // ---- validators --------------------------------------------------------------------------
 
