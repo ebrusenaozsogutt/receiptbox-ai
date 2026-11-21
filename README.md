@@ -260,6 +260,22 @@ After pulling this phase rebuild the backend and apply the new migration (`recei
 
 **Swagger** (<http://localhost:8000/docs>, Register and **Authorize** as in 3.2.2): `POST /api/v1/transactions` with `{"merchant_display": "Bakkal", "date": "2026-11-14", "total_minor": 1250, "category_key": "GROCERY", "channel": "IN_STORE"}` → 201; `GET /api/v1/transactions?category=GROCERY&q=bak` finds it (answer has `count` and `sum_minor`); `POST /api/v1/documents` (multipart: a jpg or pdf under 10 MB, `type`, `transaction_id`) → 201 and the file is in the `storage` volume; `POST /api/v1/documents/{id}/access-token` then open the returned address (after 5 minutes: 401). Everything of another user answers 404.
 
+### 3.2.6 Try the bank screenshot import (P08)
+
+Rebuild the backend (`docker compose -f infra/docker-compose.yml up -d --build backend`) and reinstall the app (3.3). No new migration. The AI switch in Settings must be on. Supported banks (bank-specific hints): **Garanti BBVA** (also the Bonus cards), **Kuveyt Türk**, **Akbank**. Other banks are read without hints.
+
+**On the emulator or a phone (debug build)**
+1. Put a screenshot of your card transactions in the gallery. **(+) → Galeriden Ekle → Fotoğraf seç → Banka ekran görüntüsü**. The screenshot is read **on the phone** (OCR + masking); only the masked text goes to the server. The blue note says so.
+2. **"Banka ekran görüntüsü"** opens: the bank is detected from the text (the **Banka** chip; tap it to change, the screen is read again), then one card per purchase: merchant, date, amount, installment chip (`1/3`, `3 taksit`). Compare the rows and amounts with the screenshot.
+3. Untick rows you do not want, tap the pencil to fix a merchant, amount, date or category, then **Seçilenleri Kaydet**. "N harcama kaydedildi." and the purchases appear in **Harcamalar** (evidence chip **Banka**).
+4. Special rows: card-bill payments ("Kart Ödemesi", "Ödeme - Teşekkür") are listed under **Atlanan satırlar** as "Kart ödemesi" and never saved; refunds (`+`, "İade") are under **Olası iadeler** and are not saved as purchases (P12 handles refunds); loyalty-point rows and 0,00 TL rows are dropped; a **current-account** screen ("Hesap Hareketleri") answers "Bu ekran kart hareketi değil".
+5. Import the **same screenshot twice** (or two overlapping ones): the second time the rows are under **Daha önce eklenmiş** and are not selected.
+6. The screenshot is never saved or uploaded; the masked text is kept on the server for 30 days (for the evaluation) and then deleted at the next backend start.
+
+**Swagger** (Register and **Authorize** as in 3.2.2): `POST /api/v1/extract/bank-screenshot` with `{"masked_text": "…", "bank_hint": "garanti", "capture_date": "2026-11-21"}` (use made-up text, never a real screenshot) → rows, `skipped`; `POST /api/v1/observations/confirm-batch` with `{"ids": ["<observation_id>"]}` (optional `edits` per id) saves them. Another user's observations answer 404.
+
+**Real model, masked text only (optional)**: `uv run python ../ai/experiments/run_bank_extract_manual.py` reads `ai/datasets/bank_masked` (git-ignored) and prints per-file accuracy; `--no-hints` shows the unseen-bank behaviour.
+
 ### 3.3 The Android app
 
 1. Start an emulator: Android Studio → **Virtual Device Manager → ▶**, or `flutter emulators --launch <emulator_id>`. Wait until you see the Android home screen.

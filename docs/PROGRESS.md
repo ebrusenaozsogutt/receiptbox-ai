@@ -14,7 +14,7 @@ Update after every phase. Newest entry on top of the log.
 | P05 | AI provider layer & receipt extraction | ✅ Done | 2026-11-19 |
 | P06 | e-Invoice QR, merchant normalisation, categorisation | ✅ Done | 2026-11-19 |
 | P07 | Receipt review flow, manual entry, documents | ✅ Done | 2026-11-19 |
-| P08 | Bank screenshot import | ⬜ | |
+| P08 | Bank screenshot import | ✅ Done (CI pending) | 2026-11-22 |
 | P09 | Matching engine 1:1 | ⬜ | |
 | P10 | Installments 1:N | ⬜ | |
 | P11 | Dashboard, analytics, budgets | ⬜ | |
@@ -35,6 +35,32 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner:
 - Known gaps / follow-ups:
 -->
+
+### 2026-11-22 — P08 Bank screenshot import (done locally; CI check follows in its own entry)
+- Done:
+  - **Decisions** (D-013, D-014; implementation choices P-061…P-064 in DECISIONS.md): supported banks **Garanti BBVA** (folders `garanti` + `bonus`, Bonus is Garanti's card brand), **Kuveyt Türk**, **Akbank**, each with its own prompt hints (`prompts/banks/*.md`); **QNB and Ziraat** have no hints and are the held-out "unseen bank" set (kept for P15 evaluation E1). POS slips are one row; current-account screens are refused; card-bill payments are "Kart ödemesi" and never saved; refunds stay observations "possible refund" (P12); loyalty-point and 0,00 TL rows are dropped.
+  - **On-device privacy first**: a check of the real screenshots found 7 kinds of leaks in the masked text (balance and statement lines, account numbers, transfer parties, first card digits, slip name lines, an OCR spelling of "Bakiye"); `PiiMasker.mask(bank: true)` now covers all of them (only the kinds were reported, never the values). The bank screenshot image never leaves the phone and is never kept (a test checks the source for upload and retained-image code).
+  - **Backend**: `POST /extract/bank-screenshot` {masked_text, bank_hint?, capture_date} → screen check (account screens: `BANK_SCREEN_NOT_SUPPORTED`) → `AIProvider.extract_bank_rows` (Gemini + Fake) with `bank_rows.v1.md` + the bank's hints → **deterministic validation** (`ai/bank_validation.py`: the amount must be printed in the text and in TL, the sign gives the direction, Akbank's inverted sign, payments set aside, refunds flagged, headers/totals/points/zero dropped, a date the model made up is dropped because it must appear in the text) → `date_resolver.py` (Bugün/Dün/weekday/`12 Kasım`/`12.11`/`12/11/2026`, never in the future, 2 Jan + "30 Aralık" = previous year) → `installment_marker.py` (8+ variants) → merchant and category suggestions (no AI per row) → fingerprint (spec 7.2; identical rows in one screenshot get an occurrence number) → `BANK_SCREENSHOT` observations `PENDING_REVIEW` or `DUPLICATE`. `POST /observations/confirm-batch` {ids, edits} creates purchases for the selected debit rows (credits stay observations). Masked text of the first stored row is nulled after 30 days at startup (`services/retention.py`). **The LLM computes nothing**: it copies text; amounts become kuruş in Python.
+  - **Mobile**: keyword `BankDetector` (garanti / kuveyt / akbank; other banks mean no hint), **Banka ekran görüntüsü** screen: "Banka" chip to change the bank (re-reads the text), one card per row (merchant, date, amount, category, installment chip `1/3`, "KONTROL ET" on weak fields, "Tarih okunamadı" blocks saving until a date is typed), select / deselect all, edit sheet, sections "Olası iadeler", "Daha önce eklenmiş", "Atlanan satırlar", "Seçilenleri Kaydet". Bank screenshots no longer open the P04 debug panel (still reachable by the debug link).
+  - **Manual real-model run** (`ai/experiments/run_bank_extract_manual.py`; masked text only; reads the git-ignored `ai/datasets/bank_masked` and `bank_expected`).
+- Tests added: backend **1033** (was 764): date resolver, installment markers, validation, 19 sanitized fixture sets (only masked or synthetic text, same layouts), provider and retention, API (extract, duplicates, confirm-batch, cross-user 404); Flutter **543** (was 467): detector, models, import screen (rows, refunds, duplicates, skipped, bank change, edit, save, errors, no upload of the image), masker bank rules. FakeProvider only.
+- Checks run on 2026-11-22: `ruff check`, `ruff format --check`, `pytest` (1033 passed, Docker database running), `flutter analyze` (no issues), `flutter test` (543 passed).
+- **Accuracy with the real model** (`gemini-3.5-flash-lite`, end to end: the owner's masked OCR text, OCR mistakes count as mistakes, 2026-11-22):
+
+  | | screenshots exactly right | row recall | row precision | date ok | installment ok | payments/points imported |
+  |---|---|---|---|---|---|---|
+  | **Supported banks** (Garanti/Bonus, Kuveyt, Akbank; 16 screenshots) | 12/16 (75 %) | 52/55 (94.5 %) | 52/53 (98.1 %) | 50/52 | 50/52 | 0 |
+  | **Unseen banks** (QNB, Ziraat; 2 screenshots, no hints) | 1/2 (one run: 0/2, the model is not deterministic) | 5/7 (71 %) | 5/5 (100 %) | 5/5 | 5/5 | 0 |
+
+  Both account screens were refused. Misses: Akbank POS slips (date and installment garbled by OCR), one Akbank row cut off at the bottom, Kuveyt `1.605,o0` (letter o in the amount, dropped, shown under "Atlanan satırlar") and one amount OCR-read as `3.014,39` instead of `3.014,89`, QNB: one or two rows missing and merchant names garbled by OCR (`Asil Kart`, `Ek Kart- ka`). The small sample (18 screenshots from one person) means these percentages are only indicative; the real evaluation is P15.
+- **Checked on the emulator** (debug build, real backend and real Gemini, all 19 of the owner's screenshots pushed to the emulator gallery and shared to the app; nothing uploaded except masked text): the bank was detected for Garanti/Bonus, Kuveyt and Akbank (QNB and Ziraat: "Diğer banka"); row counts, amounts, dates and installment chips were compared with each screenshot: Garanti/Bonus 04–11 all as expected (04 and 05 are account screens: "Bu ekran kart hareketi değil"; 09 has one possible refund), Kuveyt 12, 13, 14, 16, 17 as expected (refunds under "Olası iadeler"), Kuveyt 15 and Akbank 01, 02, 03 as in the list above, Ziraat 2/2, QNB 4/5. **Save**: screenshot 06 → "5 harcama kaydedildi." and the five purchases (2.878,57 TL together) are in Harcamalar. **Duplicate**: screenshot 07 (identical to 06) → all rows under "Daha önce eklenmiş (5)", none selectable. Found there and fixed: the text "Harcama satırı bulunamadı" was shown for a screenshot of only known rows (now "Yeni harcama yok"), the İptal button was full width (now a text button). The two fixes were covered by widget tests; **the final debug build with those two fixes was not reinstalled on the emulator**.
+- Manual test steps for the owner: README §3.2.6.
+- Known gaps / follow-ups:
+  - **Real phone not tried** (emulator only). Owner check: import 3 real screenshots from each bank and compare with the bank app.
+  - OCR mistakes reach the user as wrong digits or dropped rows (the amount must be printed in the text, so a letter in an amount drops the row instead of guessing): the user sees them in "Atlanan satırlar" or fixes them in the edit sheet. Akbank POS slips usually come without date and installment ("Tarih okunamadı" until the user types one).
+  - Model choice: tests ran on `gemini-3.5-flash-lite` (the default of `AI_MODEL_EXTRACT`). A larger model reads the Garanti lists more reliably (list misalignment seen with flash-lite); the owner can switch with the environment variable and rerun the manual script, quota allowing.
+  - Every bank row gets the category "Diğer" for now (no AI per row; merchants not in the seed list have no default); the user can set it in the edit sheet. Matching with receipts is P09, installments P10, refunds P12.
+  - The 19 fixture sets are built from masked texts (names, amounts and dates changed by a sanitizer) and synthetic text in the same layouts. `qnb_1` and `ziraat_1` are such sanitized copies, used only to check that these banks are read **without** a hint; the unchanged masked texts stay git-ignored (`ai/datasets/`) and are reserved for the P15 evaluation.
 
 ### 2026-11-19 — P07 CI confirmed
 - CI run on `main` (`67bf62c`): jobs `backend` (764 tests on a fresh PostgreSQL, fake provider only) and `mobile` (467 Flutter tests) both green. P07 and Milestone M1 are closed.

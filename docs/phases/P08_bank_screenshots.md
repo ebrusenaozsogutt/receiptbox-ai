@@ -23,11 +23,11 @@ Matching with receipts (P09), installment logic (P10), refunds (P12), statement 
 
 ## Acceptance criteria
 
-- [ ] For each supported bank, ≥ 3 masked sample texts produce correct rows (fixtures with expected output).
-- [ ] Relative dates resolved correctly (tests incl. year boundary: capture 2 Jan, row "30 Aralık" → previous year).
-- [ ] Installment markers parsed in ≥ 8 variants.
-- [ ] Uploading the same screenshot twice creates no new confirmed rows (fingerprint → `DUPLICATE`).
-- [ ] No image bytes of bank screenshots reach the backend (test/inspection note).
+- [x] For each supported bank, ≥ 3 masked sample texts produce correct rows (fixtures with expected output).
+- [x] Relative dates resolved correctly (tests incl. year boundary: capture 2 Jan, row "30 Aralık" → previous year).
+- [x] Installment markers parsed in ≥ 8 variants.
+- [x] Uploading the same screenshot twice creates no new confirmed rows (fingerprint → `DUPLICATE`).
+- [x] No image bytes of bank screenshots reach the backend (test/inspection note).
 
 ## Tests
 
