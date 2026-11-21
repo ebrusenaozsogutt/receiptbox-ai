@@ -11,12 +11,15 @@ import 'package:receiptbox/features/auth/data/auth_api.dart';
 import 'package:receiptbox/features/auth/domain/user_profile.dart';
 import 'package:receiptbox/features/capture/data/capture_providers.dart';
 import 'package:receiptbox/features/capture/data/extraction_api.dart';
+import 'package:receiptbox/features/capture/domain/bank_models.dart';
 import 'package:receiptbox/features/capture/domain/capture_payload.dart';
 import 'package:receiptbox/features/capture/domain/extraction_result.dart';
 import 'package:receiptbox/features/health/data/health_repository.dart';
 import 'package:receiptbox/features/health/domain/health_status.dart';
 import 'package:receiptbox/features/transactions/data/transactions_api.dart';
+
 import 'purchase_fakes.dart';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:receiptbox/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -255,6 +258,31 @@ class FakeExtractionApi implements ExtractionApi {
     aiUsed: true,
     usedQr: false,
   );
+
+  // Bank screenshots (P08).
+  final bankCalls = <({CapturePayload payload, String? bankHint})>[];
+  Object? bankError;
+  Completer<void>? bankGate;
+
+  /// What the server answers for a bank screenshot; tests replace it.
+  BankImport bankResult = const BankImport(
+    bankKey: BankKey.garanti,
+    rows: [],
+    skipped: [],
+  );
+
+  @override
+  Future<BankImport> extractBank(
+    CapturePayload payload, {
+    required String? bankHint,
+    required bool aiConsent,
+  }) async {
+    bankCalls.add((payload: payload, bankHint: bankHint));
+    if (!aiConsent) throw const AiConsentOffException();
+    if (bankGate != null) await bankGate!.future;
+    if (bankError != null) throw bankError!;
+    return bankResult;
+  }
 
   @override
   Future<ExtractionResult> extract(

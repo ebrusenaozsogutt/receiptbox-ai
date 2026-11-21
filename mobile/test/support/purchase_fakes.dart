@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:receiptbox/core/networking/api_error.dart';
+import 'package:receiptbox/features/capture/domain/bank_models.dart';
 import 'package:receiptbox/features/transactions/data/transactions_api.dart';
 import 'package:receiptbox/features/transactions/domain/purchase_models.dart';
 import 'package:receiptbox/features/transactions/domain/spending_category.dart';
@@ -180,6 +181,24 @@ class FakeTransactionsApi implements TransactionsApi {
     final detail = _from('tx-${++_counter}', input, EvidenceKind.receipt);
     purchases.add(detail);
     return detail;
+  }
+
+  final batches = <({List<String> ids, Map<String, BankRowEdit> edits})>[];
+  BatchResult batchResult = const BatchResult(created: 0, skipped: {});
+  Completer<void>? batchGate;
+
+  @override
+  Future<BatchResult> confirmBatch(
+    List<String> ids,
+    Map<String, BankRowEdit> edits,
+  ) async {
+    if (batchGate != null) await batchGate!.future;
+    _checkWrite();
+    batches.add((ids: ids, edits: edits));
+    return BatchResult(
+      created: ids.length - batchResult.skipped.length,
+      skipped: batchResult.skipped,
+    );
   }
 
   @override

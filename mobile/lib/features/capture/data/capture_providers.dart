@@ -87,9 +87,9 @@ Future<List<CameraDescription>> Function() camerasLoader(Ref ref) =>
     availableCameras;
 
 /// Where a finished capture is shown: receipts and invoices go to the review screen, bank
-/// screenshots to the "Okunan bilgiler" screen (their import arrives in P08).
+/// screenshots to the bank import screen.
 String captureRouteFor(CaptureKind kind) =>
-    kind == CaptureKind.receipt ? '/capture/review' : '/capture/result';
+    kind == CaptureKind.receipt ? '/capture/review' : '/capture/bank-import';
 
 /// Where the capture currently is. The result screen shows whatever this says.
 sealed class CaptureFlowState {

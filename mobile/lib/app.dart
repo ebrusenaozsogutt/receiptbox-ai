@@ -13,6 +13,7 @@ import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
 import 'features/auth/presentation/splash_screen.dart';
 import 'features/capture/data/capture_providers.dart';
+import 'features/capture/presentation/bank/bank_import_screen.dart';
 import 'features/capture/presentation/camera_screen.dart';
 import 'features/capture/presentation/capture_result_screen.dart';
 import 'features/capture/presentation/pick_image_screen.dart';
@@ -161,6 +162,11 @@ GoRouter router(Ref ref) {
         path: '/capture/review',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ReviewScreen(),
+      ),
+      GoRoute(
+        path: '/capture/bank-import',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const BankImportScreen(),
       ),
       GoRoute(
         path: '/capture/result',

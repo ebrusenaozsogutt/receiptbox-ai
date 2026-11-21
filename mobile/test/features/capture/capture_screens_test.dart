@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:receiptbox/app.dart';
 import 'package:receiptbox/core/privacy/pii_masker.dart';
 import 'package:receiptbox/features/capture/data/capture_providers.dart';
 import 'package:receiptbox/features/capture/data/media_sources.dart';
@@ -22,6 +23,21 @@ Future<TestApp> _openApp(
   await tester.pumpWidget(app.app());
   await tester.pumpAndSettle();
   return app;
+}
+
+/// The debug "Okunan bilgiler" screen is reached from the review screens' debug link: this does the
+/// same (a bank screenshot no longer opens it by itself).
+Future<void> _showResultScreen(
+  WidgetTester tester,
+  TestApp app,
+  CaptureResult result,
+) async {
+  final container = ProviderScope.containerOf(
+    tester.element(find.byType(MaterialApp)),
+  );
+  container.read(captureFlowProvider.notifier).showForDebug(result);
+  unawaited(container.read(routerProvider).push('/capture/result'));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _openAddAction(WidgetTester tester, String route) async {
@@ -65,19 +81,9 @@ void main() {
       expect(input.captureDate, DateTime(2026, 11, 1));
       expect(input.isPdf, isFalse);
 
-      expect(find.text('Okunan bilgiler'), findsOneWidget);
-      expect(find.text('1 hassas bilgi gizlendi: 1 telefon.'), findsOneWidget);
-      final masked = tester.widget<Text>(
-        find.descendant(
-          of: find.byKey(const Key('masked_text')),
-          matching: find.byType(Text),
-        ),
-      );
-      expect(masked.data, contains('[PHONE]'));
-      expect(masked.data, isNot(contains('0532')));
-      // Debug build: the original is shown next to it, with a warning.
-      expect(find.text('Orijinal metin (yalnızca debug)'), findsOneWidget);
-      expect(find.textContaining('hiçbir yere gönderilmez'), findsOneWidget);
+      // A bank screenshot opens the bank import screen (P08), not the debug "Okunan bilgiler".
+      expect(find.text('Banka ekran görüntüsü'), findsOneWidget);
+      expect(find.text('Okunan bilgiler'), findsNothing);
     });
 
     testWidgets('closing the kind sheet reads nothing', (tester) async {
@@ -141,7 +147,7 @@ void main() {
 
       expect(find.text('Bu bir ne?'), findsNothing);
       expect(app.pipeline.inputs.single.kind, CaptureKind.bankScreenshot);
-      expect(find.text('Okunan bilgiler'), findsOneWidget);
+      expect(find.text('Banka ekran görüntüsü'), findsOneWidget);
     });
   });
 
@@ -161,7 +167,8 @@ void main() {
 
       app.pipeline.gate!.complete();
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('masked_text')), findsOneWidget);
+      expect(find.text('Yazı telefonunda okunuyor…'), findsNothing);
+      expect(find.text('Banka ekran görüntüsü'), findsOneWidget);
     });
 
     testWidgets(
@@ -190,20 +197,21 @@ void main() {
       tester,
     ) async {
       final app = await _openApp(tester);
-      app.pipeline.result = CaptureResult(
-        payload: CapturePayload(
-          kind: CaptureKind.receipt,
-          maskedText: 'x',
-          qrPayload: const {'ettn': 'abc'},
-          captureDate: DateTime(2026, 11, 18),
-          source: CaptureSource.gallery,
+      await _showResultScreen(
+        tester,
+        app,
+        CaptureResult(
+          payload: CapturePayload(
+            kind: CaptureKind.receipt,
+            maskedText: 'x',
+            qrPayload: const {'ettn': 'abc'},
+            captureDate: DateTime(2026, 11, 18),
+            source: CaptureSource.gallery,
+          ),
+          maskedCounts: const {PiiType.iban: 2, PiiType.email: 1},
+          pageCount: 2,
         ),
-        maskedCounts: const {PiiType.iban: 2, PiiType.email: 1},
-        pageCount: 2,
       );
-      await _openAddAction(tester, '/capture/bank');
-      await tester.tap(find.byKey(const Key('pick_image_button')));
-      await tester.pumpAndSettle();
 
       expect(find.textContaining('e-Fatura QR kodu bulundu'), findsOneWidget);
       expect(
@@ -214,11 +222,34 @@ void main() {
       expect(find.byKey(const Key('original_text')), findsNothing);
     });
 
+    testWidgets(
+      'the debug result screen shows the masked text and the original',
+      (tester) async {
+        final app = await _openApp(tester);
+        await _showResultScreen(tester, app, app.pipeline.result);
+
+        expect(find.text('Okunan bilgiler'), findsOneWidget);
+        expect(
+          find.text('1 hassas bilgi gizlendi: 1 telefon.'),
+          findsOneWidget,
+        );
+        final masked = tester.widget<Text>(
+          find.descendant(
+            of: find.byKey(const Key('masked_text')),
+            matching: find.byType(Text),
+          ),
+        );
+        expect(masked.data, contains('[PHONE]'));
+        expect(masked.data, isNot(contains('0532')));
+        // Debug build: the original is shown next to it, with a warning.
+        expect(find.text('Orijinal metin (yalnızca debug)'), findsOneWidget);
+        expect(find.textContaining('hiçbir yere gönderilmez'), findsOneWidget);
+      },
+    );
+
     testWidgets('"Bitti" goes home and forgets the result', (tester) async {
-      await _openApp(tester);
-      await _openAddAction(tester, '/capture/bank');
-      await tester.tap(find.byKey(const Key('pick_image_button')));
-      await tester.pumpAndSettle();
+      final app = await _openApp(tester);
+      await _showResultScreen(tester, app, app.pipeline.result);
 
       await tester.dragUntilVisible(
         find.byKey(const Key('result_done_button')),
@@ -262,7 +293,7 @@ void main() {
         expect(input.source, CaptureSource.share);
         expect(input.file.path, '/cache/fatura.pdf');
         expect(input.captureDate, DateTime(2026, 10, 5));
-        expect(find.text('Okunan bilgiler'), findsOneWidget);
+        expect(find.text('Banka ekran görüntüsü'), findsOneWidget);
         expect(app.sharedMedia.resets, greaterThan(0));
       },
     );
