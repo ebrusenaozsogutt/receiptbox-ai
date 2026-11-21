@@ -178,15 +178,22 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
         ),
         const SizedBox(height: AppSpacing.m),
         if (purchases.isEmpty && import.possibleRefunds.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-            child: EmptyState(
-              icon: Icons.receipt_long_outlined,
-              title: 'Harcama satırı bulunamadı',
-              message:
-                  'Bu görüntüde kaydedilecek bir harcama görünmüyor. '
-                  'Kart hareketlerinin listesini seçmeyi dene.',
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+            child: import.duplicates.isNotEmpty
+                ? const EmptyState(
+                    icon: Icons.check_circle_outline,
+                    title: 'Yeni harcama yok',
+                    message:
+                        'Bu görüntüdeki satırların hepsi daha önce eklenmiş.',
+                  )
+                : const EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Harcama satırı bulunamadı',
+                    message:
+                        'Bu görüntüde kaydedilecek bir harcama görünmüyor. '
+                        'Kart hareketlerinin listesini seçmeyi dene.',
+                  ),
           )
         else ...[
           Row(
@@ -748,7 +755,7 @@ class _Working extends StatelessWidget {
           ),
           if (onCancel != null) ...[
             const SizedBox(height: AppSpacing.xxl),
-            OutlinedButton(
+            TextButton(
               key: const Key('bank_extract_cancel'),
               onPressed: onCancel,
               child: const Text('İptal'),

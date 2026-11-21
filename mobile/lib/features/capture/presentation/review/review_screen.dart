@@ -409,7 +409,7 @@ class _Working extends StatelessWidget {
           ),
           if (onCancel != null) ...[
             const SizedBox(height: AppSpacing.xxl),
-            OutlinedButton(
+            TextButton(
               key: const Key('review_extract_cancel'),
               onPressed: onCancel,
               child: const Text('İptal'),

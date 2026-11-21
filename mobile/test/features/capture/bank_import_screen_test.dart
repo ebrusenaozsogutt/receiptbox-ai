@@ -207,6 +207,22 @@ void main() {
       );
       expect(find.text('Harcama satırı bulunamadı'), findsOneWidget);
     });
+
+    testWidgets('a screenshot of only known rows says they are known', (
+      tester,
+    ) async {
+      await _openBank(
+        tester,
+        import: BankImport(
+          bankKey: BankKey.garanti,
+          rows: [row('d1', 'ESKI SATIR', 1000, duplicate: true)],
+          skipped: const [],
+        ),
+      );
+      expect(find.text('Yeni harcama yok'), findsOneWidget);
+      expect(find.text('Harcama satırı bulunamadı'), findsNothing);
+      expect(find.text('Daha önce eklenmiş (1)'), findsOneWidget);
+    });
   });
 
   group('the bank', () {
