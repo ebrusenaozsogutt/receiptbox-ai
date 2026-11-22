@@ -11,6 +11,7 @@ import '../../../core/utils/money_format.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_view.dart';
 import '../../capture/presentation/review/review_widgets.dart';
+import '../../matching/data/matching_providers.dart';
 import '../data/document_providers.dart';
 import '../data/transactions_api.dart';
 import '../data/transactions_providers.dart';
@@ -86,7 +87,7 @@ class TransactionDetailScreen extends ConsumerWidget {
             message: error is ApiError ? error.message : 'Harcama yüklenemedi.',
             onRetry: () => ref.invalidate(purchaseDetailProvider(purchaseId)),
           ),
-          data: (data) => _DetailBody(detail: data),
+          data: (data) => _DetailBody(detail: data, purchaseId: purchaseId),
         ),
       ),
     );
@@ -113,13 +114,59 @@ class _Card extends StatelessWidget {
   }
 }
 
-class _DetailBody extends StatelessWidget {
-  const _DetailBody({required this.detail});
+class _DetailBody extends ConsumerWidget {
+  const _DetailBody({required this.detail, required this.purchaseId});
 
   final PurchaseDetail detail;
+  final String purchaseId;
+
+  /// "Ayır" (P09): one record of a merged purchase becomes a purchase of its own.
+  Future<void> _separate(
+    BuildContext context,
+    WidgetRef ref,
+    EvidenceItem item,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('${item.kind.label} kaydı ayrılsın mı?'),
+        content: const Text(
+          'Bu kayıt ayrı bir harcama olur. Aynı alışveriş iki harcama olarak '
+          'sayılır.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            key: const Key('separate_confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Ayır'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(transactionsApiProvider)
+          .unmerge(purchaseId, item.observationId);
+      ref
+        ..invalidate(purchaseDetailProvider(purchaseId))
+        ..invalidate(purchaseListProvider)
+        ..invalidate(pendingMatchesProvider);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Kayıtlar ayrıldı: iki ayrı harcama var.')),
+      );
+    } on ApiError catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final purchase = detail.purchase;
     final category = purchase.category ?? SpendingCategory.other;
     return ListView(
@@ -171,6 +218,32 @@ class _DetailBody extends StatelessWidget {
                     ),
                 ],
               ),
+              if (detail.isMerged) ...[
+                const SizedBox(height: AppSpacing.m),
+                Text('Birleşmiş kayıtlar', style: AppTextStyles.titleS),
+                for (final item in detail.evidenceItems)
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.amountMinor == null
+                                ? item.kind.label
+                                : '${item.kind.label} · '
+                                      '${formatMoneyTl(item.amountMinor!)}',
+                            style: AppTextStyles.body,
+                          ),
+                        ),
+                        TextButton(
+                          key: Key('separate_${item.observationId}'),
+                          onPressed: () => _separate(context, ref, item),
+                          child: const Text('Ayır'),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ],
           ),
         ),

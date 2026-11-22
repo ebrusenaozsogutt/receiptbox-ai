@@ -1,3 +1,4 @@
+import '../../matching/domain/match_models.dart';
 import '../../transactions/domain/spending_category.dart';
 
 /// The banks with bank-specific help on the server (DECISIONS D-013). Every other bank (QNB,
@@ -31,6 +32,7 @@ class BankRow {
     required this.isDuplicate,
     required this.confidence,
     required this.category,
+    this.match,
   });
 
   final String observationId;
@@ -51,6 +53,9 @@ class BankRow {
   /// HIGH / MEDIUM / LOW per field (merchant, amount, date, installment).
   final Map<String, String> confidence;
   final SpendingCategory category;
+
+  /// P09: this row is (auto) or may be (suggest) the same purchase as one already saved.
+  final BankRowMatch? match;
 
   /// A purchase that can be saved now.
   bool get isSelectable => kind == BankRowKind.purchase && !isDuplicate;
@@ -91,6 +96,9 @@ class BankRow {
           entry.key: entry.value as String,
       },
       category: SpendingCategory.fromKey(categoryKey) ?? SpendingCategory.other,
+      match: json['match'] == null
+          ? null
+          : BankRowMatch.fromJson(json['match'] as Map<String, dynamic>),
     );
   }
 }
@@ -180,12 +188,23 @@ class BankRowEdit {
 
 /// The answer of `POST /observations/confirm-batch`.
 class BatchResult {
-  const BatchResult({required this.created, required this.skipped});
+  const BatchResult({
+    required this.created,
+    required this.skipped,
+    this.merged = const [],
+    this.suggested = const [],
+  });
 
   final int created;
 
   /// observation id -> reason (POSSIBLE_REFUND, NOT_PENDING, MISSING_DATE, ...).
   final Map<String, String> skipped;
+
+  /// Rows that were attached to a purchase you already had (each can be undone).
+  final List<UndoableMerge> merged;
+
+  /// Rows that may be the same as an existing purchase: they wait for the user's answer.
+  final List<MatchSuggestion> suggested;
 
   factory BatchResult.fromJson(Map<String, dynamic> json) => BatchResult(
     created: (json['created'] as List<dynamic>).length,
@@ -194,5 +213,19 @@ class BatchResult {
         (item as Map<String, dynamic>)['observation_id'] as String:
             item['reason'] as String,
     },
+    merged: [
+      for (final item in json['merged'] as List<dynamic>? ?? const [])
+        UndoableMerge(
+          transactionId:
+              ((item as Map<String, dynamic>)['transaction']
+                      as Map<String, dynamic>)['id']
+                  as String,
+          observationId: item['observation_id'] as String,
+        ),
+    ],
+    suggested: [
+      for (final item in json['suggested'] as List<dynamic>? ?? const [])
+        MatchSuggestion.fromJson(item as Map<String, dynamic>),
+    ],
   );
 }

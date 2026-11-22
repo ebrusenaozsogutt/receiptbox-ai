@@ -10,6 +10,10 @@ import '../../../core/widgets/loading_view.dart';
 import '../../../core/widgets/message_banner.dart';
 import '../../capture/domain/review_form.dart';
 import '../../capture/presentation/review/fields_card.dart';
+import '../../matching/data/matching_providers.dart';
+import '../../matching/domain/match_models.dart';
+import '../../matching/presentation/match_sheet.dart';
+import '../../matching/presentation/merge_feedback.dart';
 import '../data/transactions_api.dart';
 import '../data/transactions_providers.dart';
 import '../domain/purchase_models.dart';
@@ -89,19 +93,50 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
         note: _form.note,
       );
       final api = ref.read(transactionsApiProvider);
+      final container = ProviderScope.containerOf(context);
       final id = widget.purchaseId;
+      SaveResult? saved;
       if (id == null) {
-        await api.createManual(input);
+        saved = await api.createManual(input);
       } else {
         await api.update(id, input);
         ref.invalidate(purchaseDetailProvider(id));
       }
-      ref.invalidate(purchaseListProvider);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(id == null ? 'Harcama kaydedildi.' : 'Değişiklikler kaydedildi.'),
-        ),
-      );
+      ref
+        ..invalidate(purchaseListProvider)
+        ..invalidate(pendingMatchesProvider);
+      var message = id == null
+          ? 'Harcama kaydedildi.'
+          : 'Değişiklikler kaydedildi.';
+      if (saved is NeedsAnswer) {
+        // It may be a purchase you already have (P09): ask before anything is created.
+        if (!mounted) return;
+        final answer = await showMatchSheet(context, saved.suggestions);
+        ref
+          ..invalidate(purchaseListProvider)
+          ..invalidate(pendingMatchesProvider);
+        message = answer == null
+            ? 'Eşleşme sorusu bekliyor. Harcamalar ekranından cevaplayabilirsin.'
+            : answer.merged
+            ? 'Mevcut harcamayla birleştirildi.'
+            : 'Harcama kaydedildi.';
+      }
+      final merge = saved is Saved ? saved.detail.merge : null;
+      if (saved is Saved && merge != null && merge.isAuto) {
+        showMergedSnackBar(
+          messenger: messenger,
+          container: container,
+          message: 'Bu harcama mevcut bir kayıtla eşleşti ve birleştirildi.',
+          merges: [
+            UndoableMerge(
+              transactionId: saved.detail.purchase.id,
+              observationId: merge.observationId,
+            ),
+          ],
+        );
+      } else {
+        messenger.showSnackBar(SnackBar(content: Text(message)));
+      }
       if (id == null) {
         router.go('/transactions');
       } else {

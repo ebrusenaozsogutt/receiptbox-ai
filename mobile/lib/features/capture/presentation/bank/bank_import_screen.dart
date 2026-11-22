@@ -13,8 +13,13 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../../../core/utils/money_format.dart';
 import '../../../../core/widgets/empty_state.dart';
+import '../../../../core/widgets/match_badge.dart';
 import '../../../../core/widgets/message_banner.dart';
 import '../../../../core/widgets/review_badge.dart';
+import '../../../matching/data/matching_providers.dart';
+import '../../../matching/domain/match_models.dart';
+import '../../../matching/presentation/match_sheet.dart';
+import '../../../matching/presentation/merge_feedback.dart';
 import '../../../transactions/data/transactions_providers.dart';
 import '../../data/capture_providers.dart';
 import '../../domain/bank_models.dart';
@@ -404,8 +409,29 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
                               foreground: AppColors.textMuted,
                             ),
                           if (row.needsCheck && selectable) const ReviewBadge(),
+                          if (row.match != null && selectable)
+                            MatchBadge(
+                              key: Key('match_badge_${row.observationId}'),
+                              kind: row.match!.state == BankMatchState.auto
+                                  ? MatchBadgeKind.matched
+                                  : MatchBadgeKind.possible,
+                            ),
                         ],
                       ),
+                      if (row.match != null && selectable) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          row.match!.state == BankMatchState.auto
+                              ? 'Mevcut harcamayla birleşecek: '
+                                    '${row.match!.transaction.merchant}'
+                              : 'Kaydedince sorulacak: '
+                                    '${row.match!.transaction.merchant} ile aynı olabilir',
+                          key: Key('match_hint_${row.observationId}'),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -559,21 +585,49 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
     setState(() => _problem = null);
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
+    final container = ProviderScope.containerOf(context);
     try {
       final outcome = await ref
           .read(bankImportControllerProvider.notifier)
           .save();
-      ref.invalidate(purchaseListProvider);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            outcome.skipped == 0
-                ? '${outcome.created} harcama kaydedildi.'
-                : '${outcome.created} harcama kaydedildi, '
-                      '${outcome.skipped} satır kaydedilemedi.',
-          ),
-        ),
-      );
+      ref
+        ..invalidate(purchaseListProvider)
+        ..invalidate(pendingMatchesProvider);
+
+      // P09: rows that may be the same as a purchase you have are asked about, one by one. A
+      // sheet that is closed leaves its question open (the Harcamalar screen shows it again).
+      var joined = outcome.merged.length;
+      var separate = 0;
+      for (final group in groupByObservation(outcome.suggested).values) {
+        if (!mounted) break;
+        final answer = await showMatchSheet(context, group);
+        if (answer == null) break;
+        if (answer.merged) {
+          joined++;
+        } else {
+          separate++;
+        }
+      }
+      ref
+        ..invalidate(purchaseListProvider)
+        ..invalidate(pendingMatchesProvider);
+
+      final parts = [
+        '${outcome.created + separate} harcama kaydedildi',
+        if (joined > 0) '$joined satır mevcut harcamayla birleşti',
+        if (outcome.skipped > 0) '${outcome.skipped} satır kaydedilemedi',
+      ];
+      final text = '${parts.join(', ')}.';
+      if (outcome.merged.isEmpty) {
+        messenger.showSnackBar(SnackBar(content: Text(text)));
+      } else {
+        showMergedSnackBar(
+          messenger: messenger,
+          container: container,
+          message: text,
+          merges: outcome.merged,
+        );
+      }
       router.go('/transactions');
     } on ApiError catch (error) {
       if (mounted) setState(() => _problem = error.message);

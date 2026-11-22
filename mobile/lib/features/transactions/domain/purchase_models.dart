@@ -148,18 +148,66 @@ class DocumentInfo {
   );
 }
 
+/// One record behind a purchase: which one, and what amount it showed (a bank row may differ a
+/// little from the receipt total).
+class EvidenceItem {
+  const EvidenceItem({
+    required this.observationId,
+    required this.kind,
+    required this.amountMinor,
+  });
+
+  final String observationId;
+  final EvidenceKind kind;
+  final int? amountMinor;
+}
+
+/// How a save ended up on an existing purchase (backend `MergeOut`).
+class MergeInfo {
+  const MergeInfo({
+    required this.decisionId,
+    required this.observationId,
+    required this.isAuto,
+  });
+
+  final String decisionId;
+
+  /// The record that was attached.
+  final String observationId;
+
+  /// Merged without asking (score high enough): the app offers "Geri al".
+  final bool isAuto;
+
+  factory MergeInfo.fromJson(Map<String, dynamic> json) => MergeInfo(
+    decisionId: json['decision_id'] as String,
+    observationId: json['observation_id'] as String,
+    isAuto: json['decision'] == 'AUTO_ACCEPTED',
+  );
+}
+
 class PurchaseDetail {
   const PurchaseDetail({
     required this.purchase,
     required this.evidence,
     required this.lines,
     required this.documents,
+    this.evidenceItems = const [],
+    this.merge,
   });
 
   final Purchase purchase;
   final List<EvidenceKind> evidence;
   final List<ReceiptLine> lines;
   final List<DocumentInfo> documents;
+
+  /// The same records as [evidence], with their ids (what "Ayır" needs).
+  final List<EvidenceItem> evidenceItems;
+
+  /// Set when this answer is the result of a merge.
+  final MergeInfo? merge;
+
+  /// Two records of one purchase: each can be separated ("Ayır").
+  bool get isMerged => evidenceItems.length > 1;
 
   factory PurchaseDetail.fromJson(Map<String, dynamic> json) => PurchaseDetail(
     purchase: Purchase.fromJson(json),
@@ -169,6 +217,17 @@ class PurchaseDetail {
           (e as Map<String, dynamic>)['source'] as String,
         ),
     ],
+    evidenceItems: [
+      for (final e in json['evidence'] as List<dynamic>)
+        EvidenceItem(
+          observationId: (e as Map<String, dynamic>)['id'] as String,
+          kind: EvidenceKind.fromSource(e['source'] as String),
+          amountMinor: e['amount_minor'] as int?,
+        ),
+    ],
+    merge: json['match'] == null
+        ? null
+        : MergeInfo.fromJson(json['match'] as Map<String, dynamic>),
     lines: [
       for (final i in json['items'] as List<dynamic>)
         ReceiptLine.fromJson(i as Map<String, dynamic>),

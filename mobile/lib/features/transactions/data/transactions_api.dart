@@ -8,6 +8,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/networking/api_error.dart';
 import '../../../core/networking/dio_provider.dart';
 import '../../capture/domain/bank_models.dart';
+import '../../matching/domain/match_models.dart';
 import '../domain/purchase_models.dart';
 import '../domain/spending_category.dart';
 
@@ -25,12 +26,15 @@ abstract interface class TransactionsApi {
     int offset = 0,
   });
   Future<PurchaseDetail> detail(String id);
-  Future<PurchaseDetail> createManual(PurchaseInput input);
+
+  /// A manual entry. Since P09 it may be attached to a purchase you already have, or ask first.
+  Future<SaveResult> createManual(PurchaseInput input);
   Future<PurchaseDetail> update(String id, PurchaseInput input);
   Future<void> delete(String id);
 
-  /// Save a reviewed receipt: a NEW transaction from the observation.
-  Future<PurchaseDetail> confirm(String observationId, PurchaseInput input);
+  /// Save a reviewed receipt: a new purchase, or (P09) attached to the same purchase seen before,
+  /// or a question first ([NeedsAnswer]).
+  Future<SaveResult> confirm(String observationId, PurchaseInput input);
   Future<void> reject(String observationId);
 
   /// Save the selected bank rows as purchases (P08). [edits] holds what the user changed.
@@ -38,6 +42,20 @@ abstract interface class TransactionsApi {
     List<String> ids,
     Map<String, BankRowEdit> edits,
   );
+
+  // ---- matching (P09) -------------------------------------------------------------------------
+
+  /// The suggestions waiting for an answer.
+  Future<List<MatchSuggestion>> pendingMatches();
+
+  /// "Birleştir".
+  Future<PurchaseDetail> acceptMatch(String decisionId);
+
+  /// "Ayrı kalsın": the waiting record becomes a purchase of its own.
+  Future<PurchaseDetail> rejectMatch(String decisionId);
+
+  /// "Ayır" / "Geri al": [observationId] leaves [transactionId] and becomes its own purchase.
+  Future<UnmergeResult> unmerge(String transactionId, String observationId);
 }
 
 /// Receipt images and invoice PDFs (backend `/documents`).
@@ -98,13 +116,25 @@ class DioTransactionsApi implements TransactionsApi {
     return PurchaseDetail.fromJson(response.data!);
   });
 
+  /// 201: saved (new or merged). 202: no purchase yet, the user is asked.
+  SaveResult _saveResult(Response<Map<String, dynamic>> response) {
+    final data = response.data!;
+    if (response.statusCode == 202 || data['outcome'] == 'SUGGESTED') {
+      return NeedsAnswer([
+        for (final match in data['matches'] as List<dynamic>)
+          MatchSuggestion.fromJson(match as Map<String, dynamic>),
+      ]);
+    }
+    return Saved(PurchaseDetail.fromJson(data));
+  }
+
   @override
-  Future<PurchaseDetail> createManual(PurchaseInput input) => _guard(() async {
+  Future<SaveResult> createManual(PurchaseInput input) => _guard(() async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/transactions',
       data: input.toJson(),
     );
-    return PurchaseDetail.fromJson(response.data!);
+    return _saveResult(response);
   });
 
   @override
@@ -122,13 +152,13 @@ class DioTransactionsApi implements TransactionsApi {
       _guard(() => _dio.delete<void>('/transactions/$id'));
 
   @override
-  Future<PurchaseDetail> confirm(String observationId, PurchaseInput input) =>
+  Future<SaveResult> confirm(String observationId, PurchaseInput input) =>
       _guard(() async {
         final response = await _dio.post<Map<String, dynamic>>(
           '/observations/$observationId/confirm',
           data: input.toJson(forConfirm: true),
         );
-        return PurchaseDetail.fromJson(response.data!);
+        return _saveResult(response);
       });
 
   @override
@@ -163,6 +193,44 @@ class DioTransactionsApi implements TransactionsApi {
     );
     return BatchResult.fromJson(response.data!);
   });
+
+  @override
+  Future<List<MatchSuggestion>> pendingMatches() => _guard(() async {
+    final response = await _dio.get<List<dynamic>>(
+      '/matches',
+      queryParameters: {'decision': 'PENDING'},
+    );
+    return [
+      for (final item in response.data!)
+        MatchSuggestion.fromJson(item as Map<String, dynamic>),
+    ];
+  });
+
+  @override
+  Future<PurchaseDetail> acceptMatch(String decisionId) => _guard(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/matches/$decisionId/accept',
+    );
+    return PurchaseDetail.fromJson(response.data!);
+  });
+
+  @override
+  Future<PurchaseDetail> rejectMatch(String decisionId) => _guard(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/matches/$decisionId/reject',
+    );
+    return PurchaseDetail.fromJson(response.data!);
+  });
+
+  @override
+  Future<UnmergeResult> unmerge(String transactionId, String observationId) =>
+      _guard(() async {
+        final response = await _dio.post<Map<String, dynamic>>(
+          '/transactions/$transactionId/unmerge',
+          data: {'observation_id': observationId},
+        );
+        return UnmergeResult.fromJson(response.data!);
+      });
 }
 
 class DioDocumentsApi implements DocumentsApi {

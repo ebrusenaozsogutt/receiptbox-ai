@@ -7,6 +7,7 @@ import '../../../../core/storage/settings_store.dart';
 import '../../../transactions/data/transactions_api.dart';
 import '../../data/capture_providers.dart';
 import '../../data/extraction_api.dart';
+import '../../../matching/domain/match_models.dart';
 import '../../domain/bank_detector.dart';
 import '../../domain/bank_models.dart';
 import '../../domain/capture_payload.dart';
@@ -74,12 +75,20 @@ class BankImportState {
   );
 }
 
-/// What saving gave back.
+/// What saving gave back. P09: [merged] rows were attached to purchases you already had (each can
+/// be undone); [suggested] rows wait for the user's answer and are not purchases yet.
 class BankSaveOutcome {
-  const BankSaveOutcome({required this.created, required this.skipped});
+  const BankSaveOutcome({
+    required this.created,
+    required this.skipped,
+    this.merged = const [],
+    this.suggested = const [],
+  });
 
   final int created;
   final int skipped;
+  final List<UndoableMerge> merged;
+  final List<MatchSuggestion> suggested;
 }
 
 /// The state and the actions behind the bank import review screen (P08). Only the masked text of
@@ -200,6 +209,8 @@ class BankImportController extends _$BankImportController {
       return BankSaveOutcome(
         created: result.created,
         skipped: result.skipped.length,
+        merged: result.merged,
+        suggested: result.suggested,
       );
     } on Object {
       if (ref.mounted) state = state.copyWith(phase: BankPhase.ready);

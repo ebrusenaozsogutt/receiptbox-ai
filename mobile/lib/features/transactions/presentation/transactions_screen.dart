@@ -15,6 +15,7 @@ import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_view.dart';
 import '../../../core/widgets/screen_header.dart';
 import '../../capture/presentation/review/review_widgets.dart';
+import '../../matching/presentation/pending_matches_banner.dart';
 import '../data/transactions_providers.dart';
 import '../domain/purchase_models.dart';
 import '../domain/spending_category.dart';
@@ -92,6 +93,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
             ],
           ),
+          const PendingMatchesBanner(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
             child: TextField(

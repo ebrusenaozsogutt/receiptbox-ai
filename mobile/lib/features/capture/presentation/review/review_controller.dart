@@ -10,6 +10,7 @@ import '../../../../core/storage/settings_store.dart';
 import '../../../transactions/data/transactions_api.dart';
 import '../../../transactions/domain/purchase_models.dart';
 import '../../../transactions/domain/spending_category.dart';
+import '../../../matching/domain/match_models.dart';
 import '../../data/capture_providers.dart';
 import '../../data/extraction_api.dart';
 import '../../domain/capture_payload.dart';
@@ -60,11 +61,22 @@ class ReviewState {
 }
 
 /// What saving gave back. [imageUploaded] is null when there was no image to upload.
+///
+/// P09: when the record may be a purchase you already have, nothing was created: [detail] is null
+/// and [suggestions] holds the question. The kept image waits for the answer
+/// ([ReviewController.attachImageAfterAnswer]).
 class SaveOutcome {
-  const SaveOutcome({required this.detail, required this.imageUploaded});
+  const SaveOutcome({
+    this.detail,
+    this.suggestions = const [],
+    required this.imageUploaded,
+  });
 
-  final PurchaseDetail detail;
+  final PurchaseDetail? detail;
+  final List<MatchSuggestion> suggestions;
   final bool? imageUploaded;
+
+  bool get needsAnswer => detail == null;
 }
 
 /// The state and the actions behind the receipt review screen (Figma "02 · Fiş Kontrol").
@@ -218,21 +230,40 @@ class ReviewController extends _$ReviewController {
       );
       final api = ref.read(transactionsApiProvider);
       final observationId = state.observationId;
-      final detail = observationId == null
+      final result = observationId == null
           ? await api.createManual(input)
           : await api.confirm(observationId, input);
 
-      final image = state.retainedImage;
-      final uploaded = image == null
-          ? null
-          : await _upload(image, detail.purchase.id);
-      await deleteQuietly(image);
-      return SaveOutcome(detail: detail, imageUploaded: uploaded);
+      switch (result) {
+        case NeedsAnswer(:final suggestions):
+          // Nothing exists yet: the image is kept until the user answers.
+          if (ref.mounted) state = state.copyWith(phase: ReviewPhase.editing);
+          return SaveOutcome(suggestions: suggestions, imageUploaded: null);
+        case Saved(:final detail):
+          return SaveOutcome(
+            detail: detail,
+            imageUploaded: await attachImageAfterAnswer(detail),
+          );
+      }
     } on Object {
       if (ref.mounted) state = state.copyWith(phase: ReviewPhase.editing);
       rethrow;
     }
   }
+
+  /// Upload the kept image to the purchase (new, or the one the receipt was merged into) and
+  /// delete it. Null when there is no image.
+  Future<bool?> attachImageAfterAnswer(PurchaseDetail detail) async {
+    final image = state.retainedImage;
+    final uploaded = image == null
+        ? null
+        : await _upload(image, detail.purchase.id);
+    await deleteQuietly(image);
+    return uploaded;
+  }
+
+  /// The question was left unanswered: the kept image is not needed any more.
+  Future<void> dropImage() => deleteQuietly(state.retainedImage);
 
   Future<bool> _upload(File image, String transactionId) async {
     final isPdf = image.path.endsWith('.pdf');

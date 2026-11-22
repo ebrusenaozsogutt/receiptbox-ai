@@ -61,6 +61,12 @@ String messageForCode(String code, {int? retryAfterSeconds}) {
     case 'BANK_SCREEN_NOT_SUPPORTED':
       return 'Bu ekran bir kart hareketi listesi değil. Kart hareketlerinin göründüğü '
           'ekranı seç.';
+    case 'MATCH_NOT_PENDING':
+      return 'Bu eşleşme önerisi zaten cevaplanmış.';
+    case 'MATCH_NOT_AVAILABLE':
+      return 'Bu harcama artık birleştirilemiyor (silinmiş ya da değişmiş olabilir).';
+    case 'NOT_MERGED':
+      return 'Bu harcama iki kaydın birleşimi değil, ayrılacak bir şey yok.';
     case 'TEXT_TOO_LARGE':
       return 'Metin çok uzun (en fazla 20 KB).';
     case 'NOT_FOUND':

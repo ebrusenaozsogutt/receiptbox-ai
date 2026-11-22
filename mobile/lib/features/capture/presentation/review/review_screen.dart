@@ -11,6 +11,10 @@ import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/message_banner.dart';
+import '../../../matching/data/matching_providers.dart';
+import '../../../matching/domain/match_models.dart';
+import '../../../matching/presentation/match_sheet.dart';
+import '../../../matching/presentation/merge_feedback.dart';
 import '../../../transactions/data/transactions_providers.dart';
 import '../../data/capture_providers.dart';
 import 'fields_card.dart';
@@ -250,18 +254,74 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     setState(() => _problem = null);
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
+    final container = ProviderScope.containerOf(context);
     try {
       final outcome = await controller.save(rememberCategory: remember);
-      ref.invalidate(purchaseListProvider);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            outcome.imageUploaded == false
-                ? 'Harcama kaydedildi ama fiş görseli yüklenemedi.'
-                : 'Harcama kaydedildi.',
+      ref
+        ..invalidate(purchaseListProvider)
+        ..invalidate(pendingMatchesProvider);
+      if (outcome.needsAnswer) {
+        // It may be a purchase you already have (P09): nothing exists until the user answers.
+        if (!mounted) return;
+        final answer = await showMatchSheet(context, outcome.suggestions);
+        ref
+          ..invalidate(purchaseListProvider)
+          ..invalidate(pendingMatchesProvider);
+        if (answer == null) {
+          await controller.dropImage();
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Eşleşme sorusu bekliyor. Harcamalar ekranından cevaplayabilirsin.',
+              ),
+            ),
+          );
+        } else {
+          final uploaded = await controller.attachImageAfterAnswer(
+            answer.detail,
+          );
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                uploaded == false
+                    ? 'Harcama kaydedildi ama fiş görseli yüklenemedi.'
+                    : answer.merged
+                    ? 'Mevcut harcamayla birleştirildi.'
+                    : 'Harcama kaydedildi.',
+              ),
+            ),
+          );
+        }
+        router.go('/transactions');
+        return;
+      }
+      final detail = outcome.detail!;
+      final merge = detail.merge;
+      if (merge != null && merge.isAuto) {
+        showMergedSnackBar(
+          messenger: messenger,
+          container: container,
+          message: outcome.imageUploaded == false
+              ? 'Fiş mevcut bir harcamayla birleşti ama görseli yüklenemedi.'
+              : 'Bu fiş mevcut bir harcamayla eşleşti ve birleştirildi.',
+          merges: [
+            UndoableMerge(
+              transactionId: detail.purchase.id,
+              observationId: merge.observationId,
+            ),
+          ],
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              outcome.imageUploaded == false
+                  ? 'Harcama kaydedildi ama fiş görseli yüklenemedi.'
+                  : 'Harcama kaydedildi.',
+            ),
           ),
-        ),
-      );
+        );
+      }
       router.go('/transactions');
     } on ApiError catch (error) {
       if (mounted) setState(() => _problem = error.message);

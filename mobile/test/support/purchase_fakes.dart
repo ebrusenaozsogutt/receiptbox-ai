@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:receiptbox/core/networking/api_error.dart';
 import 'package:receiptbox/features/capture/domain/bank_models.dart';
+import 'package:receiptbox/features/matching/domain/match_models.dart';
 import 'package:receiptbox/features/transactions/data/transactions_api.dart';
 import 'package:receiptbox/features/transactions/domain/purchase_models.dart';
 import 'package:receiptbox/features/transactions/domain/spending_category.dart';
@@ -50,6 +51,7 @@ class FakeTransactionsApi implements TransactionsApi {
     List<ReceiptLine> lines = const [],
     List<DocumentInfo> documents = const [],
     String? note,
+    List<EvidenceItem> evidenceItems = const [],
   }) {
     final detail = PurchaseDetail(
       purchase: Purchase(
@@ -66,6 +68,7 @@ class FakeTransactionsApi implements TransactionsApi {
       evidence: evidence,
       lines: lines,
       documents: documents,
+      evidenceItems: evidenceItems,
     );
     purchases.add(detail);
     return detail;
@@ -138,13 +141,22 @@ class FakeTransactionsApi implements TransactionsApi {
     return found.first;
   }
 
+  /// P09: the answer of the next confirm / createManual instead of a new purchase (a merge,
+  /// or a question). Cleared after use.
+  SaveResult? nextSave;
+
   @override
-  Future<PurchaseDetail> createManual(PurchaseInput input) async {
+  Future<SaveResult> createManual(PurchaseInput input) async {
     _checkWrite();
     created.add(input);
+    final scripted = nextSave;
+    if (scripted != null) {
+      nextSave = null;
+      return scripted;
+    }
     final detail = _from('tx-${++_counter}', input, EvidenceKind.manual);
     purchases.add(detail);
-    return detail;
+    return Saved(detail);
   }
 
   @override
@@ -171,16 +183,18 @@ class FakeTransactionsApi implements TransactionsApi {
   }
 
   @override
-  Future<PurchaseDetail> confirm(
-    String observationId,
-    PurchaseInput input,
-  ) async {
+  Future<SaveResult> confirm(String observationId, PurchaseInput input) async {
     if (confirmGate != null) await confirmGate!.future;
     _checkWrite();
     confirmed.add((observationId: observationId, input: input));
+    final scripted = nextSave;
+    if (scripted != null) {
+      nextSave = null;
+      return scripted;
+    }
     final detail = _from('tx-${++_counter}', input, EvidenceKind.receipt);
     purchases.add(detail);
-    return detail;
+    return Saved(detail);
   }
 
   final batches = <({List<String> ids, Map<String, BankRowEdit> edits})>[];
@@ -196,8 +210,70 @@ class FakeTransactionsApi implements TransactionsApi {
     _checkWrite();
     batches.add((ids: ids, edits: edits));
     return BatchResult(
-      created: ids.length - batchResult.skipped.length,
+      created:
+          ids.length -
+          batchResult.skipped.length -
+          batchResult.merged.length -
+          batchResult.suggested.length,
       skipped: batchResult.skipped,
+      merged: batchResult.merged,
+      suggested: batchResult.suggested,
+    );
+  }
+
+  // ---- matching (P09) -----------------------------------------------------------------------
+
+  /// What `GET /matches` answers.
+  List<MatchSuggestion> pending = [];
+  final accepted = <String>[];
+  final rejectedMatches = <String>[];
+  final unmerged = <({String transactionId, String observationId})>[];
+
+  /// The purchase the next accept / reject answers with.
+  PurchaseDetail? matchAnswer;
+  ApiError? matchError;
+
+  @override
+  Future<List<MatchSuggestion>> pendingMatches() async => [...pending];
+
+  PurchaseDetail _answer() => matchAnswer ?? add(merchant: 'Cevaplanan');
+
+  @override
+  Future<PurchaseDetail> acceptMatch(String decisionId) async {
+    final error = matchError;
+    if (error != null) throw error;
+    accepted.add(decisionId);
+    pending = [
+      for (final m in pending)
+        if (m.id != decisionId) m,
+    ];
+    return _answer();
+  }
+
+  @override
+  Future<PurchaseDetail> rejectMatch(String decisionId) async {
+    final error = matchError;
+    if (error != null) throw error;
+    rejectedMatches.add(decisionId);
+    pending = [
+      for (final m in pending)
+        if (m.id != decisionId) m,
+    ];
+    return _answer();
+  }
+
+  @override
+  Future<UnmergeResult> unmerge(
+    String transactionId,
+    String observationId,
+  ) async {
+    final error = matchError;
+    if (error != null) throw error;
+    unmerged.add((transactionId: transactionId, observationId: observationId));
+    final kept = await detail(transactionId);
+    return UnmergeResult(
+      transaction: kept,
+      newTransaction: add(merchant: 'Ayrılan'),
     );
   }
 

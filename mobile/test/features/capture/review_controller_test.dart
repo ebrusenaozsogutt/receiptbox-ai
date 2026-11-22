@@ -8,11 +8,35 @@ import 'package:receiptbox/features/capture/data/capture_providers.dart';
 import 'package:receiptbox/features/capture/domain/capture_payload.dart';
 import 'package:receiptbox/features/capture/domain/extraction_result.dart';
 import 'package:receiptbox/features/capture/presentation/review/review_controller.dart';
+import 'package:receiptbox/features/matching/domain/match_models.dart';
 import 'package:receiptbox/features/transactions/data/transactions_api.dart';
+import 'package:receiptbox/features/transactions/domain/purchase_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/fakes.dart';
 import '../../support/purchase_fakes.dart';
+
+MatchSuggestion _suggestion() => MatchSuggestion(
+  id: 'd-1',
+  score: 90,
+  observation: MatchObservation(
+    id: 'obs-1',
+    source: EvidenceKind.receipt,
+    merchant: 'Migros',
+    date: DateTime(2026, 11, 14),
+    time: null,
+    totalMinor: 27030,
+  ),
+  transaction: MatchTransaction(
+    id: 'tx-9',
+    merchant: 'Migros',
+    category: null,
+    date: DateTime(2026, 11, 14),
+    time: null,
+    totalMinor: 27030,
+    sources: const [EvidenceKind.bank],
+  ),
+);
 
 /// The review controller with real files (the kept receipt image) and fake APIs.
 void main() {
@@ -88,7 +112,7 @@ void main() {
 
     expect(outcome.imageUploaded, isTrue);
     final upload = documents.uploads.single;
-    expect(upload.transactionId, outcome.detail.purchase.id);
+    expect(upload.transactionId, outcome.detail!.purchase.id);
     expect(upload.mimeType, 'image/jpeg');
     expect(upload.type, 'RECEIPT_IMAGE');
     expect(image.existsSync(), isFalse);
@@ -126,6 +150,72 @@ void main() {
     expect(transactions.confirmed, hasLength(1));
     expect(documents.uploads, isEmpty);
     expect(image.existsSync(), isFalse); // the temporary copy never stays behind
+  });
+
+  test('a question keeps the image: nothing is created or uploaded yet', () async {
+    final image = await kept('keep_6.jpg');
+    transactions.nextSave = NeedsAnswer([_suggestion()]);
+    await controller().start(captured(image: image));
+
+    final outcome = await controller().save(rememberCategory: false);
+
+    expect(outcome.needsAnswer, isTrue);
+    expect(outcome.detail, isNull);
+    expect(outcome.suggestions.single.id, 'd-1');
+    expect(outcome.imageUploaded, isNull);
+    expect(documents.uploads, isEmpty);
+    expect(image.existsSync(), isTrue); // it waits for the answer
+  });
+
+  test('after the answer the image goes to the purchase that exists now', () async {
+    final image = await kept('keep_7.jpg');
+    transactions.nextSave = NeedsAnswer([_suggestion()]);
+    await controller().start(captured(image: image));
+    await controller().save(rememberCategory: false);
+    final answered = transactions.add(id: 'tx-77');
+
+    final uploaded = await controller().attachImageAfterAnswer(answered);
+
+    expect(uploaded, isTrue);
+    expect(documents.uploads.single.transactionId, 'tx-77');
+    expect(image.existsSync(), isFalse);
+  });
+
+  test('a question left unanswered deletes the kept image', () async {
+    final image = await kept('keep_8.jpg');
+    transactions.nextSave = NeedsAnswer([_suggestion()]);
+    await controller().start(captured(image: image));
+    await controller().save(rememberCategory: false);
+
+    await controller().dropImage();
+
+    expect(image.existsSync(), isFalse);
+    expect(documents.uploads, isEmpty);
+  });
+
+  test('a receipt merged into a purchase uploads its image there', () async {
+    final image = await kept('keep_9.jpg');
+    final target = transactions.add(id: 'tx-9');
+    transactions.nextSave = Saved(
+      PurchaseDetail(
+        purchase: target.purchase,
+        evidence: const [EvidenceKind.bank, EvidenceKind.receipt],
+        lines: const [],
+        documents: const [],
+        merge: const MergeInfo(
+          decisionId: 'd-1',
+          observationId: 'obs-1',
+          isAuto: true,
+        ),
+      ),
+    );
+    await controller().start(captured(image: image));
+
+    final outcome = await controller().save(rememberCategory: false);
+
+    expect(outcome.detail!.merge!.isAuto, isTrue);
+    expect(documents.uploads.single.transactionId, 'tx-9');
+    expect(image.existsSync(), isFalse);
   });
 
   test('no kept image: nothing to upload', () async {
