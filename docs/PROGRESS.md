@@ -14,7 +14,7 @@ Update after every phase. Newest entry on top of the log.
 | P05 | AI provider layer & receipt extraction | ✅ Done | 2026-11-19 |
 | P06 | e-Invoice QR, merchant normalisation, categorisation | ✅ Done | 2026-11-19 |
 | P07 | Receipt review flow, manual entry, documents | ✅ Done | 2026-11-19 |
-| P08 | Bank screenshot import | ✅ Done (CI pending) | 2026-11-22 |
+| P08 | Bank screenshot import | ✅ Done | 2026-11-22 |
 | P09 | Matching engine 1:1 | ⬜ | |
 | P10 | Installments 1:N | ⬜ | |
 | P11 | Dashboard, analytics, budgets | ⬜ | |
@@ -36,7 +36,10 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
-### 2026-11-22 — P08 Bank screenshot import (done locally; CI check follows in its own entry)
+### 2026-11-22 — P08 CI confirmed
+- CI run on `main` (`68b71e9`): jobs `backend` (1033 tests on a fresh PostgreSQL, fake provider only) and `mobile` (543 Flutter tests) both green. P08 is closed.
+
+### 2026-11-22 — P08 Bank screenshot import (done locally; CI confirmed in the entry above)
 - Done:
   - **Decisions** (D-013, D-014; implementation choices P-061…P-064 in DECISIONS.md): supported banks **Garanti BBVA** (folders `garanti` + `bonus`, Bonus is Garanti's card brand), **Kuveyt Türk**, **Akbank**, each with its own prompt hints (`prompts/banks/*.md`); **QNB and Ziraat** have no hints and are the held-out "unseen bank" set (kept for P15 evaluation E1). POS slips are one row; current-account screens are refused; card-bill payments are "Kart ödemesi" and never saved; refunds stay observations "possible refund" (P12); loyalty-point and 0,00 TL rows are dropped.
   - **On-device privacy first**: a check of the real screenshots found 7 kinds of leaks in the masked text (balance and statement lines, account numbers, transfer parties, first card digits, slip name lines, an OCR spelling of "Bakiye"); `PiiMasker.mask(bank: true)` now covers all of them (only the kinds were reported, never the values). The bank screenshot image never leaves the phone and is never kept (a test checks the source for upload and retained-image code).
