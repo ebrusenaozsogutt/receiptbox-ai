@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.ai.schemas import Confidence, ReceiptExtraction
 from app.models.enums import CategoryKey, Direction
+from app.schemas.matches import BankRowMatchOut
 
 
 class ExtractReceiptRequest(BaseModel):
@@ -89,6 +90,8 @@ class BankRowOut(BaseModel):
     possible_refund: bool
     confidence: dict[str, Confidence]
     suggestions: Suggestions
+    # P09: this row is (AUTO) or may be (SUGGEST) the same purchase as one you already saved.
+    match: BankRowMatchOut | None = None
 
 
 class SkippedRowOut(BaseModel):

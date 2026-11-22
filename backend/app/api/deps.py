@@ -114,9 +114,11 @@ ExtractionServiceDep = Annotated[ExtractionService, Depends(get_extraction_servi
 
 
 def get_bank_service(
-    session: SessionDep, provider: Annotated[AIProvider, Depends(get_ai_provider)]
+    session: SessionDep,
+    provider: Annotated[AIProvider, Depends(get_ai_provider)],
+    settings: Annotated[Settings, Depends(get_settings_from_app)],
 ) -> BankService:
-    return BankService(session, provider)
+    return BankService(session, provider, settings)
 
 
 BankServiceDep = Annotated[BankService, Depends(get_bank_service)]
@@ -144,9 +146,11 @@ DocumentServiceDep = Annotated[DocumentService, Depends(get_document_service)]
 
 
 def get_transaction_service(
-    session: SessionDep, storage: Annotated[StorageBackend, Depends(get_storage)]
+    session: SessionDep,
+    storage: Annotated[StorageBackend, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings_from_app)],
 ) -> TransactionService:
-    return TransactionService(session, storage)
+    return TransactionService(session, storage, settings)
 
 
 TransactionServiceDep = Annotated[TransactionService, Depends(get_transaction_service)]

@@ -139,6 +139,7 @@ async def extract_bank_screenshot(
                 possible_refund=item.row.kind == "REFUND",
                 confidence=item.row.confidence,
                 suggestions=item.suggestions,
+                match=item.match,
             )
             for item in outcome.rows
         ],

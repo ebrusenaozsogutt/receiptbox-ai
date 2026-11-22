@@ -15,7 +15,11 @@ from app.models.enums import MatchDecisionStatus, MatchType
 
 class MatchDecision(UUIDPrimaryKeyMixin, TimestampMixin, UserOwnedMixin, Base):
     __tablename__ = "match_decisions"
-    __table_args__ = (Index("ix_match_decisions_user_id_decision", "user_id", "decision"),)
+    __table_args__ = (
+        Index("ix_match_decisions_user_id_decision", "user_id", "decision"),
+        Index("ix_match_decisions_observation_id", "observation_id"),
+        Index("ix_match_decisions_transaction_id", "transaction_id"),
+    )
 
     observation_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("observations.id", ondelete="CASCADE"), nullable=False
@@ -38,3 +42,6 @@ class MatchDecision(UUIDPrimaryKeyMixin, TimestampMixin, UserOwnedMixin, Base):
         enum_type(MatchDecisionStatus, "decision"), nullable=False, server_default="PENDING"
     )
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # What "Ayır" needs to undo a merge: the fields of both purchases before and after it (P09).
+    # Kept apart from features_json, which is the training data of P15 and only holds features.
+    merge_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

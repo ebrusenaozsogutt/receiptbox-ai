@@ -5,15 +5,18 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Response, status
+from fastapi.responses import JSONResponse
 
 from app.api.deps import CurrentUser, TransactionServiceDep
 from app.models.enums import CategoryKey
 from app.schemas.errors import ErrorResponse
+from app.schemas.matches import SuggestionResponse, UnmergeRequest
 from app.schemas.transactions import (
     ManualTransactionRequest,
     TransactionDetail,
     TransactionList,
     TransactionPatch,
+    UnmergeResponse,
 )
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -52,13 +55,27 @@ async def list_transactions(
     "",
     response_model=TransactionDetail,
     status_code=status.HTTP_201_CREATED,
-    responses=_UNAUTHORIZED,
+    responses={
+        **_UNAUTHORIZED,
+        202: {
+            "model": SuggestionResponse,
+            "description": "It may be a purchase you already have: no purchase exists yet, "
+            "answer with POST /matches/{id}/accept or /reject.",
+        },
+    },
 )
 async def create_manual_transaction(
     body: ManualTransactionRequest, user: CurrentUser, service: TransactionServiceDep
-) -> TransactionDetail:
-    """A purchase entered by hand: creates a MANUAL observation and the transaction."""
-    return await service.create_manual(user.id, body)
+) -> TransactionDetail | JSONResponse:
+    """A purchase entered by hand: creates a MANUAL observation and the transaction, unless it is
+    the same purchase as one you already have (`outcome` MERGED: attached to it) or may be
+    (202: the app asks first)."""
+    result = await service.create_manual(user.id, body)
+    if isinstance(result, SuggestionResponse):
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED, content=result.model_dump(mode="json")
+        )
+    return result
 
 
 @router.get(
@@ -85,6 +102,26 @@ async def patch_transaction(
     service: TransactionServiceDep,
 ) -> TransactionDetail:
     return await service.patch(user.id, transaction_id, body)
+
+
+@router.post(
+    "/{transaction_id}/unmerge",
+    response_model=UnmergeResponse,
+    responses={
+        **_UNAUTHORIZED,
+        **_NOT_FOUND,
+        409: {"model": ErrorResponse, "description": "NOT_MERGED"},
+    },
+)
+async def unmerge_transaction(
+    transaction_id: uuid.UUID,
+    body: UnmergeRequest,
+    user: CurrentUser,
+    service: TransactionServiceDep,
+) -> UnmergeResponse:
+    """ "Ayır" / "Geri al": the observation `observation_id` leaves this purchase and becomes a
+    purchase of its own; the other record keeps the old one. The decision is logged `UNDONE`."""
+    return await service.unmerge(user.id, transaction_id, body.observation_id)
 
 
 @router.delete(

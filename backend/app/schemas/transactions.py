@@ -7,7 +7,7 @@ what the extraction found and sends it back as these integers.
 import datetime as dt
 import uuid
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
@@ -20,6 +20,7 @@ from app.models.enums import (
     TransactionKind,
 )
 from app.schemas.documents import DocumentOut
+from app.schemas.matches import MatchOut, MergeOut
 
 MAX_TOTAL_MINOR = 100_000_000  # 1,000,000 TRY, the same sanity limit as the extraction (5.3)
 _Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -156,6 +157,10 @@ class TransactionDetail(TransactionOut):
     evidence: list[EvidenceOut]
     items: list[ItemOut]
     documents: list[DocumentOut]
+    # CREATED: a new purchase. MERGED: the observation was attached to this existing purchase
+    # (`match` says how; with AUTO_ACCEPTED the app offers "Geri al" = unmerge).
+    outcome: Literal["CREATED", "MERGED"] = "CREATED"
+    match: MergeOut | None = None
 
 
 class TransactionList(BaseModel):
@@ -186,6 +191,25 @@ class ObservationOut(BaseModel):
     created_at: dt.datetime
 
 
+class BatchMerged(BaseModel):
+    """A selected bank row that was attached to a purchase you already had."""
+
+    observation_id: uuid.UUID
+    match: MergeOut
+    transaction: TransactionDetail
+
+
 class ConfirmBatchResponse(BaseModel):
     created: list[TransactionDetail]
     skipped: list[BatchSkipped]
+    merged: list[BatchMerged] = Field(default_factory=list)
+    # Rows that may be the same as an existing purchase: they stay pending until the user answers.
+    suggested: list[MatchOut] = Field(default_factory=list)
+
+
+class UnmergeResponse(BaseModel):
+    """Both purchases after "Ayır": the one that was merged into and the one made for the
+    observation that left."""
+
+    transaction: TransactionDetail
+    new_transaction: TransactionDetail

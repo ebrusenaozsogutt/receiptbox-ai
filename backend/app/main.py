@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import auth, documents, extract, health, observations, transactions
+from app.api import auth, documents, extract, health, matches, observations, transactions
 from app.core.config import Settings, get_settings
 from app.core.database import create_engine, create_session_factory
 from app.core.errors import register_error_handlers
@@ -57,6 +57,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(documents.router, prefix=API_PREFIX)
     app.include_router(observations.router, prefix=API_PREFIX)
     app.include_router(transactions.router, prefix=API_PREFIX)
+    app.include_router(matches.router, prefix=API_PREFIX)
     return app
 
 

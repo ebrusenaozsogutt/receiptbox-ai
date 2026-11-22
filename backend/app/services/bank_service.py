@@ -31,18 +31,22 @@ from app.ai.bank_validation import (
 )
 from app.ai.prompts import BANK_ROWS
 from app.ai.provider import AIProvider, ProviderError
+from app.core.config import Settings
 from app.core.errors import (
     BankScreenNotSupportedError,
     ExtractionFailedError,
     TextTooLargeError,
 )
 from app.matching.merchant_normalizer import MerchantNormalizer
+from app.models import Observation
 from app.models.enums import ObservationSource, ObservationStatus
 from app.repositories.merchants import MerchantRepository
 from app.repositories.observations import ObservationRepository
 from app.schemas.extraction import CategorySuggestionOut, MerchantSuggestion, Suggestions
+from app.schemas.matches import BankRowMatchOut
 from app.services.categorization_service import CategorizationService
 from app.services.extraction_service import MAX_TEXT_BYTES, compute_fingerprint
+from app.services.match_service import MatchService
 
 logger = logging.getLogger("receiptbox.bank")
 
@@ -72,6 +76,7 @@ class BankRowOutcome:
     row: ValidatedBankRow
     status: ObservationStatus
     suggestions: Suggestions
+    match: BankRowMatchOut | None = None
 
 
 @dataclass(frozen=True)
@@ -82,9 +87,10 @@ class BankOutcome:
 
 
 class BankService:
-    def __init__(self, session: AsyncSession, provider: AIProvider) -> None:
+    def __init__(self, session: AsyncSession, provider: AIProvider, settings: Settings) -> None:
         self._session = session
         self._provider = provider
+        self._matching = MatchService(session, settings)
         self._observations = ObservationRepository(session)
         merchants = MerchantRepository(session)
         self._normalizer = MerchantNormalizer(merchants)
@@ -141,7 +147,7 @@ class BankService:
             )
             keep_text = not text_saved and duplicate_of is None
             text_saved = text_saved or keep_text
-            observation_id = await self._store(
+            observation = await self._store(
                 user_id,
                 row=row,
                 status=status,
@@ -151,7 +157,9 @@ class BankService:
                 masked_text=masked_text if keep_text else None,
                 duplicate_of=duplicate_of,
             )
-            outcomes.append(BankRowOutcome(observation_id, row, status, suggestions))
+            # P09: will this row be merged with a purchase you already have? (nothing is stored)
+            match = await self._matching.preview_bank_row(user_id, observation)
+            outcomes.append(BankRowOutcome(observation.id, row, status, suggestions, match))
         await self._session.commit()
         return BankOutcome(bank_key=bank_key, rows=outcomes, skipped=validation.skipped)
 
@@ -195,7 +203,7 @@ class BankService:
         bank_key: str | None,
         masked_text: str | None,
         duplicate_of: uuid.UUID | None,
-    ) -> uuid.UUID:
+    ) -> Observation:
         saved: dict[str, Any] = {
             "bank_row": {
                 "merchant_raw": row.merchant_raw,
@@ -233,4 +241,4 @@ class BankService:
             field_confidence_json={name: level.value for name, level in row.confidence.items()},
             bank_key=bank_key,
         )
-        return observation.id
+        return observation

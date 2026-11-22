@@ -4,10 +4,12 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Response, status
+from fastapi.responses import JSONResponse
 
 from app.api.deps import CurrentUser, TransactionServiceDep
 from app.models.enums import ObservationStatus
 from app.schemas.errors import ErrorResponse
+from app.schemas.matches import SuggestionResponse
 from app.schemas.transactions import (
     ConfirmBatchRequest,
     ConfirmBatchResponse,
@@ -55,18 +57,35 @@ async def confirm_batch(
     "/{observation_id}/confirm",
     response_model=TransactionDetail,
     status_code=status.HTTP_201_CREATED,
-    responses={**_UNAUTHORIZED, **_NOT_FOUND, **_CONFLICT},
+    responses={
+        **_UNAUTHORIZED,
+        **_NOT_FOUND,
+        **_CONFLICT,
+        202: {
+            "model": SuggestionResponse,
+            "description": "It may be a purchase you already have: no purchase exists yet, "
+            "answer with POST /matches/{id}/accept or /reject.",
+        },
+    },
 )
 async def confirm_observation(
     observation_id: uuid.UUID,
     body: ConfirmRequest,
     user: CurrentUser,
     service: TransactionServiceDep,
-) -> TransactionDetail:
-    """Save the reviewed receipt: creates a NEW transaction (merging with an existing one is
-    P09), links the observation to it and marks it CONFIRMED. With
+) -> TransactionDetail | JSONResponse:
+    """Save the reviewed receipt. The matching engine looks first (spec 7): the same purchase
+    seen before (for example the bank row) takes the receipt in as evidence (`outcome` MERGED,
+    `match.decision` AUTO_ACCEPTED: the app offers "Geri al"); a likely one answers 202 and the
+    observation waits for POST /matches/{id}/accept or /reject; otherwise a NEW transaction is
+    created, the observation linked to it and marked CONFIRMED. With
     `remember_category_for_merchant` the category becomes this user's rule for the merchant."""
-    return await service.confirm(user.id, observation_id, body)
+    result = await service.confirm(user.id, observation_id, body)
+    if isinstance(result, SuggestionResponse):
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED, content=result.model_dump(mode="json")
+        )
+    return result
 
 
 @router.post(

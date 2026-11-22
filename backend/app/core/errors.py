@@ -173,6 +173,30 @@ class BankScreenNotSupportedError(AppError):
     default_message = "This screen is not a card transaction list."
 
 
+# ---- matching (P09) ----------------------------------------------------------------------
+
+
+class MatchNotPendingError(ConflictError):
+    """The suggestion was already answered (or its observation was)."""
+
+    code = "MATCH_NOT_PENDING"
+    default_message = "This suggestion has already been answered."
+
+
+class MatchNotAvailableError(ConflictError):
+    """The purchase it was suggested for was deleted, or it got a receipt of the same kind since."""
+
+    code = "MATCH_NOT_AVAILABLE"
+    default_message = "That purchase can no longer be merged with this one."
+
+
+class NotMergedError(ConflictError):
+    """ "Ayır" on something that is not a merge of two observations."""
+
+    code = "NOT_MERGED"
+    default_message = "This purchase is not a merge of two records."
+
+
 # ---- documents (P07) ---------------------------------------------------------------------
 
 
