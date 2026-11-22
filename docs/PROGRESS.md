@@ -36,7 +36,10 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
-### 2026-11-22 — P09 Matching engine 1:1 (code and tests done locally; CI and the emulator end-to-end run still open)
+### 2026-11-22 — P09 CI confirmed
+- CI run on `main` (`6719f92`): jobs `backend` (1147 tests on a fresh PostgreSQL, fake provider only) and `mobile` (575 Flutter tests) both green. The emulator end-to-end run of P09 is still open (see the entry below), so the status board keeps P09 at 🟨.
+
+### 2026-11-22 — P09 Matching engine 1:1 (code, tests and CI done; the emulator end-to-end run is still open)
 - Done:
   - **The scorer is pure** (`backend/app/matching/features.py`): amount (50, linear to 0 at a 2 % relative difference), date (20 / 12 / 5), merchant (20 x similarity, alias hit = 1.0, else `token_set_ratio`), time (10, 5 minutes full, 0 at 60), missing features renormalised (`score = earned / available_max x 100`). Symmetric, so the order of arrival never changes a score. `MatchFeatures.as_json()` is stored as `match_decisions.features_json`; its 17 keys are documented in the module docstring and versioned (`baseline-v1`) because P15 trains a logistic regression on exactly them (`merchant_token_sort_ratio` is stored but not scored, to measure the "KAHVE" / "KAHVE DUNYASI" subset problem).
   - **Candidates** (`candidates.py`): same user, not deleted, PURCHASE, at most 3 days and 2 % away, and **no confirmed observation of the same source** (this is why two identical coffees from the bank stay two purchases).
