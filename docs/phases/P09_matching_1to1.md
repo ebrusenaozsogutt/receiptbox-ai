@@ -20,12 +20,12 @@ Installment matching (P10), ML scorer (P15 compares it offline).
 
 ## Acceptance criteria
 
-- [ ] Receipt (18:27) + bank row (18:28, `MIGROS TICARET AS`, same amount) → auto-merged; spending counts once.
-- [ ] Two identical coffees same day from the bank → two transactions (same-source rule) — test.
-- [ ] Receipt + bank row with 1-day date shift and no time → suggestion, not auto.
-- [ ] Unmerge restores two transactions; totals correct; decision logged `UNDONE`.
-- [ ] Order independence: bank first then receipt gives the same result as receipt first.
-- [ ] Feature functions: ≥ 30 unit tests; engine: ≥ 12 scenario tests.
+- [x] Receipt (18:27) + bank row (18:28, `MIGROS TICARET AS`, same amount) → auto-merged; spending counts once.
+- [x] Two identical coffees same day from the bank → two transactions (same-source rule) — test.
+- [x] Receipt + bank row with 1-day date shift and no time → suggestion, not auto.
+- [x] Unmerge restores two transactions; totals correct; decision logged `UNDONE`.
+- [x] Order independence: bank first then receipt gives the same result as receipt first.
+- [x] Feature functions: ≥ 30 unit tests; engine: ≥ 12 scenario tests.
 
 ## Tests
 

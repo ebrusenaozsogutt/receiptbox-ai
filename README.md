@@ -276,6 +276,23 @@ Rebuild the backend (`docker compose -f infra/docker-compose.yml up -d --build b
 
 **Real model, masked text only (optional)**: `uv run python ../ai/experiments/run_bank_extract_manual.py` reads `ai/datasets/bank_masked` (git-ignored) and prints per-file accuracy; `--no-hints` shows the unseen-bank behaviour.
 
+### 3.2.7 Try the matching of receipts and bank rows (P09)
+
+Rebuild the backend and apply the new migration (`match_decisions.merge_snapshot`): `docker compose -f infra/docker-compose.yml up -d --build backend`, then `docker compose -f infra/docker-compose.yml exec backend alembic upgrade head`. Rebuild and reinstall the app (3.3). The thresholds are in `.env` (`MATCH_AUTO=95`, `MATCH_SUGGEST=70`, `MATCH_RECORD_MIN=50`; the defaults are fine).
+
+**How the score works** (0-100): amount 50 (equal; 0 at a 2 % difference), date 20 (same day; 12 for one day apart; 5 for two or three), merchant 20 (the same shop, or how alike the names are), time 10 (only when both records have one: 5 minutes apart is full, 60 minutes is 0). A feature that cannot be known (a bank row has no time) is left out and the rest is scaled to 100. From **95** (and one single candidate) the two are merged at once with **Geri al**; from **70** the app asks; below, it is a new purchase.
+
+**On the emulator or a phone (debug build)**
+1. Import a bank screenshot (README 3.2.6) and **save** the rows (**Seçilenleri Kaydet**).
+2. Scan a **receipt for one of those rows** (same shop, same amount, same day; for a clear merge the receipt time within a few minutes of the bank row's, or no time on the bank row). On **Kaydet** the snackbar says **"Bu fiş mevcut bir harcamayla eşleşti ve birleştirildi."** with **Geri al**. Harcamalar shows ONE purchase (the receipt's merchant and category win); the monthly total did not change. Open it: **Birleşmiş kayıtlar** lists the receipt and the bank row (with the bank's own amount) and each has **Ayır**.
+3. **Geri al** (or **Ayır**) gives two purchases back; the total is then the two of them (the app cannot know they are one shop visit any more).
+4. A **near match** (the receipt dated one day after the bank row, no times): after **Kaydet** the sheet **"Aynı harcama olabilir mi?"** opens with the two records side by side: **Birleştir** or **Ayrı kalsın** (then both stay purchases). Close the sheet without answering and Harcamalar shows **"1 eşleşme önerisi bekliyor"**; tap it to answer.
+5. The other way round: scan the receipt first, then import the bank screenshot: the matching row shows **Eşleşti** (or **Olası eşleşme**) before you save, and saving merges it or asks.
+6. Two identical coffees in one bank screenshot stay **two** purchases; a receipt for one of them asks which one.
+7. A row with an installment marker (`1/3`) is never merged this way (P10).
+
+**Swagger** (Register and **Authorize** as in 3.2.2): `GET /api/v1/matches` lists the suggestions waiting (with `score` and `features`), `POST /api/v1/matches/{id}/accept` / `/reject` answer one, `POST /api/v1/transactions/{id}/unmerge` with `{"observation_id": "…"}` separates a record. The stored candidates and their features are in the table `match_decisions` (the data of the evaluation in P15). Everything of another user answers 404.
+
 ### 3.3 The Android app
 
 1. Start an emulator: Android Studio → **Virtual Device Manager → ▶**, or `flutter emulators --launch <emulator_id>`. Wait until you see the Android home screen.
