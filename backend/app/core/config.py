@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import SecretStr, field_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 MIN_JWT_SECRET_LENGTH = 32  # HS256 needs a key of at least 256 bits
@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     # Where FakeProvider finds its fixtures (relative to backend/ when started from there).
     ai_fake_fixtures_dir: str = "tests/fixtures/receipts"
 
+    # Matching thresholds (spec 7.4, P09), on the 0-100 score scale. Configurable on purpose:
+    # P15 tunes them on real data. record_min: candidates from this score are stored in
+    # match_decisions with their features.
+    match_auto: float = 95.0
+    match_suggest: float = 70.0
+    match_record_min: float = 50.0
+
     log_level: str = "INFO"
 
     @field_validator("ai_model_extract", mode="before")
@@ -57,6 +64,12 @@ class Settings(BaseSettings):
     @classmethod
     def _blank_assistant_model_means_default(cls, value: object) -> object:
         return value if isinstance(value, str) and value.strip() else DEFAULT_MODEL_ASSISTANT
+
+    @model_validator(mode="after")
+    def _match_thresholds_are_ordered(self) -> "Settings":
+        if not (0 <= self.match_record_min <= self.match_suggest <= self.match_auto <= 100):
+            raise ValueError("need 0 <= MATCH_RECORD_MIN <= MATCH_SUGGEST <= MATCH_AUTO <= 100")
+        return self
 
     @field_validator("jwt_secret")
     @classmethod
