@@ -163,8 +163,18 @@ async def test_bank_rows_1_to_3_of_6_become_payments_and_add_no_spending(
     assert saved["created"] == [] and saved["merged"] == [] and saved["suggested"] == []
     assert [(x["seq"], x["count"]) for x in saved["linked"]] == [(1, 6), (2, 6), (3, 6)]
     assert {x["transaction"]["id"] for x in saved["linked"]} == {made["id"]}
-    plan = (await detail(api_client, user, made["id"]))["plan"]
-    assert statuses(plan) == ["OBSERVED"] * 3 + ["EXPECTED"] * 3
+    full = await detail(api_client, user, made["id"])
+    assert statuses(full["plan"]) == ["OBSERVED"] * 3 + ["EXPECTED"] * 3
+    # the detail says which evidence rows are payments (the app does not offer "Ayır" on them)
+    payments = [e for e in full["evidence"] if e["is_installment_payment"]]
+    assert sorted((e["installment_seq"], e["installment_count"]) for e in payments) == [
+        (1, 6),
+        (2, 6),
+        (3, 6),
+    ]
+    assert [e["source"] for e in full["evidence"] if not e["is_installment_payment"]] == [
+        "RECEIPT"
+    ]
     listing = await purchases(api_client, user)
     assert (listing["count"], listing["sum_minor"]) == (1, SLIP_TOTAL)  # still counted once
 

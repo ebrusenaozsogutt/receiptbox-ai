@@ -229,6 +229,34 @@ void main() {
     });
   });
 
+  group('the purchase list', () {
+    testWidgets('marks installment purchases and estimated ones', (
+      tester,
+    ) async {
+      await _openList(
+        tester,
+        seed: (app) {
+          app.transactions
+            ..add(id: 'tx-1', merchant: 'MediaMarkt', plan: _plan())
+            ..add(
+              id: 'tx-2',
+              merchant: 'TEKNOSA',
+              evidence: const [EvidenceKind.bank],
+              plan: _plan(),
+              isEstimated: true,
+            )
+            ..add(id: 'tx-3', merchant: 'Migros');
+        },
+      );
+
+      expect(find.byKey(const Key('installment_badge_tx-1')), findsOneWidget);
+      expect(find.byKey(const Key('estimated_badge_tx-1')), findsNothing);
+      expect(find.byKey(const Key('installment_badge_tx-2')), findsOneWidget);
+      expect(find.byKey(const Key('estimated_badge_tx-2')), findsOneWidget);
+      expect(find.byKey(const Key('installment_badge_tx-3')), findsNothing);
+    });
+  });
+
   group('the purchase detail', () {
     testWidgets('shows the plan: dots, months, amounts, the cancel button', (
       tester,
@@ -254,6 +282,54 @@ void main() {
       // a plan that has a bank row cannot be re-counted
       expect(find.byKey(const Key('plan_change')), findsNothing);
       expect(find.byKey(const Key('plan_cancel')), findsOneWidget);
+    });
+
+    testWidgets('several bank rows on one purchase: one chip, no "Ayır" on payments', (
+      tester,
+    ) async {
+      await _openDetail(
+        tester,
+        (app) => app.transactions.add(
+          id: 'tx-1',
+          merchant: 'MediaMarkt',
+          evidence: const [
+            EvidenceKind.receipt,
+            EvidenceKind.bank,
+            EvidenceKind.bank,
+          ],
+          evidenceItems: const [
+            EvidenceItem(
+              observationId: 'o-receipt',
+              kind: EvidenceKind.receipt,
+              amountMinor: 1249900,
+            ),
+            EvidenceItem(
+              observationId: 'o-b1',
+              kind: EvidenceKind.bank,
+              amountMinor: 208317,
+              installmentSeq: 1,
+              installmentCount: 6,
+              isPayment: true,
+            ),
+            EvidenceItem(
+              observationId: 'o-b2',
+              kind: EvidenceKind.bank,
+              amountMinor: 208317,
+              installmentSeq: 2,
+              installmentCount: 6,
+              isPayment: true,
+            ),
+          ],
+          plan: _plan(),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('evidence_bank')), findsOneWidget);
+      expect(find.text('Banka (2)'), findsOneWidget);
+      // payments are not a second record of the purchase: nothing to separate
+      expect(find.text('Birleşmiş kayıtlar'), findsNothing);
+      expect(find.byKey(const Key('separate_o-b1')), findsNothing);
     });
 
     testWidgets('an estimated purchase says it waits for its receipt', (

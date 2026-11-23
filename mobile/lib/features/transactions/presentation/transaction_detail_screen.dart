@@ -217,10 +217,15 @@ class _DetailBody extends ConsumerWidget {
                 spacing: AppSpacing.s,
                 runSpacing: AppSpacing.s,
                 children: [
-                  for (final kind in detail.evidence)
+                  // one chip per kind: a purchase paid in installments has several bank rows
+                  for (final kind in detail.evidence.toSet())
                     Chip(
                       key: Key('evidence_${kind.name}'),
-                      label: Text(kind.label),
+                      label: Text(
+                        detail.evidence.where((k) => k == kind).length > 1
+                            ? '${kind.label} (${detail.evidence.where((k) => k == kind).length})'
+                            : kind.label,
+                      ),
                       avatar: const Icon(Icons.check, size: AppSizes.iconS),
                     ),
                 ],
@@ -228,7 +233,7 @@ class _DetailBody extends ConsumerWidget {
               if (detail.isMerged) ...[
                 const SizedBox(height: AppSpacing.m),
                 Text('Birleşmiş kayıtlar', style: AppTextStyles.titleS),
-                for (final item in detail.evidenceItems)
+                for (final item in detail.mergedRecords)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       vertical: AppSpacing.xs,

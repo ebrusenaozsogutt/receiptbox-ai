@@ -167,11 +167,20 @@ class EvidenceItem {
     required this.observationId,
     required this.kind,
     required this.amountMinor,
+    this.installmentSeq,
+    this.installmentCount,
+    this.isPayment = false,
   });
 
   final String observationId;
   final EvidenceKind kind;
   final int? amountMinor;
+
+  /// P10: a bank row `k/n` that is payment k of the purchase. It is evidence of a payment, not
+  /// a second record of the purchase, so it cannot be separated ("Ayır").
+  final int? installmentSeq;
+  final int? installmentCount;
+  final bool isPayment;
 }
 
 /// How a save ended up on an existing purchase (backend `MergeOut`).
@@ -222,8 +231,21 @@ class PurchaseDetail {
   /// P10: the installment plan, when the purchase is paid in installments.
   final InstallmentPlan? plan;
 
+  /// The records that can be separated ("Ayır"): every record except the bank rows that are
+  /// installment payments.
+  List<EvidenceItem> get mergedRecords => [
+    for (final item in evidenceItems)
+      if (!item.isPayment) item,
+  ];
+
+  /// The bank rows that are payments of the plan (P10).
+  List<EvidenceItem> get paymentRows => [
+    for (final item in evidenceItems)
+      if (item.isPayment) item,
+  ];
+
   /// Two records of one purchase: each can be separated ("Ayır").
-  bool get isMerged => evidenceItems.length > 1;
+  bool get isMerged => mergedRecords.length > 1;
 
   factory PurchaseDetail.fromJson(Map<String, dynamic> json) => PurchaseDetail(
     purchase: Purchase.fromJson(json),
@@ -239,6 +261,9 @@ class PurchaseDetail {
           observationId: (e as Map<String, dynamic>)['id'] as String,
           kind: EvidenceKind.fromSource(e['source'] as String),
           amountMinor: e['amount_minor'] as int?,
+          installmentSeq: e['installment_seq'] as int?,
+          installmentCount: e['installment_count'] as int?,
+          isPayment: e['is_installment_payment'] as bool? ?? false,
         ),
     ],
     merge: json['match'] == null

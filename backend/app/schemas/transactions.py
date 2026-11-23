@@ -138,6 +138,10 @@ class EvidenceOut(BaseModel):
     obs_date: dt.date | None
     obs_time: dt.time | None
     created_at: dt.datetime
+    # P10: a bank row `k/n` that is payment k of this purchase (it cannot be separated).
+    installment_seq: int | None = None
+    installment_count: int | None = None
+    is_installment_payment: bool = False
 
 
 class TransactionOut(BaseModel):

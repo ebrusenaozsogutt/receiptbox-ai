@@ -15,6 +15,7 @@ import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_view.dart';
 import '../../../core/widgets/screen_header.dart';
 import '../../capture/presentation/review/review_widgets.dart';
+import '../../installments/presentation/installment_widgets.dart';
 import '../../matching/presentation/pending_matches_banner.dart';
 import '../data/transactions_providers.dart';
 import '../domain/purchase_models.dart';
@@ -410,11 +411,25 @@ class _PurchaseRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        category.label,
-                        style: AppTextStyles.bodyS.copyWith(
-                          color: AppColors.textMuted,
-                        ),
+                      Wrap(
+                        spacing: AppSpacing.s,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            category.label,
+                            style: AppTextStyles.bodyS.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          if (purchase.isInstallment)
+                            InstallmentBadge(
+                              key: Key('installment_badge_${purchase.id}'),
+                            ),
+                          if (purchase.isEstimated)
+                            EstimatedBadge(
+                              key: Key('estimated_badge_${purchase.id}'),
+                            ),
+                        ],
                       ),
                     ],
                   ),

@@ -777,6 +777,9 @@ class TransactionService:
                     obs_date=o.obs_date,
                     obs_time=o.obs_time,
                     created_at=o.created_at,
+                    installment_seq=o.installment_seq,
+                    installment_count=o.installment_count,
+                    is_installment_payment=o.installment_payment_id is not None,
                 )
                 for o in evidence
             ],
