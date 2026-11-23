@@ -52,6 +52,7 @@ from app.models.enums import (
     ObservationStatus,
     PaymentType,
 )
+from app.repositories.documents import DocumentRepository
 from app.repositories.matches import MatchDecisionRepository
 from app.repositories.observations import ObservationRepository
 from app.repositories.transactions import TransactionRepository
@@ -62,6 +63,9 @@ from app.schemas.matches import (
     MatchTransactionOut,
     MergeOut,
 )
+
+# Sources that come with a stored picture (receipt photo, e-invoice PDF).
+_PICTURE_SOURCES = frozenset({ObservationSource.RECEIPT, ObservationSource.EINVOICE_QR})
 
 PENDING_KEY = "pending"  # extraction_json key: the reviewed fields of an observation that waits
 
@@ -99,6 +103,7 @@ class MatchService:
         self._decisions = MatchDecisionRepository(session)
         self._observations = ObservationRepository(session)
         self._transactions = TransactionRepository(session)
+        self._documents = DocumentRepository(session)
 
     # ---- evaluate -----------------------------------------------------------------------------
 
@@ -331,6 +336,11 @@ class MatchService:
             note=None,
         )
         leaving.transaction_id = created.id
+        # The receipt's picture goes where the receipt goes (only a receipt or an e-invoice has
+        # one). When both records are of that kind it is not known whose it is: it stays.
+        remaining = next(o for o in evidence if o.id != leaving.id)
+        if leaving.source in _PICTURE_SOURCES and remaining.source not in _PICTURE_SOURCES:
+            await self._documents.move_record_pictures(user_id, transaction.id, created.id)
         revert_fields(transaction, after, remaining_fields)
         decision.decision = MatchDecisionStatus.UNDONE
         decision.decided_at = _now()

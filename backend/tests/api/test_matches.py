@@ -458,3 +458,124 @@ async def test_a_manual_entry_that_may_be_a_bank_row_asks_first(
     assert response.status_code == 202, response.text
     assert response.json()["outcome"] == "SUGGESTED"
     assert (await purchases(api_client, user))["count"] == 1
+
+
+# ---- the receipt's picture follows the receipt (P09 follow-up) ---------------------------------
+
+
+async def _upload_picture(
+    client: AsyncClient,
+    account,
+    transaction_id: str,
+    document_type: str = "RECEIPT_IMAGE",  # noqa: ANN001
+) -> str:
+    from tests.p07_helpers import JPEG, upload_files
+
+    response = await client.post(
+        "/api/v1/documents",
+        files=upload_files(JPEG),
+        data={"type": document_type, "transaction_id": transaction_id},
+        headers=account.headers,
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["id"]
+
+
+async def _document_owner(app: FastAPI, document_id: str) -> str:
+    from tests.auth_helpers import fetch_all
+
+    rows = await fetch_all(app, "SELECT transaction_id FROM documents WHERE id = :d", d=document_id)
+    return str(rows[0][0])
+
+
+async def test_after_geri_al_the_receipt_picture_goes_with_the_receipt(
+    api_client: AsyncClient, api_app: FastAPI
+) -> None:
+    user = await new_account(api_client)
+    pair = await merged_pair(api_client, api_app, user)
+    picture = await _upload_picture(api_client, user, pair["bank_tx"]["id"])
+
+    response = await api_client.post(
+        f"/api/v1/transactions/{pair['bank_tx']['id']}/unmerge",
+        json={"observation_id": pair["receipt_id"]},
+        headers=user.headers,
+    )
+
+    result = response.json()
+    assert result["new_transaction"]["evidence"][0]["source"] == "RECEIPT"
+    assert await _document_owner(api_app, picture) == result["new_transaction"]["id"]
+    assert result["new_transaction"]["document_count"] == 1
+    assert result["transaction"]["document_count"] == 0  # the bank purchase has no picture
+
+
+async def test_separating_the_bank_row_leaves_the_picture_with_the_receipt(
+    api_client: AsyncClient, api_app: FastAPI
+) -> None:
+    user = await new_account(api_client)
+    pair = await merged_pair(api_client, api_app, user)
+    picture = await _upload_picture(api_client, user, pair["bank_tx"]["id"])
+
+    response = await api_client.post(
+        f"/api/v1/transactions/{pair['bank_tx']['id']}/unmerge",
+        json={"observation_id": pair["bank_id"]},
+        headers=user.headers,
+    )
+
+    result = response.json()
+    assert await _document_owner(api_app, picture) == result["transaction"]["id"]
+    assert result["transaction"]["document_count"] == 1
+    assert result["new_transaction"]["document_count"] == 0
+
+
+async def test_when_the_receipt_was_first_its_picture_still_follows_it(
+    api_client: AsyncClient, api_app: FastAPI
+) -> None:
+    """Receipt first (with its picture), the bank row merged in later: separating the RECEIPT
+    gives it a purchase of its own, picture included."""
+    user = await new_account(api_client)
+    receipt_id = await insert_receipt(
+        api_app, user, merchant_raw="Migros", amount_minor=27030, day=DAY, at=time(18, 27)
+    )
+    created = await confirm_receipt(
+        api_client, user, receipt_id, merchant="Migros", day="2026-11-14", at="18:27:00",
+        total_minor=27030,
+    )  # fmt: skip
+    receipt_tx = created.json()["id"]
+    picture = await _upload_picture(api_client, user, receipt_tx)
+    bank_id = await insert_bank_row(
+        api_app, user, merchant_raw="MIGROS TICARET AS", amount_minor=27030, day=DAY,
+        at=time(18, 28),
+    )  # fmt: skip
+    saved = await save_rows(api_client, user, [bank_id])
+    assert saved["merged"][0]["transaction"]["id"] == receipt_tx
+
+    response = await api_client.post(
+        f"/api/v1/transactions/{receipt_tx}/unmerge",
+        json={"observation_id": receipt_id},
+        headers=user.headers,
+    )
+
+    result = response.json()
+    assert await _document_owner(api_app, picture) == result["new_transaction"]["id"]
+    assert [e["source"] for e in result["new_transaction"]["evidence"]] == ["RECEIPT"]
+    assert [e["source"] for e in result["transaction"]["evidence"]] == ["BANK_SCREENSHOT"]
+
+
+async def test_other_documents_of_the_purchase_stay_where_they_are(
+    api_client: AsyncClient, api_app: FastAPI
+) -> None:
+    """Only the receipt / invoice picture moves: a warranty card or another file stays."""
+    user = await new_account(api_client)
+    pair = await merged_pair(api_client, api_app, user)
+    picture = await _upload_picture(api_client, user, pair["bank_tx"]["id"])
+    warranty = await _upload_picture(api_client, user, pair["bank_tx"]["id"], "WARRANTY")
+
+    response = await api_client.post(
+        f"/api/v1/transactions/{pair['bank_tx']['id']}/unmerge",
+        json={"observation_id": pair["receipt_id"]},
+        headers=user.headers,
+    )
+
+    result = response.json()
+    assert await _document_owner(api_app, picture) == result["new_transaction"]["id"]
+    assert await _document_owner(api_app, warranty) == result["transaction"]["id"]
