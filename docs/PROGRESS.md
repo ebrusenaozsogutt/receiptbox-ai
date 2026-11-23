@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 -->
 
 ### 2026-11-22 — P09 CI confirmed
-- CI run on `main` (`6719f92`): jobs `backend` (1147 tests on a fresh PostgreSQL, fake provider only) and `mobile` (575 Flutter tests) both green. The emulator end-to-end run was done on 2026-11-23 (see the entry below), so P09 is closed.
+- CI run on `main` (`6719f92`): jobs `backend` (1147 tests on a fresh PostgreSQL, fake provider only) and `mobile` (575 Flutter tests) both green. The emulator end-to-end run was done on 2026-11-23 (see the entry below), so P09 is closed. CI on `main` (`733e7b5`, the commit that records the emulator run): `backend` and `mobile` green again.
 
 ### 2026-11-22 — P09 Matching engine 1:1 (done; emulator end-to-end run on 2026-11-23)
 - Done:
