@@ -23,11 +23,11 @@ Automatic cancellation detection, interest calculation beyond `total_payable −
 
 ## Acceptance criteria
 
-- [ ] Receipt 12.499 TL with 6 installments + bank rows 1/6…3/6 → spending 12.499 once in purchase month; payments view shows 2.083,17×5 + 2.083,15 (rounding) by month.
-- [ ] Bank row 2/6 first (no receipt) → estimated purchase; receipt later merges; estimated flag cleared; no double count.
-- [ ] Marker-less row equal to total/6 → suggestion only.
-- [ ] Rounding: Σ payments = total for n = 2..12 (property test).
-- [ ] Schedule endpoint correct across year boundary.
+- [x] Receipt 12.499 TL with 6 installments + bank rows 1/6…3/6 → spending 12.499 once in purchase month; payments view shows 2.083,17×5 + 2.083,15 (rounding) by month.
+- [x] Bank row 2/6 first (no receipt) → estimated purchase; receipt later merges; estimated flag cleared; no double count.
+- [x] Marker-less row equal to total/6 → suggestion only.
+- [x] Rounding: Σ payments = total for n = 2..12 (property test).
+- [x] Schedule endpoint correct across year boundary.
 
 ## Tests
 

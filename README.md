@@ -289,9 +289,26 @@ Rebuild the backend and apply the new migration (`match_decisions.merge_snapshot
 4. A **near match** (the receipt dated one day after the bank row, no times): after **Kaydet** the sheet **"Aynı harcama olabilir mi?"** opens with the two records side by side: **Birleştir** or **Ayrı kalsın** (then both stay purchases). Close the sheet without answering and Harcamalar shows **"1 eşleşme önerisi bekliyor"**; tap it to answer.
 5. The other way round: scan the receipt first, then import the bank screenshot: the matching row shows **Eşleşti** (or **Olası eşleşme**) before you save, and saving merges it or asks.
 6. Two identical coffees in one bank screenshot stay **two** purchases; a receipt for one of them asks which one.
-7. A row with an installment marker (`1/3`) is never merged this way (P10).
+7. A row with an installment marker (`1/3`) is never merged this way; it is a payment of a plan (3.2.8).
 
 **Swagger** (Register and **Authorize** as in 3.2.2): `GET /api/v1/matches` lists the suggestions waiting (with `score` and `features`), `POST /api/v1/matches/{id}/accept` / `/reject` answer one, `POST /api/v1/transactions/{id}/unmerge` with `{"observation_id": "…"}` separates a record. The stored candidates and their features are in the table `match_decisions` (the data of the evaluation in P15). Everything of another user answers 404.
+
+### 3.2.8 Try the installments (P10)
+
+No new migration. Rebuild the backend (`docker compose -f infra/docker-compose.yml up -d --build backend`) and the app (3.3).
+
+**The idea.** An installment purchase is **one spending** (the full total, counted once, in the month you bought it) and **N payments** (one per month). The bank rows `2/6`, `3/6` ... are those payments: they are attached to the purchase and never add spending. How the banks show them: **Garanti / Bonus** and **Akbank** show a row per month with `k/n` (the row date is assumed to be the month charged); **Kuveyt** prints the original purchase date on every row. Please compare with two real months of your own statements and tell me what you see (DECISIONS P-073 / P-074).
+
+**On the emulator or a phone (debug build)**
+1. **A slip with installments.** Scan a slip that says `TAKSIT SAYISI: 6` (or any slip, then switch **Taksitli** on and pick the count with + / -). Save. Harcamalar shows ONE purchase with the **TAKSİT** badge. Open it: the **Taksit** card lists 6 payments (12.499,00 TL = 2.083,17 x 5 + 2.083,15), each with a dot: filled = seen on a bank statement, soft = taken as paid, empty = not seen yet.
+2. **The bank rows.** Import a card list that has the rows `1/6` and `2/6` of that purchase. Before saving, each row shows **TAKSİT 2/6** and "Taksit 2/6 → MediaMarkt alışverişine bağlanacak". Save: "N taksit mevcut alışverişe bağlandı"; the number of purchases and the total do not change; the two dots are filled.
+3. **Taksitler** (the calendar icon on Harcamalar): the months, what is due in each, **Kalan taksit toplamı**, and which payments were seen. These are payments, not spending.
+4. **A row `2/6` with no receipt:** the review says "tahmini alışveriş oluşturulacak". Saving makes a purchase marked **TAHMİNİ** (total = 6 x the row amount, date about a month earlier). Then scan its receipt: it merges ("... eşleşti ve birleştirildi"), TAHMİNİ disappears and the receipt's date and total win. The purchase is never counted twice.
+5. **A row without a marker** whose amount is a sixth of a purchase of the same shop: the review says "Bir taksit olabilir (...): kaydedince sorulacak". Saving opens **"Bu bir taksit olabilir mi?"**: **Bağla** (becomes a payment, no new purchase) or **Ayrı kalsın** (a purchase of its own).
+6. **A purchase you already saved:** open it, **Taksitli yap**, pick the count. **Taksit sayısını değiştir** works until a bank row is on the plan; **Planı iptal et** removes its payments from Taksitler.
+7. Two plans that fit a row equally well: the app asks which one; it never guesses.
+
+**Swagger** (Register and **Authorize** as in 3.2.2): `PUT /api/v1/transactions/{id}/installment-plan` with `{"count": 6}`, `PATCH /api/v1/installment-plans/{id}` with `{"status": "CANCELLED"}`, `GET /api/v1/installments/schedule?from=2026-11-01&to=2027-06-01`. The stored candidates with their features are in `match_decisions` where `match_type = 'INSTALLMENT'`.
 
 ### 3.3 The Android app
 

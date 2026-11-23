@@ -172,9 +172,7 @@ async def test_bank_rows_1_to_3_of_6_become_payments_and_add_no_spending(
         (2, 6),
         (3, 6),
     ]
-    assert [e["source"] for e in full["evidence"] if not e["is_installment_payment"]] == [
-        "RECEIPT"
-    ]
+    assert [e["source"] for e in full["evidence"] if not e["is_installment_payment"]] == ["RECEIPT"]
     listing = await purchases(api_client, user)
     assert (listing["count"], listing["sum_minor"]) == (1, SLIP_TOTAL)  # still counted once
 
