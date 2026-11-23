@@ -202,9 +202,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Kaydetmeden çıkılsın mı?'),
-        content: const Text(
-          'Bu fiş kaydedilmeyecek ve eklediğin bilgiler silinecek.',
-        ),
+        content: const Text('Bu fiş kaydedilmeyecek ve eklediğin bilgiler silinecek.'),
         actions: [
           TextButton(
             key: const Key('leave_stay'),
@@ -251,8 +249,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           ],
         ),
       );
-      if (answer == null || !mounted)
-        return; // dialog dismissed: nothing is saved
+      if (answer == null || !mounted) return; // dialog dismissed: nothing is saved
       remember = answer;
     }
 
