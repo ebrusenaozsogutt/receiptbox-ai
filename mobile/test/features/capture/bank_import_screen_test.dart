@@ -154,7 +154,7 @@ void main() {
       expect(find.text('MIGROS'), findsOneWidget);
       expect(find.text('161,28 TL'), findsOneWidget);
       expect(find.text('12 Kasım 2026'), findsWidgets);
-      expect(find.text('2/3'), findsOneWidget); // installment badge
+      expect(find.text('TAKSİT 2/3'), findsOneWidget); // installment badge
       expect(find.text('Bekliyor'), findsOneWidget); // pending badge
       expect(find.text('KONTROL ET'), findsOneWidget); // merchant MEDIUM
       expect(find.text('Market'), findsOneWidget); // category chip

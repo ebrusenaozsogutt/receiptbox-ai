@@ -83,10 +83,14 @@ class BankSaveOutcome {
     required this.skipped,
     this.merged = const [],
     this.suggested = const [],
+    this.linked = 0,
   });
 
   final int created;
   final int skipped;
+
+  /// P10: installment rows that became payments of a purchase (no spending was added).
+  final int linked;
   final List<UndoableMerge> merged;
   final List<MatchSuggestion> suggested;
 }
@@ -211,6 +215,7 @@ class BankImportController extends _$BankImportController {
         skipped: result.skipped.length,
         merged: result.merged,
         suggested: result.suggested,
+        linked: result.linked.length,
       );
     } on Object {
       if (ref.mounted) state = state.copyWith(phase: BankPhase.ready);

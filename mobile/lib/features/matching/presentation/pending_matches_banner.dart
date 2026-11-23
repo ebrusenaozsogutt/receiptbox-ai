@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../transactions/data/transactions_providers.dart';
+import '../../installments/data/installment_providers.dart';
 import '../data/matching_providers.dart';
 import '../domain/match_models.dart';
 import 'match_sheet.dart';
@@ -24,6 +25,7 @@ class PendingMatchesBanner extends ConsumerWidget {
     if (answer == null) return;
     ref
       ..invalidate(purchaseListProvider)
+      ..invalidate(installmentScheduleProvider)
       ..invalidate(pendingMatchesProvider);
     messenger.showSnackBar(
       SnackBar(

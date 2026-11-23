@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:receiptbox/core/networking/api_error.dart';
 import 'package:receiptbox/features/capture/domain/bank_models.dart';
+import 'package:receiptbox/features/installments/domain/installment_models.dart';
 import 'package:receiptbox/features/matching/domain/match_models.dart';
 import 'package:receiptbox/features/transactions/data/transactions_api.dart';
 import 'package:receiptbox/features/transactions/domain/purchase_models.dart';
@@ -52,6 +53,8 @@ class FakeTransactionsApi implements TransactionsApi {
     List<DocumentInfo> documents = const [],
     String? note,
     List<EvidenceItem> evidenceItems = const [],
+    InstallmentPlan? plan,
+    bool isEstimated = false,
   }) {
     final detail = PurchaseDetail(
       purchase: Purchase(
@@ -64,11 +67,14 @@ class FakeTransactionsApi implements TransactionsApi {
         channel: PurchaseChannel.inStore,
         note: note,
         documentCount: documents.length,
+        isEstimated: isEstimated,
+        isInstallment: plan != null,
       ),
       evidence: evidence,
       lines: lines,
       documents: documents,
       evidenceItems: evidenceItems,
+      plan: plan,
     );
     purchases.add(detail);
     return detail;
@@ -214,10 +220,12 @@ class FakeTransactionsApi implements TransactionsApi {
           ids.length -
           batchResult.skipped.length -
           batchResult.merged.length -
+          batchResult.linked.length -
           batchResult.suggested.length,
       skipped: batchResult.skipped,
       merged: batchResult.merged,
       suggested: batchResult.suggested,
+      linked: batchResult.linked,
     );
   }
 
@@ -276,6 +284,46 @@ class FakeTransactionsApi implements TransactionsApi {
       newTransaction: add(merchant: 'Ayrılan'),
     );
   }
+
+  // ---- installments (P10) -------------------------------------------------------------------
+
+  final plansPut = <({String transactionId, int count})>[];
+  final plansCancelled = <({String planId, bool cancel})>[];
+
+  /// What `GET /installments/schedule` answers.
+  InstallmentSchedule scheduleAnswer = const InstallmentSchedule(
+    months: [],
+    remainingMinor: 0,
+  );
+  ApiError? planError;
+
+  @override
+  Future<PurchaseDetail> putPlan(
+    String transactionId, {
+    required int count,
+    DateTime? firstDueMonth,
+    int? totalPayableMinor,
+  }) async {
+    final error = planError;
+    if (error != null) throw error;
+    plansPut.add((transactionId: transactionId, count: count));
+    return detail(transactionId);
+  }
+
+  @override
+  Future<PurchaseDetail> setPlanCancelled(
+    String planId, {
+    required bool cancel,
+  }) async {
+    final error = planError;
+    if (error != null) throw error;
+    plansCancelled.add((planId: planId, cancel: cancel));
+    return purchases.first;
+  }
+
+  @override
+  Future<InstallmentSchedule> schedule({DateTime? from, DateTime? to}) async =>
+      scheduleAnswer;
 
   @override
   Future<void> reject(String observationId) async {

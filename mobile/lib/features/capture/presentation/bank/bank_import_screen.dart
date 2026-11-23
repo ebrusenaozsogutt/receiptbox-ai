@@ -16,6 +16,8 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/match_badge.dart';
 import '../../../../core/widgets/message_banner.dart';
 import '../../../../core/widgets/review_badge.dart';
+import '../../../installments/data/installment_providers.dart';
+import '../../../installments/presentation/installment_widgets.dart';
 import '../../../matching/data/matching_providers.dart';
 import '../../../matching/domain/match_models.dart';
 import '../../../matching/presentation/match_sheet.dart';
@@ -384,11 +386,11 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
                             ),
                           ],
                           if (row.installmentLabel != null)
-                            _Pill(
+                            KeyedSubtree(
                               key: Key('installment_${row.observationId}'),
-                              label: row.installmentLabel!,
-                              background: AppColors.infoSoft,
-                              foreground: AppColors.info,
+                              child: InstallmentBadge(
+                                label: 'TAKSİT ${row.installmentLabel!}',
+                              ),
                             ),
                           if (row.isPending)
                             const _Pill(
@@ -418,6 +420,16 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
                             ),
                         ],
                       ),
+                      if (row.installment != null && selectable) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          row.installment!.label,
+                          key: Key('installment_hint_${row.observationId}'),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
                       if (row.match != null && selectable) ...[
                         const SizedBox(height: AppSpacing.xs),
                         Text(
@@ -592,6 +604,7 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
           .save();
       ref
         ..invalidate(purchaseListProvider)
+        ..invalidate(installmentScheduleProvider)
         ..invalidate(pendingMatchesProvider);
 
       // P09: rows that may be the same as a purchase you have are asked about, one by one. A
@@ -610,11 +623,14 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
       }
       ref
         ..invalidate(purchaseListProvider)
+        ..invalidate(installmentScheduleProvider)
         ..invalidate(pendingMatchesProvider);
 
       final parts = [
         '${outcome.created + separate} harcama kaydedildi',
         if (joined > 0) '$joined satır mevcut harcamayla birleşti',
+        if (outcome.linked > 0)
+          '${outcome.linked} taksit mevcut alışverişe bağlandı',
         if (outcome.skipped > 0) '${outcome.skipped} satır kaydedilemedi',
       ];
       final text = '${parts.join(', ')}.';
@@ -755,7 +771,6 @@ class _BankPicker extends StatelessWidget {
 
 class _Pill extends StatelessWidget {
   const _Pill({
-    super.key,
     required this.label,
     required this.background,
     required this.foreground,

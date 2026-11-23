@@ -49,6 +49,20 @@ String _withSuffix(MatchTransaction transaction) {
   return '${transaction.merchant} $what';
 }
 
+/// P10: "Bu ödeme MediaMarkt alışverişinin 6 taksitinden biri olabilir. Bağlansın mı?"
+String _installmentQuestion(List<MatchSuggestion> suggestions) {
+  final first = suggestions.first;
+  if (suggestions.length > 1) {
+    return 'Bu ödeme birkaç taksitli alışverişten birinin taksiti olabilir. '
+        'Hangisine bağlansın?';
+  }
+  final what = first.installmentSeq == null
+      ? '${first.installmentCount} taksitinden biri'
+      : '${first.installmentSeq}/${first.installmentCount}. taksiti';
+  return 'Bu ödeme ${first.transaction.merchant} alışverişinin $what '
+      'olabilir. Bağlansın mı? Bağlanırsa harcama tekrar sayılmaz.';
+}
+
 class MatchSheet extends ConsumerStatefulWidget {
   const MatchSheet({super.key, required this.suggestions})
     : assert(suggestions.length > 0);
@@ -108,6 +122,7 @@ class _MatchSheetState extends ConsumerState<MatchSheet> {
     final suggestions = widget.suggestions;
     final observation = suggestions.first.observation;
     final single = suggestions.length == 1;
+    final installment = suggestions.first.isInstallment;
     return SafeArea(
       child: SingleChildScrollView(
         key: const Key('match_sheet'),
@@ -116,10 +131,17 @@ class _MatchSheetState extends ConsumerState<MatchSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Aynı harcama olabilir mi?', style: AppTextStyles.titleM),
+            Text(
+              installment
+                  ? 'Bu bir taksit olabilir mi?'
+                  : 'Aynı harcama olabilir mi?',
+              style: AppTextStyles.titleM,
+            ),
             const SizedBox(height: AppSpacing.s),
             Text(
-              single
+              installment
+                  ? _installmentQuestion(suggestions)
+                  : single
                   ? 'Bu işlem daha önce eklediğin '
                         '${_withSuffix(suggestions.first.transaction)} aynı '
                         'olabilir. Birleştirilsin mi?'
@@ -181,7 +203,9 @@ class _MatchSheetState extends ConsumerState<MatchSheet> {
                   action: OutlinedButton(
                     key: Key('match_accept_${suggestion.id}'),
                     onPressed: _busy ? null : () => _accept(suggestion),
-                    child: const Text('Bununla birleştir'),
+                    child: Text(
+                      installment ? 'Bununla bağla' : 'Bununla birleştir',
+                    ),
                   ),
                 ),
               ],
@@ -216,7 +240,7 @@ class _MatchSheetState extends ConsumerState<MatchSheet> {
                                 strokeWidth: AppSizes.progressThickness - 1,
                               ),
                             )
-                          : const Text('Birleştir'),
+                          : Text(installment ? 'Bağla' : 'Birleştir'),
                     ),
                   ),
                 ],
