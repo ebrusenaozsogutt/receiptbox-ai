@@ -962,3 +962,35 @@ async def test_the_scheduled_amounts_never_depend_on_the_time_of_the_row(
     )  # fmt: skip
     await save_rows(api_client, user, [row])
     assert statuses((await detail(api_client, user, made["id"]))["plan"])[0] == "OBSERVED"
+
+
+# ---- a slip read by the extraction endpoint (fixture 11, "TAKSIT SAYISI : 6") ------------------
+
+
+async def test_a_slip_read_by_the_extraction_endpoint_makes_the_same_plan(
+    api_client: AsyncClient, api_app: FastAPI
+) -> None:
+    """The synthetic slip `11_mediamarkt_6_taksit` through POST /extract/receipt, then confirmed as
+    the review screen sends it: the reading found 6 installments, the plan follows."""
+    from tests.p07_helpers import extract_receipt
+
+    user = await new_account(api_client, consent=True)
+    extraction = await extract_receipt(api_client, user, "11_mediamarkt_6_taksit")
+    assert extraction["extraction"]["installment_count"] == 6
+
+    response = await confirm(
+        api_client,
+        user,
+        extraction["observation_id"],
+        merchant_display="MediaMarkt",
+        date="2026-11-14",
+        time="17:05:00",
+        total_minor=SLIP_TOTAL,
+        category_key="TECHNOLOGY",
+        items=[],
+        installment_count=6,
+    )
+
+    plan = response.json()["plan"]
+    assert [p["amount_minor"] for p in plan["payments"]] == [PART] * 5 + [208_315]
+    assert plan["first_due_month"] == "2026-12-01"

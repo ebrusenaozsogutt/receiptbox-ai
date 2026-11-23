@@ -1,0 +1,29 @@
+{
+  "extraction": {
+    "merchant_raw": "MEDIAMARKT KONYA",
+    "date": "2026-11-14",
+    "time": "17:05:00",
+    "total": "12499.00",
+    "currency": "TRY",
+    "payment_method": "CARD",
+    "installment_count": 6,
+    "items": [
+      {
+        "name_raw": "SAMSUNG 65\" QLED TV QE65Q60",
+        "quantity": null,
+        "unit_price": null,
+        "total_price": "12499.00"
+      }
+    ]
+  },
+  "confidence": {
+    "merchant": "HIGH",
+    "date": "HIGH",
+    "time": "HIGH",
+    "total": "HIGH",
+    "payment_method": "HIGH",
+    "installment_count": "HIGH",
+    "items": "HIGH"
+  },
+  "issues": []
+}
