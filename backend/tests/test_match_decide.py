@@ -26,6 +26,7 @@ def candidate(score: float, transaction_id: uuid.UUID | None = None) -> ScoredCa
         amount_score=50.0,
         date_diff_days=0,
         date_score=20.0,
+        date_available=True,
         merchant_alias_hit=False,
         merchant_token_set_ratio=None,
         merchant_token_sort_ratio=None,
@@ -101,7 +102,7 @@ def test_other_thresholds_change_the_outcome() -> None:
     assert decide([candidate(85.0)], lenient).outcome == MatchOutcome.AUTO
 
 
-# ---- the hook for P10 -------------------------------------------------------------------------
+# ---- the hook for P10 (narrowed in P10) --------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -112,11 +113,11 @@ def test_other_thresholds_change_the_outcome() -> None:
         (1, 3, True),  # "(1/3)": one payment of a plan
         (3, 3, True),
         (2, None, True),  # a k without an n is still a marker
-        (None, 3, True),  # "3 TAKSİTLİ": the purchase side of a plan
-        (None, 12, True),
+        (None, 3, False),  # "3 TAKSİTLİ": the purchase side of a plan: matched like any purchase
+        (None, 12, False),
     ],
 )
-def test_installment_rows_are_deferred_to_the_installment_matcher(
+def test_only_a_payment_row_is_deferred_to_the_installment_matcher(
     seq: int | None, count: int | None, defers: bool
 ) -> None:
     assert defers_to_installments(seq, count) is defers

@@ -455,9 +455,12 @@ async def test_a_bank_row_with_an_installment_marker_is_never_merged_one_to_one(
     assert await decisions(api_app, user) == []  # deferred before any scoring
 
 
-async def test_a_receipt_with_several_installments_is_not_merged_either(
+async def test_a_receipt_with_several_installments_is_matched_like_any_purchase(
     api_client: AsyncClient, api_app: FastAPI
 ) -> None:
+    """P10 narrowed the P09 rule: only a `k/n` bank row is a payment. A slip or receipt that says
+    "3 taksit" is the purchase side: it merges with the bank purchase of the same total and the
+    plan is made from it."""
     user = await new_account(api_client)
     await bank_tx(
         api_client, api_app, user, merchant_raw="ORNEK TEKNO", amount_minor=89990, day=DAY
@@ -470,9 +473,12 @@ async def test_a_receipt_with_several_installments_is_not_merged_either(
         api_client, user, receipt_id, merchant="Ornek Tekno", day="2026-11-14", total_minor=89990
     )
 
-    assert response.json()["outcome"] == "CREATED"
-    assert response.json()["payment_type"] == "INSTALLMENT"
-    assert (await purchases(api_client, user))["count"] == 2
+    merged = response.json()
+    assert merged["outcome"] == "MERGED"
+    assert merged["payment_type"] == "INSTALLMENT"
+    assert merged["plan"]["count"] == 3
+    assert [p["amount_minor"] for p in merged["plan"]["payments"]] == [29997, 29997, 29996]
+    assert (await purchases(api_client, user))["count"] == 1
 
 
 # ---- what is stored for the evaluation (P15) --------------------------------------------------
@@ -482,6 +488,7 @@ FEATURE_KEYS = {
     "amount_score",
     "date_diff_days",
     "date_score",
+    "date_available",
     "merchant_alias_hit",
     "merchant_token_set_ratio",
     "merchant_token_sort_ratio",

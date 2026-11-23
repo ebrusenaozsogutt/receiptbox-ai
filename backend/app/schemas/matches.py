@@ -42,6 +42,12 @@ class MatchOut(BaseModel):
     observation: MatchObservationOut
     transaction: MatchTransactionOut | None
     created_at: dt.datetime
+    # P10: DUPLICATE = "the same purchase" (P09). INSTALLMENT = "one payment of that purchase's
+    # installments" (a row with a marker that fits several plans, or a row without a marker that
+    # equals total/n): `installment_seq` of `installment_count`.
+    match_type: Literal["DUPLICATE", "INSTALLMENT"] = "DUPLICATE"
+    installment_seq: int | None = None
+    installment_count: int | None = None
 
 
 class BankRowMatchOut(BaseModel):

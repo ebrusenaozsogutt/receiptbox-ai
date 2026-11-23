@@ -20,6 +20,7 @@ from app.models.enums import (
     TransactionKind,
 )
 from app.schemas.documents import DocumentOut
+from app.schemas.installments import PlanOut
 from app.schemas.matches import MatchOut, MergeOut
 
 MAX_TOTAL_MINOR = 100_000_000  # 1,000,000 TRY, the same sanity limit as the extraction (5.3)
@@ -46,6 +47,9 @@ class ConfirmRequest(BaseModel):
     note: _Note | None = None
     items: list[ItemIn] = Field(default_factory=list, max_length=200)
     remember_category_for_merchant: bool = False
+    # P10 "Taksitli": null = not an installment purchase. A client that does not send the field
+    # at all (older app) keeps what the reading found (`installment_count` of the observation).
+    installment_count: int | None = Field(default=None, ge=2, le=36)
 
 
 class BatchEdit(BaseModel):
@@ -91,6 +95,7 @@ class ManualTransactionRequest(BaseModel):
     category_key: CategoryKey
     channel: Channel = Channel.UNKNOWN
     note: _Note | None = None
+    installment_count: int | None = Field(default=None, ge=2, le=36)
 
 
 class TransactionPatch(BaseModel):
@@ -159,8 +164,10 @@ class TransactionDetail(TransactionOut):
     documents: list[DocumentOut]
     # CREATED: a new purchase. MERGED: the observation was attached to this existing purchase
     # (`match` says how; with AUTO_ACCEPTED the app offers "Geri al" = unmerge).
-    outcome: Literal["CREATED", "MERGED"] = "CREATED"
+    # LINKED: a bank installment row became a payment of this purchase (no purchase was added).
+    outcome: Literal["CREATED", "MERGED", "LINKED"] = "CREATED"
     match: MergeOut | None = None
+    plan: PlanOut | None = None
 
 
 class TransactionList(BaseModel):
@@ -199,10 +206,22 @@ class BatchMerged(BaseModel):
     transaction: TransactionDetail
 
 
+class BatchLinked(BaseModel):
+    """A bank installment row (`k/n`) that became payment k of a purchase you already had (or of
+    one made from it): no spending was added for it."""
+
+    observation_id: uuid.UUID
+    seq: int
+    count: int
+    transaction: TransactionDetail
+
+
 class ConfirmBatchResponse(BaseModel):
+    # `created` includes the ESTIMATED purchases made from an installment row with no plan.
     created: list[TransactionDetail]
     skipped: list[BatchSkipped]
     merged: list[BatchMerged] = Field(default_factory=list)
+    linked: list[BatchLinked] = Field(default_factory=list)
     # Rows that may be the same as an existing purchase: they stay pending until the user answers.
     suggested: list[MatchOut] = Field(default_factory=list)
 

@@ -17,13 +17,17 @@ class BankProfile:
     # Most apps print money that came back with a "+" and a purchase with "-" or no sign. Akbank
     # prints a purchase without a sign and a payment or credit with "-".
     minus_is_credit: bool = False
+    # Kuveyt Türk prints the date of the ORIGINAL purchase on every installment row (3/5 and 5/5
+    # of one purchase both say 20.07.2026); the other banks print the date of that installment
+    # (P10, from the owner's masked screenshots).
+    installment_rows_carry_purchase_date: bool = False
 
 
 GENERIC = BankProfile(key=None)
 
 _PROFILES = {
     "garanti": BankProfile("garanti"),
-    "kuveyt": BankProfile("kuveyt"),
+    "kuveyt": BankProfile("kuveyt", installment_rows_carry_purchase_date=True),
     "akbank": BankProfile("akbank", minus_is_credit=True),
 }
 

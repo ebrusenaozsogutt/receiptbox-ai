@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.ai.schemas import Confidence, ReceiptExtraction
 from app.models.enums import CategoryKey, Direction
+from app.schemas.installments import InstallmentPreviewOut
 from app.schemas.matches import BankRowMatchOut
 
 
@@ -92,6 +93,8 @@ class BankRowOut(BaseModel):
     suggestions: Suggestions
     # P09: this row is (AUTO) or may be (SUGGEST) the same purchase as one you already saved.
     match: BankRowMatchOut | None = None
+    # P10: what an installment row will become (a payment of a plan, an estimated purchase ...).
+    installment: InstallmentPreviewOut | None = None
 
 
 class SkippedRowOut(BaseModel):

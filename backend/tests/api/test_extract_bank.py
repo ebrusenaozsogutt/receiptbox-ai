@@ -420,11 +420,12 @@ async def test_confirm_batch_turns_debit_rows_into_purchases(
     assert len(result["created"]) == 5 and result["skipped"] == []
     by_amount = {t["total_minor"]: t for t in result["created"]}
     installment = [t for t in result["created"] if t["payment_type"] == "INSTALLMENT"]
-    assert len(installment) == 4  # the rows with a (k/n) marker: P10 builds their plans
+    # the four rows with a (k/n) marker have no plan yet: each is an ESTIMATED purchase (P10)
+    assert len(installment) == 4 and all(t["is_estimated"] for t in installment)
     assert {t["purchase_date"] for t in result["created"]} == {
-        "2026-11-12",
-        "2026-11-08",
-        "2026-11-06",
+        "2026-10-12",  # 12 Nov (2/3): one month before
+        "2026-09-08",  # 8 Nov (3/3): two months before
+        "2026-11-06",  # 6 Nov (1/3) and the plain row
     }
     assert all(t["evidence"][0]["source"] == "BANK_SCREENSHOT" for t in result["created"])
     assert all(t["evidence"][0]["status"] == "CONFIRMED" for t in result["created"])

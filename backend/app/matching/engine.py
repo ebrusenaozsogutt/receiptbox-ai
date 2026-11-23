@@ -9,8 +9,8 @@
                 and NO new transaction exists meanwhile;
 * `NEW`         no candidate reaches the suggest threshold: a new transaction.
 
-`INSTALLMENT` is not decided here: an observation with a k/n marker (or a total with "n taksit")
-is not a 1:1 purchase and `defers_to_installments` sends it to the installment matcher of P10.
+`INSTALLMENT` is not decided here: an observation with a k/n marker is one payment of a plan, not
+a purchase, and `defers_to_installments` sends it to the installment matcher (P10).
 
 The thresholds come from the settings (`MATCH_AUTO`, `MATCH_SUGGEST`, `MATCH_RECORD_MIN`).
 """
@@ -74,9 +74,11 @@ class MatchResult:
 
 
 def defers_to_installments(installment_seq: int | None, installment_count: int | None) -> bool:
-    """The hook for P10. A row with a k/n marker is one payment of a plan, and a receipt or slip
-    with more than one installment is the purchase side of a plan: neither is merged 1:1 here."""
-    return installment_seq is not None or (installment_count or 0) > 1
+    """A row with a k/n marker is ONE PAYMENT of a plan, not the purchase: it goes to the
+    installment matcher (P10), never to the 1:1 engine. A receipt, a POS slip or a bank row that
+    shows the whole total with "n taksit" (no k) is the purchase side: it is matched like any
+    other purchase and the plan is made from it."""
+    return installment_seq is not None
 
 
 def source_rank(source: ObservationSource) -> int:

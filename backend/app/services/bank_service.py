@@ -37,15 +37,23 @@ from app.core.errors import (
     ExtractionFailedError,
     TextTooLargeError,
 )
+from app.matching.installment_matcher import InstallmentOutcome
 from app.matching.merchant_normalizer import MerchantNormalizer
 from app.models import Observation
-from app.models.enums import ObservationSource, ObservationStatus
+from app.models.enums import Direction, ObservationSource, ObservationStatus
 from app.repositories.merchants import MerchantRepository
 from app.repositories.observations import ObservationRepository
 from app.schemas.extraction import CategorySuggestionOut, MerchantSuggestion, Suggestions
+from app.schemas.installments import InstallmentPreviewOut
 from app.schemas.matches import BankRowMatchOut
 from app.services.categorization_service import CategorizationService
 from app.services.extraction_service import MAX_TEXT_BYTES, compute_fingerprint
+from app.services.installment_service import (
+    CAPTURE_DATE_KEY,
+    InstallmentService,
+    RowContext,
+    row_context,
+)
 from app.services.match_service import MatchService
 
 logger = logging.getLogger("receiptbox.bank")
@@ -77,6 +85,7 @@ class BankRowOutcome:
     status: ObservationStatus
     suggestions: Suggestions
     match: BankRowMatchOut | None = None
+    installment: InstallmentPreviewOut | None = None
 
 
 @dataclass(frozen=True)
@@ -91,6 +100,7 @@ class BankService:
         self._session = session
         self._provider = provider
         self._matching = MatchService(session, settings)
+        self._installments = InstallmentService(session)
         self._observations = ObservationRepository(session)
         merchants = MerchantRepository(session)
         self._normalizer = MerchantNormalizer(merchants)
@@ -156,10 +166,14 @@ class BankService:
                 bank_key=bank_key,
                 masked_text=masked_text if keep_text else None,
                 duplicate_of=duplicate_of,
+                capture_date=capture_date,
             )
             # P09: will this row be merged with a purchase you already have? (nothing is stored)
             match = await self._matching.preview_bank_row(user_id, observation)
-            outcomes.append(BankRowOutcome(observation.id, row, status, suggestions, match))
+            installment = await self._preview_installment(user_id, observation, capture_date)
+            outcomes.append(
+                BankRowOutcome(observation.id, row, status, suggestions, match, installment)
+            )
         await self._session.commit()
         return BankOutcome(bank_key=bank_key, rows=outcomes, skipped=validation.skipped)
 
@@ -180,6 +194,45 @@ class BankService:
             ),
             category=CategorySuggestionOut(key=category.key, source=category.source),
         )
+
+    async def _preview_installment(
+        self, user_id: uuid.UUID, observation: Observation, capture_date: date
+    ) -> InstallmentPreviewOut | None:
+        """P10: what a row with an installment marker will become, or whether a row without one
+        may be a payment of an earlier purchase. Writes nothing."""
+        if observation.status != ObservationStatus.PENDING_REVIEW:
+            return None
+        if observation.direction != Direction.DEBIT:
+            return None
+        context = row_context(observation, capture_date)
+        if context is None:
+            return None
+        if observation.installment_seq is not None and observation.installment_count:
+            match = await self._installments.match_row(user_id, context)
+            seq, count = observation.installment_seq, observation.installment_count
+            if match.outcome == InstallmentOutcome.LINK and match.best is not None:
+                summary = await self._matching.transaction_summary(
+                    user_id, match.best.plan.transaction_id
+                )
+                return InstallmentPreviewOut(
+                    state="LINK", seq=seq, count=count, transaction=summary
+                )
+            if match.outcome == InstallmentOutcome.AMBIGUOUS:
+                return InstallmentPreviewOut(state="ASK", seq=seq, count=count)
+            return InstallmentPreviewOut(state="ESTIMATE", seq=seq, count=count)
+        if observation.installment_seq is None and not observation.installment_count:
+            suggestions = await self._installments.suggest_for_row(
+                user_id, RowContext(context.row, context.merchant_id)
+            )
+            if suggestions:
+                best = suggestions[0]
+                summary = await self._matching.transaction_summary(
+                    user_id, best.purchase.transaction_id
+                )
+                return InstallmentPreviewOut(
+                    state="SUGGEST", seq=best.seq, count=best.count, transaction=summary
+                )
+        return None
 
     @staticmethod
     def _fingerprint(row: ValidatedBankRow, suggestions: Suggestions) -> str:
@@ -203,6 +256,7 @@ class BankService:
         bank_key: str | None,
         masked_text: str | None,
         duplicate_of: uuid.UUID | None,
+        capture_date: date,
     ) -> Observation:
         saved: dict[str, Any] = {
             "bank_row": {
@@ -213,6 +267,8 @@ class BankService:
                 "is_pending": row.is_pending,
             },
             "kind": row.kind,
+            # the day the screenshot was taken: the statement month of an installment row (P10)
+            CAPTURE_DATE_KEY: capture_date.isoformat(),
             "possible_refund": row.kind == "REFUND",
             "issues": row.issues,
             "suggestions": suggestions.model_dump(mode="json"),

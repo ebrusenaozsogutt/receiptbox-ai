@@ -210,6 +210,15 @@ class TestScore:
         assert features.date_score == 0.0
         assert features.score == pytest.approx(77.78, abs=0.01)
 
+    def test_the_date_can_be_left_out_for_an_estimated_purchase(self) -> None:
+        """P10: an estimated purchase has a guessed date, so a date 30 days off costs nothing."""
+        features = score_pair(
+            side(name="Migros"), side(day=date(2026, 12, 12), name="MIGROS"), date_available=False
+        )
+        assert features.date_available is False and features.date_score is None
+        assert features.available_max == 70.0  # amount 50 + merchant 20
+        assert features.score == 100.0
+
     def test_the_score_is_rounded_to_two_decimals(self) -> None:
         features = score_pair(side(), side(day=date(2026, 11, 13)))
         assert features.score == round(features.score, 2)
@@ -221,6 +230,7 @@ class TestScore:
             "amount_score",
             "date_diff_days",
             "date_score",
+            "date_available",
             "merchant_alias_hit",
             "merchant_token_set_ratio",
             "merchant_token_sort_ratio",
@@ -247,7 +257,7 @@ class TestScore:
         features = score_pair(side(15000, at=time(18, 0)), side(15000, DAY, time(18, 20)))
         parts = (
             features.amount_score
-            + features.date_score
+            + (features.date_score or 0.0)
             + (features.merchant_score or 0.0)
             + (features.time_score or 0.0)
         )

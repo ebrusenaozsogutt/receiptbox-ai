@@ -197,6 +197,16 @@ class NotMergedError(ConflictError):
     default_message = "This purchase is not a merge of two records."
 
 
+# ---- installments (P10) --------------------------------------------------------------------
+
+
+class PlanHasBankRowsError(ConflictError):
+    """A plan whose payments already have bank rows cannot be replaced (change it with PATCH)."""
+
+    code = "PLAN_HAS_BANK_ROWS"
+    default_message = "Bank rows are already attached to this plan."
+
+
 # ---- documents (P07) ---------------------------------------------------------------------
 
 

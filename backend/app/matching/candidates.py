@@ -3,7 +3,7 @@
 Every condition is in the query, and the user's id is the first one. A candidate is a transaction
 
 * of the same user, not deleted, of kind PURCHASE;
-* at most 3 days away from the new observation;
+* at most 3 days away from the new observation (45 for an estimated purchase);
 * within 2 % of its amount (relative to the larger of the two, as the score is);
 * with NO confirmed observation of the same source (a purchase has at most one receipt, one bank
   row ... spec 6.3: this is why two identical coffees from the bank stay two transactions).
@@ -13,12 +13,16 @@ import uuid
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from sqlalchemy import and_, exists, func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.matching.features import AMOUNT_ZERO_AT, MAX_CANDIDATE_DAYS
 from app.models import Observation, Transaction
 from app.models.enums import ObservationSource, ObservationStatus, TransactionKind
+
+# An ESTIMATED purchase (made from a bank installment row, P10) has a guessed date: it is found in
+# a wider window and its date is left out of the score.
+ESTIMATED_CANDIDATE_DAYS = 45
 
 
 @dataclass(frozen=True)
@@ -51,8 +55,17 @@ async def find_candidates(
         Transaction.user_id == user_id,
         Transaction.deleted_at.is_(None),
         Transaction.kind == TransactionKind.PURCHASE,
-        Transaction.purchase_date >= day - timedelta(days=MAX_CANDIDATE_DAYS),
-        Transaction.purchase_date <= day + timedelta(days=MAX_CANDIDATE_DAYS),
+        or_(
+            and_(
+                Transaction.purchase_date >= day - timedelta(days=MAX_CANDIDATE_DAYS),
+                Transaction.purchase_date <= day + timedelta(days=MAX_CANDIDATE_DAYS),
+            ),
+            and_(
+                Transaction.is_estimated.is_(True),
+                Transaction.purchase_date >= day - timedelta(days=ESTIMATED_CANDIDATE_DAYS),
+                Transaction.purchase_date <= day + timedelta(days=ESTIMATED_CANDIDATE_DAYS),
+            ),
+        ),
         func.abs(Transaction.total_minor - amount_minor) <= AMOUNT_ZERO_AT * larger,
         ~same_source_evidence,
     )

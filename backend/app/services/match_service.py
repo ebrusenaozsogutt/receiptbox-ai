@@ -150,6 +150,7 @@ class MatchService:
                     new,
                     side_of(candidate.transaction),
                     source_pair=f"{source.value}|{'+'.join(s.value for s in candidate.sources)}",
+                    date_available=not candidate.transaction.is_estimated,
                 ),
             )
             for candidate in found
@@ -237,16 +238,34 @@ class MatchService:
         *,
         payment_type: PaymentType,
         note: str | None,
+        extra: dict[str, Any] | None = None,
     ) -> None:
-        """Keep what the user reviewed while a suggestion waits (no transaction yet)."""
+        """Keep what the user reviewed while a suggestion waits (no transaction yet). `extra` is
+        for P10: the installment count the user chose, or the `k/n` marker of a bank row."""
         observation.extraction_json = {
             **(observation.extraction_json or {}),
             PENDING_KEY: {
                 **fields.to_json(),
                 "payment_type": payment_type.value,
                 "note": note,
+                **(extra or {}),
             },
         }
+
+    async def open_decision(
+        self, user_id: uuid.UUID, decision_id: uuid.UUID
+    ) -> tuple[MatchDecision, Observation]:
+        return await self._open_decision(user_id, decision_id)
+
+    async def close_pending(self, user_id: uuid.UUID, observation_id: uuid.UUID) -> None:
+        for other in await self._decisions.pending_for_observation(user_id, observation_id):
+            other.decision = MatchDecisionStatus.REJECTED
+            other.decided_at = _now()
+
+    async def transaction_summary(
+        self, user_id: uuid.UUID, transaction_id: uuid.UUID
+    ) -> MatchTransactionOut | None:
+        return await self._transaction_out(user_id, transaction_id)
 
     # ---- answering a suggestion ---------------------------------------------------------------
 
@@ -311,6 +330,8 @@ class MatchService:
         merges = await self._decisions.active_merges_of(user_id, transaction_id)
         if len(evidence) != 2 or not merges:
             raise NotMergedError()
+        if any(o.installment_payment_id is not None for o in evidence):
+            raise NotMergedError()  # a bank installment row is a payment of a plan (P10)
         decision = merges[0]
         if decision.observation_id not in {o.id for o in evidence} or not decision.merge_snapshot:
             raise NotMergedError()
@@ -382,6 +403,13 @@ class MatchService:
                     observation=_observation_out(observation),
                     transaction=transaction,
                     created_at=decision.created_at,
+                    match_type=decision.match_type.value,  # type: ignore[arg-type]
+                    installment_seq=(decision.features_json or {}).get("seq")
+                    if decision.match_type == MatchType.INSTALLMENT
+                    else None,
+                    installment_count=(decision.features_json or {}).get("count")
+                    if decision.match_type == MatchType.INSTALLMENT
+                    else None,
                 )
             )
         return out

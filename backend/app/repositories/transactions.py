@@ -59,6 +59,7 @@ class TransactionRepository:
         payment_type: PaymentType,
         channel: Channel,
         note: str | None,
+        is_estimated: bool = False,
     ) -> Transaction:
         _require_uuid(user_id)
         transaction = Transaction(
@@ -73,7 +74,7 @@ class TransactionRepository:
             payment_type=payment_type,
             channel=channel,
             kind=TransactionKind.PURCHASE,
-            is_estimated=False,
+            is_estimated=is_estimated,
             note=note,
         )
         self._session.add(transaction)

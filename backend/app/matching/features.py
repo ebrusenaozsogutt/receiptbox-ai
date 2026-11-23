@@ -24,7 +24,9 @@ without a new `FEATURES_VERSION`:
   amount_rel_diff           |a - b| / max(a, b), 0.0 .. 1.0 (symmetric)
   amount_score              0 .. 50
   date_diff_days            whole days apart, always >= 0
-  date_score                0 .. 20
+  date_score                0 .. 20, or null when the date was left out (date_available false)
+  date_available            false when one side is an ESTIMATED purchase (P10): its date is a guess
+                            from a bank installment row, so the date is left out of the score
   merchant_alias_hit        true when both sides are the same known merchant (same merchant_id)
   merchant_token_set_ratio  0 .. 1, rapidfuzz token_set_ratio of the cleaned names / 100, or null
   merchant_token_sort_ratio 0 .. 1, token_sort_ratio / 100, or null. NOT part of the score: kept
@@ -51,7 +53,7 @@ from rapidfuzz import fuzz
 
 from app.matching.merchant_normalizer import clean_name, fold_ascii
 
-FEATURES_VERSION = "baseline-v1"
+FEATURES_VERSION = "baseline-v2"
 
 AMOUNT_MAX = 50.0
 DATE_MAX = 20.0
@@ -82,7 +84,8 @@ class MatchFeatures:
     amount_rel_diff: float
     amount_score: float
     date_diff_days: int
-    date_score: float
+    date_score: float | None
+    date_available: bool
     merchant_alias_hit: bool
     merchant_token_set_ratio: float | None
     merchant_token_sort_ratio: float | None
@@ -103,6 +106,7 @@ class MatchFeatures:
             "amount_score": self.amount_score,
             "date_diff_days": self.date_diff_days,
             "date_score": self.date_score,
+            "date_available": self.date_available,
             "merchant_alias_hit": self.merchant_alias_hit,
             "merchant_token_set_ratio": self.merchant_token_set_ratio,
             "merchant_token_sort_ratio": self.merchant_token_sort_ratio,
@@ -181,15 +185,24 @@ def time_score(minutes: float) -> float:
 # ---- the whole score ---------------------------------------------------------------------------
 
 
-def score_pair(new: MatchSide, candidate: MatchSide, *, source_pair: str = "") -> MatchFeatures:
+def score_pair(
+    new: MatchSide,
+    candidate: MatchSide,
+    *,
+    source_pair: str = "",
+    date_available: bool = True,
+) -> MatchFeatures:
     """The features and the 0..100 score of "are these two the same purchase?"."""
     rel = amount_rel_diff(new.amount_minor, candidate.amount_minor)
     amount_points = amount_score(rel)
     days = date_diff_days(new.day, candidate.day)
     date_points = date_score(days)
 
-    earned = amount_points + date_points
-    available = AMOUNT_MAX + DATE_MAX
+    earned = amount_points
+    available = AMOUNT_MAX
+    if date_available:
+        earned += date_points
+        available += DATE_MAX
 
     alias_hit = new.merchant_id is not None and new.merchant_id == candidate.merchant_id
     similarity = merchant_similarity(
@@ -214,7 +227,8 @@ def score_pair(new: MatchSide, candidate: MatchSide, *, source_pair: str = "") -
         amount_rel_diff=round(rel, 6),
         amount_score=amount_points,
         date_diff_days=days,
-        date_score=date_points,
+        date_score=date_points if date_available else None,
+        date_available=date_available,
         merchant_alias_hit=alias_hit,
         merchant_token_set_ratio=similarity[0] if similarity else None,
         merchant_token_sort_ratio=similarity[1] if similarity else None,

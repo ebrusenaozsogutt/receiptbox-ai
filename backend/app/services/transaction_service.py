@@ -12,14 +12,16 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.bank_profiles import profile_for
 from app.core.config import Settings
 from app.core.errors import NotFoundError, ObservationNotPendingError
 from app.matching.engine import MatchOutcome
+from app.matching.installment_matcher import InstallmentOutcome, InstallmentRow
 from app.matching.merchant_normalizer import MerchantMatch, MerchantNormalizer, clean_name
 from app.matching.merge import TxFields
 from app.models import Observation, Transaction
@@ -28,6 +30,7 @@ from app.models.enums import (
     Channel,
     Direction,
     MatchDecisionStatus,
+    MatchType,
     ObservationSource,
     ObservationStatus,
     PaymentType,
@@ -37,8 +40,10 @@ from app.repositories.merchants import MerchantRepository
 from app.repositories.observations import ObservationRepository
 from app.repositories.transactions import TransactionRepository, TransactionRow
 from app.schemas.documents import DocumentOut
+from app.schemas.installments import PlanIn, PlanPatch
 from app.schemas.matches import MatchOut, MergeOut, SuggestionResponse
 from app.schemas.transactions import (
+    BatchLinked,
     BatchMerged,
     BatchSkipped,
     ConfirmBatchRequest,
@@ -54,11 +59,17 @@ from app.schemas.transactions import (
     TransactionPatch,
     UnmergeResponse,
 )
-from app.services.extraction_service import compute_fingerprint
+from app.services.extraction_service import BUSINESS_TIMEZONE, compute_fingerprint
+from app.services.installment_service import InstallmentService, RowContext, capture_date_of
 from app.services.match_service import Evaluation, MatchService, without_pending
 from app.storage.backend import StorageBackend, StorageError
 
 logger = logging.getLogger("receiptbox.transactions")
+
+
+def business_today() -> date:
+    """Today in the business timezone (Europe/Istanbul)."""
+    return datetime.now(BUSINESS_TIMEZONE).date()
 
 
 class TransactionService:
@@ -66,6 +77,7 @@ class TransactionService:
         self._session = session
         self._storage = storage
         self._matching = MatchService(session, settings)
+        self._installments = InstallmentService(session)
         self._transactions = TransactionRepository(session)
         self._observations = ObservationRepository(session)
         self._merchants = MerchantRepository(session)
@@ -127,13 +139,20 @@ class TransactionService:
             total_minor=body.total_minor,
             channel=body.channel,
         )
+        # "Taksitli": what the user chose on the review form. An older client that does not send
+        # the field keeps what the reading found.
+        count = (
+            body.installment_count
+            if "installment_count" in body.model_fields_set
+            else _reading_count(observation)
+        )
         settled = await self._settle(
             user_id,
             observation,
             fields,
-            # More than one installment: P10 builds the plan; the flag tells it which ones.
-            payment_type=_payment_type(observation),
+            payment_type=PaymentType.INSTALLMENT if count else PaymentType.SINGLE,
             note=body.note,
+            installment_count=count,
         )
         await self._session.commit()
         return await self._answer(user_id, settled)
@@ -173,18 +192,26 @@ class TransactionService:
                 ),
                 channel=Channel.UNKNOWN,
             )
-            settled = await self._settle(
-                user_id,
-                observation,
-                fields,
-                payment_type=_payment_type(observation),
-                note=(edit.note if edit else None) or None,
-            )
+            note = (edit.note if edit else None) or None
+            if observation.installment_seq is not None and observation.installment_count:
+                # `k/n`: one payment of a plan (spec 8.2), never a purchase of its own
+                settled = await self._settle_installment_row(user_id, observation, fields, note)
+            else:
+                count = _reading_count(observation)
+                settled = await self._settle(
+                    user_id,
+                    observation,
+                    fields,
+                    payment_type=PaymentType.INSTALLMENT if count else PaymentType.SINGLE,
+                    note=note,
+                    installment_count=count,
+                )
             settled_rows.append((observation, settled))
         await self._session.commit()
 
         created: list[TransactionDetail] = []
         merged: list[BatchMerged] = []
+        linked: list[BatchLinked] = []
         suggested_matches: list[MatchOut] = []
         for observation, settled in settled_rows:
             if settled.kind == "SUGGESTED":
@@ -198,10 +225,24 @@ class TransactionService:
                         observation_id=observation.id, match=settled.merge, transaction=detail
                     )
                 )
+            elif settled.kind == "LINKED":
+                detail = detail.model_copy(update={"outcome": "LINKED"})
+                linked.append(
+                    BatchLinked(
+                        observation_id=observation.id,
+                        seq=settled.seq or 0,
+                        count=settled.count or 0,
+                        transaction=detail,
+                    )
+                )
             else:
-                created.append(detail)
+                created.append(detail)  # a new purchase, also an ESTIMATED one
         return ConfirmBatchResponse(
-            created=created, skipped=skipped, merged=merged, suggested=suggested_matches
+            created=created,
+            skipped=skipped,
+            merged=merged,
+            linked=linked,
+            suggested=suggested_matches,
         )
 
     # ---- matching (P09) -----------------------------------------------------------------------
@@ -212,21 +253,80 @@ class TransactionService:
         return await self._matching.list_matches(user_id, status, limit=limit, offset=offset)
 
     async def accept_match(self, user_id: uuid.UUID, decision_id: uuid.UUID) -> TransactionDetail:
-        """ "Birleştir": the waiting observation joins the suggested purchase."""
+        """ "Birleştir": the waiting observation joins the suggested purchase (or, for an
+        installment suggestion, becomes one of its payments)."""
+        decision, observation = await self._matching.open_decision(user_id, decision_id)
+        if decision.match_type == MatchType.INSTALLMENT:
+            return await self._accept_installment(user_id, decision, observation)
+        pending = (observation.extraction_json or {}).get("pending", {})
+        count = pending.get("installment_count")
         transaction_id, merge = await self._matching.accept(user_id, decision_id)
+        transaction = await self._transactions.get(user_id, transaction_id)
+        if transaction is not None:
+            await self._after_merge(user_id, transaction, observation, count)
         await self._session.commit()
         detail = await self._detail(user_id, transaction_id)
         return detail.model_copy(update={"outcome": "MERGED", "match": merge})
 
+    async def _accept_installment(
+        self, user_id: uuid.UUID, decision: Any, observation: Observation
+    ) -> TransactionDetail:
+        features = decision.features_json or {}
+        transaction = await self._installments.accept_installment(
+            user_id,
+            observation,
+            decision.transaction_id,
+            seq=int(features["seq"]),
+            count=int(features["count"]),
+        )
+        decision.decision = MatchDecisionStatus.ACCEPTED
+        decision.decided_at = datetime.now().astimezone()
+        decision.installment_payment_id = observation.installment_payment_id
+        await self._matching.close_pending(user_id, observation.id)
+        observation.extraction_json = without_pending(observation.extraction_json)
+        await self._session.commit()
+        detail = await self._detail(user_id, transaction.id)
+        return detail.model_copy(update={"outcome": "LINKED"})
+
+    async def _after_merge(
+        self,
+        user_id: uuid.UUID,
+        transaction: Transaction,
+        observation: Observation,
+        count: int | None,
+    ) -> None:
+        """A record was merged into a purchase: when it was only an estimate and the record is a
+        receipt or an e-invoice, it is real now (P10)."""
+        if transaction.is_estimated or count:
+            await self._installments.on_receipt_merged(
+                user_id,
+                transaction,
+                receipt_count=count,
+                clears_estimate=observation.source
+                in (ObservationSource.RECEIPT, ObservationSource.EINVOICE_QR),
+            )
+
     async def reject_match(self, user_id: uuid.UUID, decision_id: uuid.UUID) -> TransactionDetail:
         """ "Ayrı kalsın": the observation becomes its own purchase, as the user reviewed it."""
         observation, fields, pending = await self._matching.reject(user_id, decision_id)
+        if "installment" in pending:
+            # an installment row none of the plans was chosen for: an estimated purchase
+            transaction = await self._create_estimated(
+                user_id, observation, fields, pending.get("note")
+            )
+            observation.extraction_json = without_pending(observation.extraction_json)
+            await self._session.commit()
+            return await self._detail(user_id, transaction.id)
         transaction = await self._create_from(
             user_id,
             fields,
             payment_type=PaymentType(pending.get("payment_type", PaymentType.SINGLE.value)),
             note=pending.get("note"),
         )
+        if pending.get("installment_count"):
+            await self._installments.create_plan(
+                transaction, count=int(pending["installment_count"])
+            )
         observation.status = ObservationStatus.CONFIRMED
         observation.transaction_id = transaction.id
         observation.extraction_json = without_pending(observation.extraction_json)
@@ -252,8 +352,11 @@ class TransactionService:
         *,
         payment_type: PaymentType,
         note: str | None,
+        installment_count: int | None = None,
     ) -> "_Settled":
-        """Spec 7.1: look for the same purchase, then merge, ask, or create."""
+        """Spec 7.1: look for the same purchase, then merge, ask, or create. P10: a purchase of
+        `installment_count` installments gets its plan; a bank row that may be one payment of an
+        earlier purchase is asked about (spec 8.3)."""
         evaluation: Evaluation = await self._matching.evaluate(
             user_id,
             source=observation.source,
@@ -270,9 +373,16 @@ class TransactionService:
         if outcome in (MatchOutcome.NEW, MatchOutcome.INSTALLMENT):
             if outcome == MatchOutcome.NEW:
                 await self._matching.record(user_id, observation.id, evaluation)
+                asked = await self._ask_if_a_payment(
+                    user_id, observation, fields, payment_type, note, installment_count
+                )
+                if asked is not None:
+                    return asked
             transaction = await self._create_from(
                 user_id, fields, payment_type=payment_type, note=note
             )
+            if installment_count:
+                await self._installments.create_plan(transaction, count=installment_count)
             observation.status = ObservationStatus.CONFIRMED
             observation.transaction_id = transaction.id
             return _Settled("CREATED", transaction.id)
@@ -289,11 +399,175 @@ class TransactionService:
                 decisions[best.transaction_id],
                 MatchDecisionStatus.AUTO_ACCEPTED,
             )
+            await self._after_merge(user_id, transaction, observation, installment_count)
             return _Settled("MERGED", transaction.id, merge=merge)
 
-        self._matching.hold(observation, fields, payment_type=payment_type, note=note)
+        self._matching.hold(
+            observation,
+            fields,
+            payment_type=payment_type,
+            note=note,
+            extra={"installment_count": installment_count} if installment_count else None,
+        )
         asked = [decisions[candidate.transaction_id] for candidate in evaluation.result.strong]
         return _Settled("SUGGESTED", None, matches=await self._matching.matches_out(user_id, asked))
+
+    # ---- installments (P10) -------------------------------------------------------------------
+
+    def _today(self) -> date:
+        return business_today()
+
+    def _context(self, observation: Observation, fields: TxFields) -> RowContext:
+        """The bank row for the matcher, with what the user may have edited (amount, date)."""
+        return RowContext(
+            InstallmentRow(
+                merchant_id=None,
+                merchant_name=fields.merchant_display,
+                amount_minor=fields.total_minor,
+                seq=observation.installment_seq,
+                count=observation.installment_count,
+                row_date=fields.purchase_date,
+                capture_date=capture_date_of(observation, self._today()),
+            ),
+            fields.merchant_id,
+        )
+
+    async def _settle_installment_row(
+        self,
+        user_id: uuid.UUID,
+        observation: Observation,
+        fields: TxFields,
+        note: str | None,
+    ) -> "_Settled":
+        """A bank row `k/n` (spec 8.2): payment k of a plan that fits (OBSERVED, the earlier ones
+        INFERRED, no spending added), else an ESTIMATED purchase with a plan. Several plans that
+        fit equally are asked about, never guessed."""
+        context = self._context(observation, fields)
+        match = await self._installments.match_row(user_id, context)
+        decisions = await self._installments.record_row_candidates(user_id, observation.id, match)
+        seq, count = observation.installment_seq or 0, observation.installment_count or 0
+        if match.outcome == InstallmentOutcome.LINK and match.best is not None:
+            plan = await self._installments.plan_by_id(user_id, match.best.plan.plan_id)
+            payment = await self._installments.link_payment(observation, plan, seq)
+            decisions[match.best.plan.transaction_id].installment_payment_id = payment.id
+            return _Settled("LINKED", plan.transaction_id, seq=seq, count=count)
+        if match.outcome == InstallmentOutcome.AMBIGUOUS:
+            self._matching.hold(
+                observation,
+                fields,
+                payment_type=PaymentType.INSTALLMENT,
+                note=note,
+                extra={"installment": {"seq": seq, "count": count}},
+            )
+            asked = [decisions[s.plan.transaction_id] for s in match.eligible]
+            return _Settled(
+                "SUGGESTED", None, matches=await self._matching.matches_out(user_id, asked)
+            )
+        transaction = await self._create_estimated(user_id, observation, fields, note)
+        return _Settled("ESTIMATED", transaction.id, seq=seq, count=count)
+
+    async def _create_estimated(
+        self,
+        user_id: uuid.UUID,
+        observation: Observation,
+        fields: TxFields,
+        note: str | None,
+    ) -> Transaction:
+        """Spec 8.2 step 3: total = n x amount, the date about (k-1) months before the row, a plan
+        with the earlier payments INFERRED and this one OBSERVED. A receipt that comes later is
+        matched with it by the 1:1 engine and clears the estimate."""
+        context = self._context(observation, fields)
+        carries_date = profile_for(observation.bank_key).installment_rows_carry_purchase_date
+        estimate = self._installments.estimate(context, row_date_is_purchase_date=carries_date)
+        transaction = await self._transactions.add(
+            user_id,
+            merchant_id=fields.merchant_id,
+            merchant_display=fields.merchant_display,
+            category_id=fields.category_id,
+            purchase_date=estimate.purchase_date,
+            purchase_time=None,
+            total_minor=estimate.total_minor,
+            payment_type=PaymentType.INSTALLMENT,
+            channel=Channel.UNKNOWN,
+            note=note,
+            is_estimated=True,
+        )
+        plan = await self._installments.create_plan(
+            transaction,
+            count=estimate.count,
+            first_due_month=estimate.first_due_month,
+            inferred_before=estimate.seq,
+        )
+        await self._installments.link_payment(observation, plan, estimate.seq)
+        return transaction
+
+    async def _ask_if_a_payment(
+        self,
+        user_id: uuid.UUID,
+        observation: Observation,
+        fields: TxFields,
+        payment_type: PaymentType,
+        note: str | None,
+        installment_count: int | None,
+    ) -> "_Settled | None":
+        """Spec 8.3: a bank row without a marker whose amount is about total/n of an earlier
+        purchase of the same shop. Only a suggestion, never automatic."""
+        if (
+            observation.source != ObservationSource.BANK_SCREENSHOT
+            or observation.installment_seq is not None
+            or installment_count
+        ):
+            return None
+        suggestions = await self._installments.suggest_for_row(
+            user_id, self._context(observation, fields)
+        )
+        if not suggestions:
+            return None
+        decisions = await self._installments.record_suggestions(
+            user_id, observation.id, suggestions
+        )
+        self._matching.hold(observation, fields, payment_type=payment_type, note=note)
+        return _Settled(
+            "SUGGESTED", None, matches=await self._matching.matches_out(user_id, decisions)
+        )
+
+    async def put_plan(
+        self, user_id: uuid.UUID, transaction_id: uuid.UUID, body: PlanIn
+    ) -> TransactionDetail:
+        """ "Taksitli": create the plan of a purchase (replace it while no bank row is on it)."""
+        transaction = await self._require(user_id, transaction_id)
+        await self._installments.replace_plan(
+            user_id,
+            transaction,
+            count=body.count,
+            first_due_month=body.first_due_month,
+            total_payable_minor=body.total_payable_minor,
+        )
+        await self._session.commit()
+        return await self._detail(user_id, transaction_id)
+
+    async def patch_plan(
+        self, user_id: uuid.UUID, plan_id: uuid.UUID, body: PlanPatch
+    ) -> TransactionDetail:
+        transaction = await self._installments.patch_plan(
+            user_id,
+            plan_id,
+            status=body.status,
+            first_due_month=body.first_due_month,
+            total_payable_minor=body.total_payable_minor,
+            sent=set(body.model_fields_set),
+        )
+        await self._session.commit()
+        return await self._detail(user_id, transaction.id)
+
+    async def schedule(self, user_id: uuid.UUID, *, from_month: date, to_month: date):  # noqa: ANN201
+        today = self._today()
+        await self._installments.complete_finished_plans(today)
+        result = await self._installments.schedule(
+            user_id, from_month=from_month, to_month=to_month, today=today
+        )
+        await self._session.commit()
+        return result
 
     async def _answer(
         self, user_id: uuid.UUID, settled: "_Settled"
@@ -357,7 +631,12 @@ class TransactionService:
             channel=body.channel,
         )
         settled = await self._settle(
-            user_id, observation, fields, payment_type=PaymentType.SINGLE, note=body.note
+            user_id,
+            observation,
+            fields,
+            payment_type=PaymentType.INSTALLMENT if body.installment_count else PaymentType.SINGLE,
+            note=body.note,
+            installment_count=body.installment_count,
         )
         await self._session.commit()
         return await self._answer(user_id, settled)
@@ -411,7 +690,9 @@ class TransactionService:
         if "time" in sent:
             transaction.purchase_time = body.time
         if "total_minor" in sent and body.total_minor is not None:
+            old_total = transaction.total_minor
             transaction.total_minor = body.total_minor
+            await self._installments.follow_total(user_id, transaction, old_total)
         if "category_key" in sent and body.category_key is not None:
             transaction.category_id = await self._merchants.category_id(body.category_key)
         if "channel" in sent and body.channel is not None:
@@ -501,6 +782,7 @@ class TransactionService:
             ],
             items=[ItemOut.model_validate(item) for item in items],
             documents=[DocumentOut.model_validate(d) for d in documents],
+            plan=await self._installments.plan_out(user_id, transaction_id),
         )
 
 
@@ -509,15 +791,19 @@ class _Settled:
     """What happened to one observation that was confirmed: a purchase was CREATED, it was MERGED
     into one the user already had, or a SUGGESTED merge waits for the user's answer."""
 
-    kind: Literal["CREATED", "MERGED", "SUGGESTED"]
+    kind: Literal["CREATED", "MERGED", "SUGGESTED", "LINKED", "ESTIMATED"]
     transaction_id: uuid.UUID | None = None
     merge: MergeOut | None = None
     matches: list[MatchOut] = field(default_factory=list)
+    seq: int | None = None  # LINKED / ESTIMATED: which payment the bank row became
+    count: int | None = None
 
 
-def _payment_type(observation: Observation) -> PaymentType:
-    more_than_one = (observation.installment_count or 0) > 1
-    return PaymentType.INSTALLMENT if more_than_one else PaymentType.SINGLE
+def _reading_count(observation: Observation) -> int | None:
+    """The number of installments the reading found on a receipt, a slip or a bank row that shows
+    the whole total ("3 taksit"), or None."""
+    count = observation.installment_count or 0
+    return count if count > 1 else None
 
 
 def _batch_skip_reason(observation: Observation, edit: Any) -> str | None:
