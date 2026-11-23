@@ -88,7 +88,16 @@ class MatchSuggestion {
     required this.score,
     required this.observation,
     required this.transaction,
+    this.installmentSeq,
+    this.installmentCount,
   });
+
+  /// P10: "this may be payment k of n of that purchase" (a row with a marker that fits several
+  /// plans, or a row without one that equals total/n). Null for "the same purchase" (P09).
+  final int? installmentSeq;
+  final int? installmentCount;
+
+  bool get isInstallment => installmentCount != null;
 
   /// The decision id.
   final String id;
@@ -108,6 +117,12 @@ class MatchSuggestion {
         transaction: MatchTransaction.fromJson(
           json['transaction'] as Map<String, dynamic>,
         ),
+        installmentSeq: json['match_type'] == 'INSTALLMENT'
+            ? json['installment_seq'] as int?
+            : null,
+        installmentCount: json['match_type'] == 'INSTALLMENT'
+            ? json['installment_count'] as int?
+            : null,
       );
 }
 

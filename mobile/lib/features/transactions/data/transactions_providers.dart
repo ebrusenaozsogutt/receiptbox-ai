@@ -88,17 +88,16 @@ class PurchaseList extends _$PurchaseList {
     );
   }
 
-  Future<PurchasePage> _load(PurchaseFilter filter, int offset) =>
-      ref
-          .read(transactionsApiProvider)
-          .list(
-            from: filter.from,
-            to: filter.to,
-            category: filter.category,
-            search: filter.search,
-            limit: purchasePageSize,
-            offset: offset,
-          );
+  Future<PurchasePage> _load(PurchaseFilter filter, int offset) => ref
+      .read(transactionsApiProvider)
+      .list(
+        from: filter.from,
+        to: filter.to,
+        category: filter.category,
+        search: filter.search,
+        limit: purchasePageSize,
+        offset: offset,
+      );
 
   Future<void> loadMore() async {
     final current = state.value;
@@ -118,9 +117,7 @@ class PurchaseList extends _$PurchaseList {
       );
     } on Object {
       if (!ref.mounted) return;
-      state = AsyncData(
-        current.copyWith(loadingMore: false, moreFailed: true),
-      );
+      state = AsyncData(current.copyWith(loadingMore: false, moreFailed: true));
     }
   }
 }

@@ -8,6 +8,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/networking/api_error.dart';
 import '../../../core/networking/dio_provider.dart';
 import '../../capture/domain/bank_models.dart';
+import '../../installments/domain/installment_models.dart';
 import '../../matching/domain/match_models.dart';
 import '../domain/purchase_models.dart';
 import '../domain/spending_category.dart';
@@ -56,6 +57,25 @@ abstract interface class TransactionsApi {
 
   /// "Ayır" / "Geri al": [observationId] leaves [transactionId] and becomes its own purchase.
   Future<UnmergeResult> unmerge(String transactionId, String observationId);
+
+  // ---- installments (P10) ----------------------------------------------------------------------
+
+  /// "Taksitli": [count] installments (2-36) for a purchase; replaces a plan that has no bank rows.
+  Future<PurchaseDetail> putPlan(
+    String transactionId, {
+    required int count,
+    DateTime? firstDueMonth,
+    int? totalPayableMinor,
+  });
+
+  /// Cancel ([cancel] true) or reopen a plan.
+  Future<PurchaseDetail> setPlanCancelled(
+    String planId, {
+    required bool cancel,
+  });
+
+  /// The payments of the active plans by month.
+  Future<InstallmentSchedule> schedule({DateTime? from, DateTime? to});
 }
 
 /// Receipt images and invoice PDFs (backend `/documents`).
@@ -132,7 +152,7 @@ class DioTransactionsApi implements TransactionsApi {
   Future<SaveResult> createManual(PurchaseInput input) => _guard(() async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/transactions',
-      data: input.toJson(),
+      data: input.toJson(withInstallments: true),
     );
     return _saveResult(response);
   });
@@ -221,6 +241,49 @@ class DioTransactionsApi implements TransactionsApi {
     );
     return PurchaseDetail.fromJson(response.data!);
   });
+
+  @override
+  Future<PurchaseDetail> putPlan(
+    String transactionId, {
+    required int count,
+    DateTime? firstDueMonth,
+    int? totalPayableMinor,
+  }) => _guard(() async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/transactions/$transactionId/installment-plan',
+      data: {
+        'count': count,
+        if (firstDueMonth != null) 'first_due_month': dateToApi(firstDueMonth),
+        'total_payable_minor': ?totalPayableMinor,
+      },
+    );
+    return PurchaseDetail.fromJson(response.data!);
+  });
+
+  @override
+  Future<PurchaseDetail> setPlanCancelled(
+    String planId, {
+    required bool cancel,
+  }) => _guard(() async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/installment-plans/$planId',
+      data: {'status': cancel ? 'CANCELLED' : 'ACTIVE'},
+    );
+    return PurchaseDetail.fromJson(response.data!);
+  });
+
+  @override
+  Future<InstallmentSchedule> schedule({DateTime? from, DateTime? to}) =>
+      _guard(() async {
+        final response = await _dio.get<Map<String, dynamic>>(
+          '/installments/schedule',
+          queryParameters: {
+            if (from != null) 'from': dateToApi(from),
+            if (to != null) 'to': dateToApi(to),
+          },
+        );
+        return InstallmentSchedule.fromJson(response.data!);
+      });
 
   @override
   Future<UnmergeResult> unmerge(String transactionId, String observationId) =>

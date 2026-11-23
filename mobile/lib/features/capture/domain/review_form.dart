@@ -40,7 +40,10 @@ SumCheck itemsSumCheck(List<EditableLine> lines, int? totalMinor) {
   }
   if (lines.any((line) => line.totalMinor == null)) return SumCheck.incomplete;
   final sum = lines.fold<int>(0, (total, line) => total + line.totalMinor!);
-  final tolerance = [5, (totalMinor / 100).round()].reduce((a, b) => a > b ? a : b);
+  final tolerance = [
+    5,
+    (totalMinor / 100).round(),
+  ].reduce((a, b) => a > b ? a : b);
   return (sum - totalMinor).abs() <= tolerance
       ? SumCheck.matches
       : SumCheck.differs;
@@ -60,6 +63,7 @@ class ReviewForm {
     required this.flagged,
     required this.linesFlagged,
     required this.suggestedCategory,
+    this.installmentCount,
   });
 
   final String merchant;
@@ -78,6 +82,10 @@ class ReviewForm {
   /// What the app suggested, to notice when the user changes the category.
   final SpendingCategory suggestedCategory;
 
+  /// "Taksitli": how many installments, or null (a single payment). From a slip that says
+  /// "TAKSİT SAYISI", the user can change or switch it off.
+  final int? installmentCount;
+
   /// How many things wait for the user: the banner counts them.
   int get pendingChecks => flagged.length + (linesFlagged ? 1 : 0);
 
@@ -95,6 +103,7 @@ class ReviewForm {
     List<EditableLine>? lines,
     Set<ReviewField>? flagged,
     bool? linesFlagged,
+    int? Function()? installmentCount,
   }) => ReviewForm(
     merchant: merchant ?? this.merchant,
     date: date ?? this.date,
@@ -107,6 +116,9 @@ class ReviewForm {
     flagged: flagged ?? this.flagged,
     linesFlagged: linesFlagged ?? this.linesFlagged,
     suggestedCategory: suggestedCategory,
+    installmentCount: installmentCount != null
+        ? installmentCount()
+        : this.installmentCount,
   );
 
   /// From what the server read. Everything that is not HIGH is flagged (spec 5.4), except an
@@ -158,6 +170,9 @@ class ReviewForm {
       },
       linesFlagged: result.lines.isNotEmpty && unsure('items'),
       suggestedCategory: category,
+      installmentCount: (result.installmentCount ?? 0) > 1
+          ? result.installmentCount
+          : null,
     );
   }
 

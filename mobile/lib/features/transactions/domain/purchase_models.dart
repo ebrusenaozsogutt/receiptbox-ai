@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart' show TimeOfDay;
 
+import '../../installments/domain/installment_models.dart';
 import 'spending_category.dart';
 
 DateTime _day(String iso) {
@@ -37,6 +38,8 @@ class Purchase {
     required this.channel,
     required this.note,
     required this.documentCount,
+    this.isEstimated = false,
+    this.isInstallment = false,
   });
 
   final String id;
@@ -49,6 +52,13 @@ class Purchase {
   final String? note;
   final int documentCount;
 
+  /// P10: made from a bank installment row, not from a receipt ("tahmini"). A receipt that comes
+  /// later merges with it and corrects it.
+  final bool isEstimated;
+
+  /// Paid in installments (it has, or had, a plan).
+  final bool isInstallment;
+
   factory Purchase.fromJson(Map<String, dynamic> json) => Purchase(
     id: json['id'] as String,
     merchant: json['merchant_display'] as String,
@@ -59,6 +69,8 @@ class Purchase {
     channel: PurchaseChannel.fromKey(json['channel'] as String?),
     note: json['note'] as String?,
     documentCount: json['document_count'] as int? ?? 0,
+    isEstimated: json['is_estimated'] as bool? ?? false,
+    isInstallment: json['payment_type'] == 'INSTALLMENT',
   );
 }
 
@@ -193,6 +205,7 @@ class PurchaseDetail {
     required this.documents,
     this.evidenceItems = const [],
     this.merge,
+    this.plan,
   });
 
   final Purchase purchase;
@@ -205,6 +218,9 @@ class PurchaseDetail {
 
   /// Set when this answer is the result of a merge.
   final MergeInfo? merge;
+
+  /// P10: the installment plan, when the purchase is paid in installments.
+  final InstallmentPlan? plan;
 
   /// Two records of one purchase: each can be separated ("Ayır").
   bool get isMerged => evidenceItems.length > 1;
@@ -228,6 +244,9 @@ class PurchaseDetail {
     merge: json['match'] == null
         ? null
         : MergeInfo.fromJson(json['match'] as Map<String, dynamic>),
+    plan: json['plan'] == null
+        ? null
+        : InstallmentPlan.fromJson(json['plan'] as Map<String, dynamic>),
     lines: [
       for (final i in json['items'] as List<dynamic>)
         ReceiptLine.fromJson(i as Map<String, dynamic>),
@@ -264,6 +283,7 @@ class PurchaseInput {
     this.note,
     this.lines = const [],
     this.rememberCategory = false,
+    this.installmentCount,
   });
 
   final String merchant;
@@ -276,7 +296,14 @@ class PurchaseInput {
   final List<LineInput> lines;
   final bool rememberCategory;
 
-  Map<String, dynamic> toJson({bool forConfirm = false}) => {
+  /// "Taksitli": how many installments (2-36), or null when the purchase is not paid in
+  /// installments. Only sent when a purchase is created or confirmed.
+  final int? installmentCount;
+
+  Map<String, dynamic> toJson({
+    bool forConfirm = false,
+    bool withInstallments = false,
+  }) => {
     'merchant_display': merchant.trim(),
     'date': dateToApi(date),
     'time': time == null ? null : timeToApi(time!),
@@ -288,5 +315,6 @@ class PurchaseInput {
       'items': [for (final line in lines) line.toJson()],
       'remember_category_for_merchant': rememberCategory,
     },
+    if (forConfirm || withInstallments) 'installment_count': installmentCount,
   };
 }

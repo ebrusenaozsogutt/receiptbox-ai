@@ -1,3 +1,4 @@
+import '../../installments/domain/installment_models.dart';
 import '../../matching/domain/match_models.dart';
 import '../../transactions/domain/spending_category.dart';
 
@@ -33,6 +34,7 @@ class BankRow {
     required this.confidence,
     required this.category,
     this.match,
+    this.installment,
   });
 
   final String observationId;
@@ -56,6 +58,9 @@ class BankRow {
 
   /// P09: this row is (auto) or may be (suggest) the same purchase as one already saved.
   final BankRowMatch? match;
+
+  /// P10: what an installment row will become (a payment of a plan, an estimated purchase ...).
+  final InstallmentPreview? installment;
 
   /// A purchase that can be saved now.
   bool get isSelectable => kind == BankRowKind.purchase && !isDuplicate;
@@ -99,6 +104,11 @@ class BankRow {
       match: json['match'] == null
           ? null
           : BankRowMatch.fromJson(json['match'] as Map<String, dynamic>),
+      installment: json['installment'] == null
+          ? null
+          : InstallmentPreview.fromJson(
+              json['installment'] as Map<String, dynamic>,
+            ),
     );
   }
 }
@@ -193,6 +203,7 @@ class BatchResult {
     required this.skipped,
     this.merged = const [],
     this.suggested = const [],
+    this.linked = const [],
   });
 
   final int created;
@@ -205,6 +216,9 @@ class BatchResult {
 
   /// Rows that may be the same as an existing purchase: they wait for the user's answer.
   final List<MatchSuggestion> suggested;
+
+  /// P10: installment rows (`k/n`) that became payments of a plan (no spending added).
+  final List<LinkedRow> linked;
 
   factory BatchResult.fromJson(Map<String, dynamic> json) => BatchResult(
     created: (json['created'] as List<dynamic>).length,
@@ -226,6 +240,17 @@ class BatchResult {
     suggested: [
       for (final item in json['suggested'] as List<dynamic>? ?? const [])
         MatchSuggestion.fromJson(item as Map<String, dynamic>),
+    ],
+    linked: [
+      for (final item in json['linked'] as List<dynamic>? ?? const [])
+        LinkedRow(
+          observationId:
+              (item as Map<String, dynamic>)['observation_id'] as String,
+          seq: item['seq'] as int,
+          count: item['count'] as int,
+          transactionId:
+              (item['transaction'] as Map<String, dynamic>)['id'] as String,
+        ),
     ],
   );
 }
