@@ -25,6 +25,7 @@ class FieldsCard extends StatelessWidget {
     required this.onCategory,
     required this.onChannel,
     this.onNote,
+    this.onInstallments,
   });
 
   final ReviewForm form;
@@ -37,6 +38,10 @@ class FieldsCard extends StatelessWidget {
 
   /// Only the manual and edit forms have a note field.
   final ValueChanged<String>? onNote;
+
+  /// "Taksitli" (P10): null count = a single payment. Only where a purchase is created (the
+  /// receipt review and the manual form); a saved purchase changes its plan on its own screen.
+  final ValueChanged<int?>? onInstallments;
 
   bool _flagged(ReviewField field) => form.flagged.contains(field);
 
@@ -192,6 +197,13 @@ class FieldsCard extends StatelessWidget {
             selected: form.channel,
             onChanged: onChannel,
           ),
+          if (onInstallments != null) ...[
+            const SizedBox(height: AppSpacing.inputGap),
+            InstallmentToggle(
+              count: form.installmentCount,
+              onChanged: onInstallments!,
+            ),
+          ],
           if (onNote != null) ...[
             const SizedBox(height: AppSpacing.inputGap),
             ReviewFieldBox(
@@ -208,6 +220,77 @@ class FieldsCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// "Taksitli" switch with the number of installments (2-36). Off = a single payment.
+class InstallmentToggle extends StatelessWidget {
+  const InstallmentToggle({
+    super.key,
+    required this.count,
+    required this.onChanged,
+    this.defaultCount = 3,
+  });
+
+  /// Null: not paid in installments.
+  final int? count;
+  final ValueChanged<int?> onChanged;
+
+  /// The count a switched-on toggle starts with.
+  final int defaultCount;
+
+  static const int minCount = 2;
+  static const int maxCount = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final on = count != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Taksitli',
+                style: AppTextStyles.label.copyWith(color: AppColors.textMuted),
+              ),
+            ),
+            Switch(
+              key: const Key('installment_switch'),
+              value: on,
+              onChanged: (value) => onChanged(value ? defaultCount : null),
+            ),
+          ],
+        ),
+        if (on)
+          Row(
+            children: [
+              IconButton(
+                key: const Key('installment_minus'),
+                tooltip: 'Taksiti azalt',
+                onPressed: count! > minCount
+                    ? () => onChanged(count! - 1)
+                    : null,
+                icon: const Icon(Icons.remove_circle_outline),
+              ),
+              Text(
+                '$count taksit',
+                key: const Key('installment_count'),
+                style: AppTextStyles.bodyStrong,
+              ),
+              IconButton(
+                key: const Key('installment_plus'),
+                tooltip: 'Taksiti artır',
+                onPressed: count! < maxCount
+                    ? () => onChanged(count! + 1)
+                    : null,
+                icon: const Icon(Icons.add_circle_outline),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }

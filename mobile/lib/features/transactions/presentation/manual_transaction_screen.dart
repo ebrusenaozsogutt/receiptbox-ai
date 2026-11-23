@@ -10,6 +10,7 @@ import '../../../core/widgets/loading_view.dart';
 import '../../../core/widgets/message_banner.dart';
 import '../../capture/domain/review_form.dart';
 import '../../capture/presentation/review/fields_card.dart';
+import '../../installments/data/installment_providers.dart';
 import '../../matching/data/matching_providers.dart';
 import '../../matching/domain/match_models.dart';
 import '../../matching/presentation/match_sheet.dart';
@@ -28,7 +29,10 @@ class ManualTransactionScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final id = purchaseId;
     if (id == null) {
-      return _FormScaffold(title: 'Manuel Harcama', initial: ReviewForm.blank(DateTime.now()));
+      return _FormScaffold(
+        title: 'Manuel Harcama',
+        initial: ReviewForm.blank(DateTime.now()),
+      );
     }
     final detail = ref.watch(purchaseDetailProvider(id));
     return detail.when(
@@ -91,6 +95,7 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
         category: _form.category,
         channel: _form.channel,
         note: _form.note,
+        installmentCount: _form.installmentCount,
       );
       final api = ref.read(transactionsApiProvider);
       final container = ProviderScope.containerOf(context);
@@ -104,6 +109,7 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
       }
       ref
         ..invalidate(purchaseListProvider)
+        ..invalidate(installmentScheduleProvider)
         ..invalidate(pendingMatchesProvider);
       var message = id == null
           ? 'Harcama kaydedildi.'
@@ -114,6 +120,7 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
         final answer = await showMatchSheet(context, saved.suggestions);
         ref
           ..invalidate(purchaseListProvider)
+          ..invalidate(installmentScheduleProvider)
           ..invalidate(pendingMatchesProvider);
         message = answer == null
             ? 'Eşleşme sorusu bekliyor. Harcamalar ekranından cevaplayabilirsin.'
@@ -182,10 +189,16 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
                       (f) => f.copyWith(date: DateTime(v.year, v.month, v.day)),
                     ),
                     onTime: (v) => _change((f) => f.copyWith(time: () => v)),
-                    onTotal: (v) => _change((f) => f.copyWith(totalMinor: () => v)),
+                    onTotal: (v) =>
+                        _change((f) => f.copyWith(totalMinor: () => v)),
                     onCategory: (v) => _change((f) => f.copyWith(category: v)),
                     onChannel: (v) => _change((f) => f.copyWith(channel: v)),
                     onNote: (v) => _change((f) => f.copyWith(note: v)),
+                    onInstallments: widget.purchaseId == null
+                        ? (v) => _change(
+                            (f) => f.copyWith(installmentCount: () => v),
+                          )
+                        : null,
                   ),
                 ],
               ),

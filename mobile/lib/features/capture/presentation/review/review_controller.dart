@@ -134,10 +134,9 @@ class ReviewController extends _$ReviewController {
   static String _noticeFor(ApiError error) => switch (error.code) {
     'EXTRACTION_REJECTED' =>
       'Fiş güvenilir okunamadı. Bilgileri kendin girebilirsin.',
-    'QR_INVALID' =>
-      'QR kodu okunamadı. Bilgileri kendin girebilirsin.',
-    'NETWORK_UNREACHABLE' || 'NETWORK_TIMEOUT' =>
-      'Sunucuya ulaşılamadı. Bilgileri kendin girebilirsin.',
+    'QR_INVALID' => 'QR kodu okunamadı. Bilgileri kendin girebilirsin.',
+    'NETWORK_UNREACHABLE' ||
+    'NETWORK_TIMEOUT' => 'Sunucuya ulaşılamadı. Bilgileri kendin girebilirsin.',
     _ => 'Fiş şu an okunamadı. Bilgileri kendin girebilirsin.',
   };
 
@@ -149,9 +148,8 @@ class ReviewController extends _$ReviewController {
     state = state.copyWith(form: change(form));
   }
 
-  Set<ReviewField> _without(ReviewForm form, ReviewField field) => {
-    ...form.flagged,
-  }..remove(field);
+  Set<ReviewField> _without(ReviewForm form, ReviewField field) =>
+      {...form.flagged}..remove(field);
 
   void setMerchant(String value) => _edit(
     (f) => f.copyWith(
@@ -170,7 +168,8 @@ class ReviewController extends _$ReviewController {
   );
 
   void setTime(TimeOfDay? value) => _edit(
-    (f) => f.copyWith(time: () => value, flagged: _without(f, ReviewField.time)),
+    (f) =>
+        f.copyWith(time: () => value, flagged: _without(f, ReviewField.time)),
   );
 
   void setTotal(int? minor) => _edit(
@@ -181,16 +180,18 @@ class ReviewController extends _$ReviewController {
   );
 
   void setCategory(SpendingCategory value) => _edit(
-    (f) => f.copyWith(
-      category: value,
-      flagged: _without(f, ReviewField.category),
-    ),
+    (f) =>
+        f.copyWith(category: value, flagged: _without(f, ReviewField.category)),
   );
 
   void setChannel(PurchaseChannel value) =>
       _edit((f) => f.copyWith(channel: value));
 
   void setNote(String value) => _edit((f) => f.copyWith(note: value));
+
+  /// "Taksitli": null = a single payment.
+  void setInstallments(int? count) =>
+      _edit((f) => f.copyWith(installmentCount: () => count));
 
   void setLines(List<EditableLine> lines) =>
       _edit((f) => f.copyWith(lines: lines, linesFlagged: false));
@@ -227,6 +228,7 @@ class ReviewController extends _$ReviewController {
               LineInput(name: line.name.trim(), totalMinor: line.totalMinor),
         ],
         rememberCategory: rememberCategory,
+        installmentCount: form.installmentCount,
       );
       final api = ref.read(transactionsApiProvider);
       final observationId = state.observationId;

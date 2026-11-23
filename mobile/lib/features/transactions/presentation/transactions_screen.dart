@@ -86,6 +86,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             title: 'Harcamalar',
             actions: [
               IconButton(
+                key: const Key('open_installments'),
+                tooltip: 'Taksitler',
+                icon: const Icon(
+                  Icons.calendar_month_outlined,
+                  color: AppColors.primary,
+                ),
+                onPressed: () => context.push('/installments'),
+              ),
+              IconButton(
                 key: const Key('add_manual_button'),
                 tooltip: 'Manuel harcama ekle',
                 icon: const Icon(Icons.add, color: AppColors.primary),
@@ -269,9 +278,7 @@ class _Body extends ConsumerWidget {
                 title: filtered
                     ? 'Bu filtreye uyan harcama yok'
                     : 'Henüz harcama yok',
-                message: filtered
-                    ? 'Filtreleri değiştirmeyi dene.'
-                    : 'Fiş, e-fatura ekle ya da elle bir harcama gir; burada görünür.',
+                message: filtered ? 'Filtreleri değiştirmeyi dene.' : 'Fiş, e-fatura ekle ya da elle bir harcama gir; burada görünür.',
               ),
             ),
           ],
@@ -327,7 +334,9 @@ class _Totals extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              filtered ? 'Filtreye uyan ${state.count} harcama' : '${state.count} harcama',
+              filtered
+                  ? 'Filtreye uyan ${state.count} harcama'
+                  : '${state.count} harcama',
               style: AppTextStyles.bodyS.copyWith(color: AppColors.textMuted),
             ),
           ),

@@ -11,6 +11,9 @@ import '../../../core/utils/money_format.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_view.dart';
 import '../../capture/presentation/review/review_widgets.dart';
+import '../../installments/data/installment_providers.dart';
+import '../../installments/domain/installment_models.dart';
+import '../../installments/presentation/installment_widgets.dart';
 import '../../matching/data/matching_providers.dart';
 import '../data/document_providers.dart';
 import '../data/transactions_api.dart';
@@ -29,7 +32,9 @@ class TransactionDetailScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Harcama silinsin mi?'),
-        content: const Text('Bu harcama ve fiş görseli silinecek. Bu işlem geri alınamaz.'),
+        content: const Text(
+          'Bu harcama ve fiş görseli silinecek. Bu işlem geri alınamaz.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -158,7 +163,9 @@ class _DetailBody extends ConsumerWidget {
         ..invalidate(purchaseListProvider)
         ..invalidate(pendingMatchesProvider);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Kayıtlar ayrıldı: iki ayrı harcama var.')),
+        const SnackBar(
+          content: Text('Kayıtlar ayrıldı: iki ayrı harcama var.'),
+        ),
       );
     } on ApiError catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(error.message)));
@@ -223,7 +230,9 @@ class _DetailBody extends ConsumerWidget {
                 Text('Birleşmiş kayıtlar', style: AppTextStyles.titleS),
                 for (final item in detail.evidenceItems)
                   Container(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.xs,
+                    ),
                     child: Row(
                       children: [
                         Expanded(
@@ -247,6 +256,10 @@ class _DetailBody extends ConsumerWidget {
             ],
           ),
         ),
+        if (detail.plan != null || !purchase.isEstimated) ...[
+          const SizedBox(height: AppSpacing.m),
+          _PlanCard(detail: detail, purchaseId: purchaseId),
+        ],
         if (detail.documents.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.m),
           _Card(
@@ -273,17 +286,24 @@ class _DetailBody extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Kalemler (${detail.lines.length})', style: AppTextStyles.titleS),
+                Text(
+                  'Kalemler (${detail.lines.length})',
+                  style: AppTextStyles.titleS,
+                ),
                 const SizedBox(height: AppSpacing.s),
                 for (final line in detail.lines)
                   Container(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.rowV),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.rowV,
+                    ),
                     decoration: const BoxDecoration(
                       border: Border(top: BorderSide(color: AppColors.border)),
                     ),
                     child: Row(
                       children: [
-                        Expanded(child: Text(line.name, style: AppTextStyles.body)),
+                        Expanded(
+                          child: Text(line.name, style: AppTextStyles.body),
+                        ),
                         if (line.totalMinor != null)
                           Text(
                             formatMoneyTl(line.totalMinor!),
@@ -301,6 +321,233 @@ class _DetailBody extends ConsumerWidget {
   }
 }
 
+/// "Taksit" (P10): the plan of a purchase and its payments. Payments are not spending.
+class _PlanCard extends ConsumerWidget {
+  const _PlanCard({required this.detail, required this.purchaseId});
+
+  final PurchaseDetail detail;
+  final String purchaseId;
+
+  Future<int?> _askCount(BuildContext context, int initial) {
+    return showDialog<int>(
+      context: context,
+      builder: (dialogContext) {
+        var count = initial;
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: const Text('Kaç taksit?'),
+            content: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  key: const Key('plan_minus'),
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: count > 2 ? () => setState(() => count--) : null,
+                ),
+                Text(
+                  '$count',
+                  key: const Key('plan_count'),
+                  style: AppTextStyles.titleL,
+                ),
+                IconButton(
+                  key: const Key('plan_plus'),
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: count < 36 ? () => setState(() => count++) : null,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Vazgeç'),
+              ),
+              TextButton(
+                key: const Key('plan_confirm'),
+                onPressed: () => Navigator.of(dialogContext).pop(count),
+                child: const Text('Kaydet'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _run(
+    BuildContext context,
+    WidgetRef ref,
+    Future<PurchaseDetail> Function() action,
+    String done,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await action();
+      ref
+        ..invalidate(purchaseDetailProvider(purchaseId))
+        ..invalidate(purchaseListProvider)
+        ..invalidate(installmentScheduleProvider);
+      messenger.showSnackBar(SnackBar(content: Text(done)));
+    } on ApiError catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _setCount(
+    BuildContext context,
+    WidgetRef ref,
+    int initial,
+  ) async {
+    final count = await _askCount(context, initial);
+    if (count == null || !context.mounted) return;
+    await _run(
+      context,
+      ref,
+      () => ref.read(transactionsApiProvider).putPlan(purchaseId, count: count),
+      'Taksit planı kaydedildi: $count taksit.',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plan = detail.plan;
+    final api = ref.read(transactionsApiProvider);
+    if (plan == null) {
+      return _Card(
+        child: Row(
+          children: [
+            Expanded(child: Text('Taksit', style: AppTextStyles.titleS)),
+            TextButton(
+              key: const Key('plan_add'),
+              onPressed: () => _setCount(context, ref, 3),
+              child: const Text('Taksitli yap'),
+            ),
+          ],
+        ),
+      );
+    }
+    return _Card(
+      child: Column(
+        key: const Key('plan_card'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('Taksit', style: AppTextStyles.titleS),
+              const SizedBox(width: AppSpacing.s),
+              InstallmentBadge(label: '${plan.count} TAKSİT'),
+              if (detail.purchase.isEstimated) ...[
+                const SizedBox(width: AppSpacing.s),
+                const EstimatedBadge(),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            plan.isActive
+                ? '${plan.observedCount}/${plan.count} taksit bankada görüldü. '
+                      'Harcama alışveriş ayında bir kez sayılır; taksitler ödemedir.'
+                : plan.status == PlanStatus.completed
+                ? 'Tüm taksitler görüldü.'
+                : 'Plan iptal edildi.',
+            key: const Key('plan_summary'),
+            style: AppTextStyles.bodyS.copyWith(color: AppColors.textMuted),
+          ),
+          if (detail.purchase.isEstimated) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Bu alışveriş bir banka taksit satırından tahmin edildi. Fişini '
+              'eklersen tutar ve tarih düzelir.',
+              key: const Key('plan_estimated_note'),
+              style: AppTextStyles.bodyS.copyWith(color: AppColors.warning),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.m),
+          for (final payment in plan.payments)
+            Container(
+              key: Key('plan_payment_${payment.seq}'),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.rowV),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.border)),
+              ),
+              child: Row(
+                children: [
+                  PaymentDot(status: payment.status),
+                  const SizedBox(width: AppSpacing.m),
+                  Expanded(
+                    child: Text(
+                      '${payment.seq}. taksit · '
+                      '${formatMonthTr(payment.dueMonth)}',
+                      style: AppTextStyles.body,
+                    ),
+                  ),
+                  Text(
+                    formatMoneyTl(payment.amountMinor),
+                    style: AppTextStyles.bodyStrong,
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: AppSpacing.s),
+          Wrap(
+            spacing: AppSpacing.l,
+            runSpacing: AppSpacing.xs,
+            children: [
+              for (final status in PaymentStatus.values)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PaymentDot(status: status),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      status.label,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s),
+          Wrap(
+            spacing: AppSpacing.s,
+            children: [
+              if (plan.isActive && plan.observedCount == 0)
+                TextButton(
+                  key: const Key('plan_change'),
+                  onPressed: () => _setCount(context, ref, plan.count),
+                  child: const Text('Taksit sayısını değiştir'),
+                ),
+              if (plan.status == PlanStatus.cancelled)
+                TextButton(
+                  key: const Key('plan_reopen'),
+                  onPressed: () => _run(
+                    context,
+                    ref,
+                    () => api.setPlanCancelled(plan.id, cancel: false),
+                    'Plan yeniden açıldı.',
+                  ),
+                  child: const Text('Planı yeniden aç'),
+                )
+              else
+                TextButton(
+                  key: const Key('plan_cancel'),
+                  onPressed: () => _run(
+                    context,
+                    ref,
+                    () => api.setPlanCancelled(plan.id, cancel: true),
+                    'Plan iptal edildi.',
+                  ),
+                  child: const Text('Planı iptal et'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// A small preview of a stored document (loaded with a short-lived token); tap to enlarge.
 class _DocumentThumb extends ConsumerWidget {
   const _DocumentThumb({required this.document});
@@ -313,7 +560,8 @@ class _DocumentThumb extends ConsumerWidget {
     return InkWell(
       key: Key('document_${document.id}'),
       borderRadius: AppRadius.circular(AppRadius.thumbnail),
-      onTap: () => context.push('/documents/${document.id}/view?pdf=${document.isPdf}'),
+      onTap: () =>
+          context.push('/documents/${document.id}/view?pdf=${document.isPdf}'),
       child: ClipRRect(
         borderRadius: AppRadius.circular(AppRadius.thumbnail),
         child: Container(
@@ -325,7 +573,8 @@ class _DocumentThumb extends ConsumerWidget {
               bytes,
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
-              errorBuilder: (_, _, _) => const _ThumbIcon(Icons.broken_image_outlined),
+              errorBuilder: (_, _, _) =>
+                  const _ThumbIcon(Icons.broken_image_outlined),
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, _) => _ThumbIcon(
@@ -380,7 +629,9 @@ class DocumentViewerScreen extends ConsumerWidget {
         iconTheme: const IconThemeData(color: AppColors.cameraForeground),
         title: Text(
           'Belge',
-          style: AppTextStyles.titleM.copyWith(color: AppColors.cameraForeground),
+          style: AppTextStyles.titleM.copyWith(
+            color: AppColors.cameraForeground,
+          ),
         ),
       ),
       body: SafeArea(

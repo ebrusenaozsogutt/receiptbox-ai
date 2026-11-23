@@ -26,6 +26,7 @@ import 'features/shell/presentation/main_shell.dart';
 import 'features/transactions/presentation/manual_transaction_screen.dart';
 import 'features/transactions/presentation/transaction_detail_screen.dart';
 import 'features/transactions/presentation/transactions_screen.dart';
+import 'features/installments/presentation/installment_schedule_screen.dart';
 
 part 'app.g.dart';
 
@@ -172,6 +173,11 @@ GoRouter router(Ref ref) {
         path: '/capture/result',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const CaptureResultScreen(),
+      ),
+      GoRoute(
+        path: '/installments',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const InstallmentScheduleScreen(),
       ),
       GoRoute(
         path: '/transactions/new',

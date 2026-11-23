@@ -11,6 +11,7 @@ import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/message_banner.dart';
+import '../../../installments/data/installment_providers.dart';
 import '../../../matching/data/matching_providers.dart';
 import '../../../matching/domain/match_models.dart';
 import '../../../matching/presentation/match_sheet.dart';
@@ -161,6 +162,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           onTotal: controller.setTotal,
           onCategory: controller.setCategory,
           onChannel: controller.setChannel,
+          onInstallments: controller.setInstallments,
         ),
         const SizedBox(height: AppSpacing.m),
         ItemsCard(
@@ -200,7 +202,9 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Kaydetmeden çıkılsın mı?'),
-        content: const Text('Bu fiş kaydedilmeyecek ve eklediğin bilgiler silinecek.'),
+        content: const Text(
+          'Bu fiş kaydedilmeyecek ve eklediğin bilgiler silinecek.',
+        ),
         actions: [
           TextButton(
             key: const Key('leave_stay'),
@@ -247,7 +251,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           ],
         ),
       );
-      if (answer == null || !mounted) return; // dialog dismissed: nothing is saved
+      if (answer == null || !mounted)
+        return; // dialog dismissed: nothing is saved
       remember = answer;
     }
 
@@ -259,6 +264,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       final outcome = await controller.save(rememberCategory: remember);
       ref
         ..invalidate(purchaseListProvider)
+        ..invalidate(installmentScheduleProvider)
         ..invalidate(pendingMatchesProvider);
       if (outcome.needsAnswer) {
         // It may be a purchase you already have (P09): nothing exists until the user answers.
@@ -266,6 +272,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         final answer = await showMatchSheet(context, outcome.suggestions);
         ref
           ..invalidate(purchaseListProvider)
+          ..invalidate(installmentScheduleProvider)
           ..invalidate(pendingMatchesProvider);
         if (answer == null) {
           await controller.dropImage();
