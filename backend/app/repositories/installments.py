@@ -117,9 +117,12 @@ class InstallmentRepository:
         return payment
 
     async def delete_plan(self, plan: InstallmentPlan) -> None:
-        await self._session.execute(delete(InstallmentPlan).where(InstallmentPlan.id == plan.id))
+        """Delete a plan and its payments (the caller checked that no bank row is attached)."""
+        await self._session.execute(
+            delete(InstallmentPayment).where(InstallmentPayment.plan_id == plan.id)
+        )
+        await self._session.delete(plan)
         await self._session.flush()
-        self._session.expire_all()
 
     # ---- for the matcher ------------------------------------------------------------------
 

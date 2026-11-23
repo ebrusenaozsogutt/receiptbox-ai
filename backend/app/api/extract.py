@@ -140,6 +140,7 @@ async def extract_bank_screenshot(
                 confidence=item.row.confidence,
                 suggestions=item.suggestions,
                 match=item.match,
+                installment=item.installment,
             )
             for item in outcome.rows
         ],

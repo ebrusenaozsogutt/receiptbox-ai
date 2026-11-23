@@ -59,9 +59,16 @@ async def insert_bank_row(
     seq: int | None = None,
     count: int | None = None,
     direction: str = "DEBIT",
+    bank_key: str | None = None,
+    capture: date | None = None,
 ) -> str:
     """A pending bank row made directly (for situations no fixture has: a time on the row, two
-    identical rows). Same shape the bank import writes."""
+    identical rows, an installment marker). Same shape the bank import writes; `capture` is the
+    day the screenshot was taken (the statement month of an installment row, P10)."""
+    saved = '{"suggestions": {}, "kind": "PURCHASE"'
+    if capture is not None:
+        saved += f', "capture_date": "{capture.isoformat()}"'
+    saved += "}"
     return await _insert_observation(
         app,
         account,
@@ -73,7 +80,8 @@ async def insert_bank_row(
         seq=seq,
         count=count,
         direction=direction,
-        extraction='{"suggestions": {}, "kind": "PURCHASE"}',
+        extraction=saved,
+        bank_key=bank_key,
     )
 
 
@@ -117,6 +125,7 @@ async def _insert_observation(
     count: int | None,
     direction: str,
     extraction: str,
+    bank_key: str | None = None,
 ) -> str:
     observation_id = uuid.uuid4()
     async with app.state.session_factory() as session:
@@ -124,9 +133,9 @@ async def _insert_observation(
             text(
                 "INSERT INTO observations (id, user_id, source, status, merchant_raw, amount_minor,"
                 "direction, obs_date, obs_time, installment_seq, installment_count, fingerprint, "
-                "extraction_json) VALUES (:id, :user_id, :source, 'PENDING_REVIEW', :merchant, "
-                ":amount, :direction, :day, :at, :seq, :count, :fingerprint, "
-                "CAST(:extraction AS jsonb))"
+                "extraction_json, bank_key) VALUES (:id, :user_id, :source, 'PENDING_REVIEW', "
+                ":merchant, :amount, :direction, :day, :at, :seq, :count, :fingerprint, "
+                "CAST(:extraction AS jsonb), :bank_key)"
             ),
             {
                 "id": observation_id,
@@ -141,6 +150,7 @@ async def _insert_observation(
                 "count": count,
                 "fingerprint": uuid.uuid4().hex,
                 "extraction": extraction,
+                "bank_key": bank_key,
             },
         )
         await session.commit()
