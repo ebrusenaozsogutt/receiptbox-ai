@@ -36,6 +36,9 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
+### 2026-11-23 — P10 CI confirmed
+- CI run on `main` (`50472a3`): jobs `backend` (1258 tests on a fresh PostgreSQL, fake provider only, `ruff format --check` included) and `mobile` (600 Flutter tests) both green. P10 is closed. (An earlier local commit of the same day, `605dfdb`, had one test line that `ruff format` would have changed; it was fixed before the push, so no red run exists.)
+
 ### 2026-11-23 — P10 Installments 1:N (done; emulator end-to-end run on 2026-11-23)
 - Done:
   - **Arithmetic** (`services/installment_schedule.py`, pure): `split_total` = equal parts rounded to the nearest kuruş, the last one takes the remainder (12.499,00 TL in 6 = 2.083,17 x 5 + 2.083,15); `add_months`, `due_month`, default first due month = the month after the purchase (spec 8.1). Count 2..36.
