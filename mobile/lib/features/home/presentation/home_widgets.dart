@@ -9,6 +9,7 @@ import '../../../core/utils/date_format.dart';
 import '../../../core/utils/money_format.dart';
 import '../../analytics/domain/analytics_models.dart';
 import '../../capture/presentation/review/review_widgets.dart' show CategoryDot;
+import '../../transactions/domain/spending_category.dart';
 
 /// The pieces of the home screen, built from the Figma frame "01 · Ana Sayfa".
 
@@ -250,6 +251,17 @@ class ProgressTrack extends StatelessWidget {
   }
 }
 
+/// The rows of the home "Kategoriler" card: the largest categories first and "Diğer" always
+/// last, as in the Figma frame; at most [max] rows ("Tümü" shows the rest).
+List<CategoryAmount> homeCategoryRows(
+  List<CategoryAmount> categories,
+  int max,
+) {
+  final other = categories.where((c) => c.category == SpendingCategory.other);
+  final named = categories.where((c) => c.category != SpendingCategory.other);
+  return [...named.take(other.isEmpty ? max : max - 1), ...other];
+}
+
 /// "Kategoriler": the categories of the month with bars relative to the largest one.
 class CategoryBreakdown extends StatelessWidget {
   const CategoryBreakdown({
@@ -266,7 +278,7 @@ class CategoryBreakdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = categories.take(maxRows).toList();
+    final rows = homeCategoryRows(categories, maxRows);
     final largest = rows.fold<int>(
       0,
       (m, c) => c.totalMinor > m ? c.totalMinor : m,

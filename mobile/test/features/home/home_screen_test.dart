@@ -121,6 +121,21 @@ void main() {
       expect(changeLabel(less), "↓ %33,3 · Ekim'e göre -500 TL");
     });
 
+    test('"Diğer" is always the last category row', () {
+      final rows = homeCategoryRows(_november().spending.byCategory, 5);
+      expect(rows.map((r) => r.category), [
+        SpendingCategory.grocery,
+        SpendingCategory.technology,
+        SpendingCategory.foodDrink,
+        SpendingCategory.transport,
+        SpendingCategory.other,
+      ]);
+      final noOther = homeCategoryRows(const [
+        CategoryAmount(category: SpendingCategory.fuel, totalMinor: 1),
+      ], 5);
+      expect(noOther.single.category, SpendingCategory.fuel);
+    });
+
     test('nothing to compare with says so', () {
       expect(
         changeLabel(emptyHome(november).spending),
