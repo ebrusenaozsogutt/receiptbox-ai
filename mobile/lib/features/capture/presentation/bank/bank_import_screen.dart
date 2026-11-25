@@ -22,6 +22,10 @@ import '../../../matching/data/matching_providers.dart';
 import '../../../matching/domain/match_models.dart';
 import '../../../matching/presentation/match_sheet.dart';
 import '../../../matching/presentation/merge_feedback.dart';
+import '../../../products/data/products_api.dart';
+import '../../../products/data/products_providers.dart';
+import '../../../products/domain/product_models.dart';
+import '../../../products/presentation/refund_link_sheet.dart';
 import '../../../transactions/data/transactions_providers.dart';
 import '../../data/capture_providers.dart';
 import '../../domain/bank_models.dart';
@@ -38,6 +42,23 @@ class BankImportScreen extends ConsumerStatefulWidget {
 }
 
 class _BankImportScreenState extends ConsumerState<BankImportScreen> {
+  /// P12: CREDIT rows the user linked to a purchase as a refund on this screen.
+  final _linkedRefunds = <String>{};
+
+  Future<void> _linkRefund(RefundSuggestion suggestion) async {
+    final container = ProviderScope.containerOf(context);
+    final linked = await askRefundLink(
+      context: context,
+      container: container,
+      suggestion: suggestion,
+    );
+    if (linked == null || !mounted) return;
+    setState(() => _linkedRefunds.add(suggestion.observationId));
+    ref
+      ..invalidate(refundSuggestionsProvider)
+      ..invalidate(purchaseListProvider);
+  }
+
   String? _problem;
   bool _started = false;
 
@@ -312,6 +333,36 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
     );
   }
 
+  /// P12: "Teknosa alışverişinin iadesi olabilir" and "İade olarak bağla" on a CREDIT row.
+  List<Widget> _refundHint(BankRow row) {
+    if (row.kind != BankRowKind.refund ||
+        row.isDuplicate ||
+        _linkedRefunds.contains(row.observationId)) {
+      return const [];
+    }
+    final suggestions = ref.watch(refundSuggestionsProvider).value ?? const [];
+    final suggestion = suggestions
+        .where((s) => s.observationId == row.observationId)
+        .firstOrNull;
+    if (suggestion == null || suggestion.candidates.isEmpty) return const [];
+    final first = suggestion.candidates.first;
+    return [
+      const SizedBox(height: AppSpacing.xs),
+      Text(
+        suggestion.candidates.length == 1
+            ? '${first.merchant} alışverişinin iadesi olabilir'
+            : '${suggestion.candidates.length} alışverişten birinin iadesi olabilir',
+        key: Key('refund_hint_${row.observationId}'),
+        style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+      ),
+      TextButton(
+        key: Key('refund_link_button_${row.observationId}'),
+        onPressed: () => _linkRefund(suggestion),
+        child: const Text('İade olarak bağla'),
+      ),
+    ];
+  }
+
   Widget _rowCard(BankImportState import, BankRow row) {
     final edit = import.edits[row.observationId];
     final merchant = edit?.merchant ?? row.merchant;
@@ -399,8 +450,10 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
                               foreground: AppColors.textMuted,
                             ),
                           if (row.kind == BankRowKind.refund)
-                            const _Pill(
-                              label: 'Olası iade',
+                            _Pill(
+                              label: _linkedRefunds.contains(row.observationId)
+                                  ? 'İade olarak bağlandı'
+                                  : 'Olası iade',
                               background: AppColors.successSoft,
                               foreground: AppColors.success,
                             ),
@@ -430,6 +483,7 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
                           ),
                         ),
                       ],
+                      ..._refundHint(row),
                       if (row.match != null && selectable) ...[
                         const SizedBox(height: AppSpacing.xs),
                         Text(
@@ -626,8 +680,43 @@ class _BankImportScreenState extends ConsumerState<BankImportScreen> {
         ..invalidate(installmentScheduleProvider)
         ..invalidate(pendingMatchesProvider);
 
+      // P12: the CREDIT rows of this screenshot that may be refunds of a purchase you have
+      // (asked one by one; never linked without an answer).
+      var refundsLinked = 0;
+      final refundRows = {
+        for (final r in ref.read(bankImportControllerProvider).rows)
+          if (r.kind == BankRowKind.refund &&
+              !r.isDuplicate &&
+              !_linkedRefunds.contains(r.observationId))
+            r.observationId,
+      };
+      if (refundRows.isNotEmpty && mounted) {
+        try {
+          final waiting = await container
+              .read(productsApiProvider)
+              .refundSuggestions();
+          for (final suggestion in waiting) {
+            if (!mounted) break;
+            if (!refundRows.contains(suggestion.observationId) ||
+                suggestion.candidates.isEmpty) {
+              continue;
+            }
+            final linked = await askRefundLink(
+              context: context,
+              container: container,
+              suggestion: suggestion,
+            );
+            if (linked != null) refundsLinked++;
+          }
+        } on ApiError {
+          // the rows stay as possible refunds; nothing is lost
+        }
+      }
+
       final parts = [
         '${outcome.created + separate} harcama kaydedildi',
+        if (refundsLinked + _linkedRefunds.length > 0)
+          '${refundsLinked + _linkedRefunds.length} iade bağlandı',
         if (joined > 0) '$joined satır mevcut harcamayla birleşti',
         if (outcome.linked > 0)
           '${outcome.linked} taksit mevcut alışverişe bağlandı',

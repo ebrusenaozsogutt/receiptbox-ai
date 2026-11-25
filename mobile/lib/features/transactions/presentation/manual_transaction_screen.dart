@@ -15,6 +15,7 @@ import '../../matching/data/matching_providers.dart';
 import '../../matching/domain/match_models.dart';
 import '../../matching/presentation/match_sheet.dart';
 import '../../matching/presentation/merge_feedback.dart';
+import '../../products/presentation/product_suggestion_sheet.dart';
 import '../data/transactions_api.dart';
 import '../data/transactions_providers.dart';
 import '../domain/purchase_models.dart';
@@ -143,6 +144,18 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
         );
       } else {
         messenger.showSnackBar(SnackBar(content: Text(message)));
+      }
+      // P12: "Bunu ürün olarak takip edelim mi?" for a qualifying new purchase (spec 10.1).
+      final offer = saved is Saved ? saved.detail.productSuggestions : const [];
+      if (id == null && offer.isNotEmpty && mounted) {
+        final productId = await askToTrackProduct(
+          context: context,
+          container: container,
+          suggestion: offer.first,
+        );
+        router.go('/transactions');
+        if (productId != null) router.push('/products/$productId');
+        return;
       }
       if (id == null) {
         router.go('/transactions');

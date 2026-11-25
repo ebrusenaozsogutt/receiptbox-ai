@@ -111,6 +111,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: AttentionSection(
         items: data.attention,
         onBudget: () => context.push('/budgets'),
+        onProduct: (id) => context.push('/products/$id'),
       ),
     ),
     const SizedBox(height: AppSpacing.xl),

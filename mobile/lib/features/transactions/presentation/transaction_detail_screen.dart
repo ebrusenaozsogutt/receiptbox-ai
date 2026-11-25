@@ -15,6 +15,12 @@ import '../../installments/data/installment_providers.dart';
 import '../../installments/domain/installment_models.dart';
 import '../../installments/presentation/installment_widgets.dart';
 import '../../matching/data/matching_providers.dart';
+import '../../analytics/data/analytics_providers.dart';
+import '../../products/data/products_api.dart';
+import '../../products/data/products_providers.dart';
+import '../../products/domain/product_models.dart';
+import '../../products/presentation/product_suggestion_sheet.dart';
+import '../../products/presentation/refund_dialog.dart';
 import '../data/document_providers.dart';
 import '../data/transactions_api.dart';
 import '../data/transactions_providers.dart';
@@ -264,6 +270,10 @@ class _DetailBody extends ConsumerWidget {
         if (detail.plan != null || !purchase.isEstimated) ...[
           const SizedBox(height: AppSpacing.m),
           _PlanCard(detail: detail, purchaseId: purchaseId),
+        ],
+        if (!detail.purchase.isRefund) ...[
+          const SizedBox(height: AppSpacing.m),
+          _RefundsAndProductsCard(detail: detail, purchaseId: purchaseId),
         ],
         if (detail.documents.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.m),
@@ -544,6 +554,128 @@ class _PlanCard extends ConsumerWidget {
                     'Plan iptal edildi.',
                   ),
                   child: const Text('Planı iptal et'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// P12: the refunds of the purchase with "İade edildi", and its products ("Ürün olarak takip
+/// et" when the purchase is worth tracking).
+class _RefundsAndProductsCard extends ConsumerWidget {
+  const _RefundsAndProductsCard({required this.detail, required this.purchaseId});
+
+  final PurchaseDetail detail;
+  final String purchaseId;
+
+  void _refresh(WidgetRef ref) {
+    ref
+      ..invalidate(purchaseDetailProvider(purchaseId))
+      ..invalidate(purchaseListProvider)
+      ..invalidate(productListProvider)
+      ..invalidate(homeDataProvider);
+  }
+
+  Future<void> _refund(BuildContext context, WidgetRef ref) async {
+    final answer = await showRefundDialog(
+      context,
+      refundableMinor: detail.refundableMinor,
+      purchaseDate: detail.purchase.date,
+      today: DateTime.now(),
+    );
+    if (answer == null || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(productsApiProvider)
+          .refund(purchaseId, amountMinor: answer.amountMinor, date: answer.date);
+      _refresh(ref);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'İade kaydedildi: -${formatMoneyTl(answer.amountMinor)}. Harcama '
+            '${formatMonthTr(detail.purchase.date)} ayında azaldı.',
+          ),
+        ),
+      );
+    } on ApiError catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final refunded = detail.refunds.fold<int>(0, (sum, r) => sum + r.amountMinor);
+    return _Card(
+      child: Column(
+        key: const Key('refunds_card'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('İade ve ürün', style: AppTextStyles.titleS),
+          for (final refund in detail.refunds)
+            Padding(
+              key: Key('refund_${refund.id}'),
+              padding: const EdgeInsets.only(top: AppSpacing.s),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'İade · ${formatDateTr(refund.date)}',
+                      style: AppTextStyles.body,
+                    ),
+                  ),
+                  Text(
+                    '-${formatMoneyTl(refund.amountMinor)}',
+                    style: AppTextStyles.bodyStrong.copyWith(color: AppColors.success),
+                  ),
+                ],
+              ),
+            ),
+          if (refunded > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(
+                'Harcamada sayılan: ${formatMoneyTl(detail.purchase.totalMinor - refunded)}',
+                key: const Key('refunds_net'),
+                style: AppTextStyles.bodyS.copyWith(color: AppColors.textMuted),
+              ),
+            ),
+          for (final product in detail.products)
+            TextButton(
+              key: Key('purchase_product_${product.id}'),
+              onPressed: () => context.push('/products/${product.id}'),
+              child: Text(
+                product.status == ProductStatus.active
+                    ? 'Ürün: ${product.name}'
+                    : 'Ürün: ${product.name} (${product.status.label})',
+              ),
+            ),
+          Wrap(
+            spacing: AppSpacing.s,
+            children: [
+              if (detail.refundableMinor > 0)
+                TextButton(
+                  key: const Key('purchase_refund'),
+                  onPressed: () => _refund(context, ref),
+                  child: const Text('İade edildi'),
+                ),
+              if (detail.productSuggestions.isNotEmpty)
+                TextButton(
+                  key: const Key('purchase_track_product'),
+                  onPressed: () async {
+                    final router = GoRouter.of(context);
+                    final id = await askToTrackProduct(
+                      context: context,
+                      container: ProviderScope.containerOf(context),
+                      suggestion: detail.productSuggestions.first,
+                    );
+                    _refresh(ref);
+                    if (id != null) router.push('/products/$id');
+                  },
+                  child: const Text('Ürün olarak takip et'),
                 ),
             ],
           ),

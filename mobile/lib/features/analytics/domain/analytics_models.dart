@@ -105,12 +105,42 @@ class BudgetUsage {
 
 enum AttentionType { returnWindow, warranty, budget }
 
-/// Something to look at soon. Returns and warranties arrive with P12.
+/// P12: a product whose return window or warranty ends soon.
+class AttentionProduct {
+  const AttentionProduct({
+    required this.productId,
+    required this.name,
+    required this.merchant,
+    required this.endDate,
+    required this.daysLeft,
+  });
+
+  final String productId;
+  final String name;
+  final String? merchant;
+  final DateTime endDate;
+  final int daysLeft;
+
+  factory AttentionProduct.fromJson(Map<String, dynamic> json) {
+    final parts = (json['end_date'] as String).split('-').map(int.parse).toList();
+    return AttentionProduct(
+      productId: json['product_id'] as String,
+      name: json['name'] as String,
+      merchant: json['merchant_display'] as String?,
+      endDate: DateTime(parts[0], parts[1], parts[2]),
+      daysLeft: json['days_left'] as int,
+    );
+  }
+}
+
+/// Something to look at soon: returns ending within 7 days, warranties ending within 30 days
+/// (P12), budgets at 80 % or more.
 class AttentionItem {
-  const AttentionItem({required this.type, this.budget});
+  const AttentionItem({required this.type, this.budget, this.product});
 
   final AttentionType type;
   final BudgetUsage? budget;
+  final AttentionProduct? product;
 
   factory AttentionItem.fromJson(Map<String, dynamic> json) => AttentionItem(
     type: switch (json['type']) {
@@ -121,6 +151,9 @@ class AttentionItem {
     budget: json['budget'] == null
         ? null
         : BudgetUsage.fromJson(json['budget'] as Map<String, dynamic>),
+    product: json['product'] == null
+        ? null
+        : AttentionProduct.fromJson(json['product'] as Map<String, dynamic>),
   );
 }
 

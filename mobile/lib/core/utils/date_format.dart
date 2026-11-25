@@ -25,3 +25,11 @@ String monthDativeTr(DateTime date) {
 /// "EKIM").
 String upperTr(String text) =>
     text.replaceAll('i', 'İ').replaceAll('ı', 'I').toUpperCase();
+
+/// Short day formats.
+class DateFormatTr {
+  const DateFormatTr._();
+
+  /// "17 Kasım" (a deadline this year or next).
+  static String dayMonth(DateTime date) => DateFormat('d MMMM', 'tr_TR').format(date);
+}

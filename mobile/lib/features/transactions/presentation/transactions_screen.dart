@@ -438,6 +438,11 @@ class _PurchaseRow extends StatelessWidget {
                             EstimatedBadge(
                               key: Key('estimated_badge_${purchase.id}'),
                             ),
+                          if (purchase.isRefund)
+                            InstallmentBadge(
+                              key: Key('refund_badge_${purchase.id}'),
+                              label: 'İADE',
+                            ),
                         ],
                       ),
                     ],
@@ -452,9 +457,29 @@ class _PurchaseRow extends StatelessWidget {
                       color: AppColors.textSubtle,
                     ),
                   ),
-                Text(
-                  formatMoneyTl(purchase.totalMinor),
-                  style: AppTextStyles.bodyStrong,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // P12: a purchase is shown net of its refunds (as the totals count it); a
+                    // refund that belongs to no purchase is a minus amount.
+                    Text(
+                      purchase.isRefund
+                          ? '-${formatMoneyTl(purchase.totalMinor)}'
+                          : formatMoneyTl(purchase.netMinor),
+                      key: Key('purchase_amount_${purchase.id}'),
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: purchase.isRefund ? AppColors.success : AppColors.text,
+                      ),
+                    ),
+                    if (purchase.refundedMinor > 0)
+                      Text(
+                        'İade: -${formatMoneyTl(purchase.refundedMinor)}',
+                        key: Key('purchase_refunded_${purchase.id}'),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.success,
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),

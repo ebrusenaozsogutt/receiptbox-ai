@@ -15,6 +15,7 @@ import '../../../installments/data/installment_providers.dart';
 import '../../../matching/data/matching_providers.dart';
 import '../../../matching/domain/match_models.dart';
 import '../../../matching/presentation/match_sheet.dart';
+import '../../../products/presentation/product_suggestion_sheet.dart';
 import '../../../matching/presentation/merge_feedback.dart';
 import '../../../transactions/data/transactions_providers.dart';
 import '../../data/capture_providers.dart';
@@ -300,6 +301,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         return;
       }
       final detail = outcome.detail!;
+      final offer = detail.productSuggestions;
       final merge = detail.merge;
       if (merge != null && merge.isAuto) {
         showMergedSnackBar(
@@ -325,6 +327,17 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             ),
           ),
         );
+      }
+      // P12: "Bunu ürün olarak takip edelim mi?" for a qualifying purchase (spec 10.1).
+      if (offer.isNotEmpty && mounted) {
+        final productId = await askToTrackProduct(
+          context: context,
+          container: container,
+          suggestion: offer.first,
+        );
+        router.go('/transactions');
+        if (productId != null) router.push('/products/$productId');
+        return;
       }
       router.go('/transactions');
     } on ApiError catch (error) {

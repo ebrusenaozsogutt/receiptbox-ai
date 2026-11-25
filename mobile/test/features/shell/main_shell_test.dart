@@ -106,7 +106,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // The pushed screen has its own title bar. The three capture screens are real since
-        // P04 (tested in test/features/capture); the other two still say "coming soon".
+        // P04 (tested in test/features/capture); manual entry since P07, products since P12.
         expect(
           find.descendant(
             of: find.byType(AppBar),
@@ -115,7 +115,8 @@ void main() {
           findsOneWidget,
         );
         if (!action.route.startsWith('/capture/') &&
-            action.route != '/transactions/new') {
+            action.route != '/transactions/new' &&
+            action.route != '/products/new') {
           expect(find.text('Bu özellik yakında'), findsOneWidget);
         }
         expect(

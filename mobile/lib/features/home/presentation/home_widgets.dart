@@ -9,6 +9,7 @@ import '../../../core/utils/date_format.dart';
 import '../../../core/utils/money_format.dart';
 import '../../analytics/domain/analytics_models.dart';
 import '../../capture/presentation/review/review_widgets.dart' show CategoryDot;
+import '../../products/presentation/product_widgets.dart';
 import '../../transactions/domain/spending_category.dart';
 
 /// The pieces of the home screen, built from the Figma frame "01 · Ana Sayfa".
@@ -346,22 +347,25 @@ class CategoryBreakdown extends StatelessWidget {
   }
 }
 
-/// "Dikkat gerektirenler": budgets at 80 % or more (returns and warranties arrive with P12).
+/// "Dikkat gerektirenler": returns ending within 7 days (İADE), warranties ending within 30 days
+/// (GARANTİ) and budgets at 80 % or more, in the order the backend gives.
 class AttentionSection extends StatelessWidget {
   const AttentionSection({
     super.key,
     required this.items,
     required this.onBudget,
+    required this.onProduct,
   });
 
   final List<AttentionItem> items;
   final VoidCallback onBudget;
+  final ValueChanged<String> onProduct;
 
   @override
   Widget build(BuildContext context) {
-    final budgets = [
+    final rows = [
       for (final item in items)
-        if (item.budget != null) item.budget!,
+        if (item.budget != null || item.product != null) item,
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -374,7 +378,7 @@ class AttentionSection extends StatelessWidget {
             horizontal: AppSpacing.l,
             vertical: AppSpacing.xxs,
           ),
-          child: budgets.isEmpty
+          child: rows.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.m),
                   child: Text(
@@ -387,16 +391,77 @@ class AttentionSection extends StatelessWidget {
                 )
               : Column(
                   children: [
-                    for (var i = 0; i < budgets.length; i++)
-                      _BudgetRow(
-                        budget: budgets[i],
-                        first: i == 0,
-                        onTap: onBudget,
-                      ),
+                    for (var i = 0; i < rows.length; i++)
+                      if (rows[i].product != null)
+                        _DeadlineRow(
+                          item: rows[i],
+                          first: i == 0,
+                          onTap: () => onProduct(rows[i].product!.productId),
+                        )
+                      else
+                        _BudgetRow(
+                          budget: rows[i].budget!,
+                          first: i == 0,
+                          onTap: onBudget,
+                        ),
                   ],
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// İADE / GARANTİ row of the Figma frame: badge, product, "Trendyol · iade son günü 17 Kasım",
+/// days left on the right (red for a return, orange for a warranty).
+class _DeadlineRow extends StatelessWidget {
+  const _DeadlineRow({required this.item, required this.first, required this.onTap});
+
+  final AttentionItem item;
+  final bool first;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final product = item.product!;
+    final isReturn = item.type == AttentionType.returnWindow;
+    final kind = isReturn ? DeadlineKind.returnWindow : DeadlineKind.warranty;
+    final what = isReturn ? 'iade son günü' : 'garanti bitişi';
+    final day = DateFormatTr.dayMonth(product.endDate);
+    return InkWell(
+      key: Key('home_${isReturn ? 'return' : 'warranty'}_${product.productId}'),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.m),
+        decoration: BoxDecoration(
+          border: first
+              ? null
+              : const Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DeadlineBadge(kind: kind),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(product.name, style: AppTextStyles.bodyStrong),
+                  Text(
+                    [?product.merchant, '$what $day'].join(' · '),
+                    style: AppTextStyles.bodyS.copyWith(color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.m),
+            Text(
+              daysLeftLabel(product.daysLeft),
+              style: AppTextStyles.titleS.copyWith(color: kind.foreground),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
