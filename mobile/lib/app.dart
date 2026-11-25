@@ -5,6 +5,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'core/storage/settings_store.dart';
 import 'core/theme/app_theme.dart';
+import 'features/analytics/presentation/analytics_screen.dart';
+import 'features/analytics/presentation/budgets_screen.dart';
 import 'features/assistant/presentation/assistant_screen.dart';
 import 'features/auth/domain/auth_state.dart';
 import 'features/auth/presentation/auth_controller.dart';
@@ -175,6 +177,16 @@ GoRouter router(Ref ref) {
         path: '/capture/result',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const CaptureResultScreen(),
+      ),
+      GoRoute(
+        path: '/analytics',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AnalyticsScreen(),
+      ),
+      GoRoute(
+        path: '/budgets',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const BudgetsScreen(),
       ),
       GoRoute(
         path: '/installments',

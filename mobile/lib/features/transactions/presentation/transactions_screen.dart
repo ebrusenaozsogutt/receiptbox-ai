@@ -87,6 +87,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             title: 'Harcamalar',
             actions: [
               IconButton(
+                key: const Key('open_analytics'),
+                tooltip: 'Analiz',
+                icon: const Icon(
+                  Icons.insights_outlined,
+                  color: AppColors.primary,
+                ),
+                onPressed: () => context.push('/analytics'),
+              ),
+              IconButton(
                 key: const Key('open_installments'),
                 tooltip: 'Taksitler',
                 icon: const Icon(
