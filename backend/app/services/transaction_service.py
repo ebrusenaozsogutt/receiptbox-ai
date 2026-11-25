@@ -59,6 +59,7 @@ from app.schemas.transactions import (
     TransactionPatch,
     UnmergeResponse,
 )
+from app.services.budget_service import BudgetService
 from app.services.extraction_service import BUSINESS_TIMEZONE, compute_fingerprint
 from app.services.installment_service import InstallmentService, RowContext, capture_date_of
 from app.services.match_service import Evaluation, MatchService, without_pending
@@ -86,6 +87,13 @@ class TransactionService:
 
     # ---- observations (the review queue) ------------------------------------------------------
 
+    async def _commit(self, user_id: uuid.UUID) -> None:
+        """Commit, after creating the budget reminders the change may have reached (P11). Every
+        write of this service ends here, so a purchase saved, merged, edited or deleted is checked
+        against the budgets of the current month in the same transaction."""
+        await BudgetService(self._session).check_reminders(user_id)
+        await self._session.commit()
+
     async def list_observations(
         self, user_id: uuid.UUID, status: ObservationStatus, *, limit: int, offset: int
     ) -> list[ObservationOut]:
@@ -103,7 +111,7 @@ class TransactionService:
         if observation.status != ObservationStatus.PENDING_REVIEW:
             raise ObservationNotPendingError()
         observation.status = ObservationStatus.REJECTED
-        await self._session.commit()
+        await self._commit(user_id)
 
     async def confirm(
         self, user_id: uuid.UUID, observation_id: uuid.UUID, body: ConfirmRequest
@@ -154,7 +162,7 @@ class TransactionService:
             note=body.note,
             installment_count=count,
         )
-        await self._session.commit()
+        await self._commit(user_id)
         return await self._answer(user_id, settled)
 
     async def confirm_batch(
@@ -207,7 +215,7 @@ class TransactionService:
                     installment_count=count,
                 )
             settled_rows.append((observation, settled))
-        await self._session.commit()
+        await self._commit(user_id)
 
         created: list[TransactionDetail] = []
         merged: list[BatchMerged] = []
@@ -264,7 +272,7 @@ class TransactionService:
         transaction = await self._transactions.get(user_id, transaction_id)
         if transaction is not None:
             await self._after_merge(user_id, transaction, observation, count)
-        await self._session.commit()
+        await self._commit(user_id)
         detail = await self._detail(user_id, transaction_id)
         return detail.model_copy(update={"outcome": "MERGED", "match": merge})
 
@@ -284,7 +292,7 @@ class TransactionService:
         decision.installment_payment_id = observation.installment_payment_id
         await self._matching.close_pending(user_id, observation.id)
         observation.extraction_json = without_pending(observation.extraction_json)
-        await self._session.commit()
+        await self._commit(user_id)
         detail = await self._detail(user_id, transaction.id)
         return detail.model_copy(update={"outcome": "LINKED"})
 
@@ -315,7 +323,7 @@ class TransactionService:
                 user_id, observation, fields, pending.get("note")
             )
             observation.extraction_json = without_pending(observation.extraction_json)
-            await self._session.commit()
+            await self._commit(user_id)
             return await self._detail(user_id, transaction.id)
         transaction = await self._create_from(
             user_id,
@@ -330,7 +338,7 @@ class TransactionService:
         observation.status = ObservationStatus.CONFIRMED
         observation.transaction_id = transaction.id
         observation.extraction_json = without_pending(observation.extraction_json)
-        await self._session.commit()
+        await self._commit(user_id)
         return await self._detail(user_id, transaction.id)
 
     async def unmerge(
@@ -338,7 +346,7 @@ class TransactionService:
     ) -> UnmergeResponse:
         """ "Ayır" / "Geri al": the two records of a merged purchase become two purchases again."""
         result = await self._matching.unmerge(user_id, transaction_id, observation_id)
-        await self._session.commit()
+        await self._commit(user_id)
         return UnmergeResponse(
             transaction=await self._detail(user_id, result.transaction_id),
             new_transaction=await self._detail(user_id, result.new_transaction_id),
@@ -543,7 +551,7 @@ class TransactionService:
             first_due_month=body.first_due_month,
             total_payable_minor=body.total_payable_minor,
         )
-        await self._session.commit()
+        await self._commit(user_id)
         return await self._detail(user_id, transaction_id)
 
     async def patch_plan(
@@ -557,7 +565,7 @@ class TransactionService:
             total_payable_minor=body.total_payable_minor,
             sent=set(body.model_fields_set),
         )
-        await self._session.commit()
+        await self._commit(user_id)
         return await self._detail(user_id, transaction.id)
 
     async def schedule(self, user_id: uuid.UUID, *, from_month: date, to_month: date):  # noqa: ANN201
@@ -566,7 +574,7 @@ class TransactionService:
         result = await self._installments.schedule(
             user_id, from_month=from_month, to_month=to_month, today=today
         )
-        await self._session.commit()
+        await self._commit(user_id)
         return result
 
     async def _answer(
@@ -638,7 +646,7 @@ class TransactionService:
             note=body.note,
             installment_count=body.installment_count,
         )
-        await self._session.commit()
+        await self._commit(user_id)
         return await self._answer(user_id, settled)
 
     async def list(
@@ -699,7 +707,7 @@ class TransactionService:
             transaction.channel = body.channel
         if "note" in sent:
             transaction.note = body.note or None
-        await self._session.commit()
+        await self._commit(user_id)
         return await self._detail(user_id, transaction_id)
 
     async def delete(self, user_id: uuid.UUID, transaction_id: uuid.UUID) -> None:
@@ -714,7 +722,7 @@ class TransactionService:
             else:
                 document.transaction_id = None
         await self._transactions.soft_delete(user_id, transaction_id)
-        await self._session.commit()
+        await self._commit(user_id)
         for key in files:
             try:
                 await asyncio.to_thread(self._storage.delete, key)
