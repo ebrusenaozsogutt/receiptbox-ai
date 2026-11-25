@@ -80,11 +80,14 @@ abstract interface class TransactionsApi {
 
 /// Receipt images and invoice PDFs (backend `/documents`).
 abstract interface class DocumentsApi {
+  /// The file belongs to a purchase ([transactionId]) or, P12, to a product ([productId]: a
+  /// warranty card).
   Future<DocumentInfo> upload(
     File file, {
     required String mimeType,
     required String type,
-    required String transactionId,
+    String? transactionId,
+    String? productId,
   });
 
   /// A full address the app can show for 5 minutes (the token is inside it).
@@ -306,7 +309,8 @@ class DioDocumentsApi implements DocumentsApi {
     File file, {
     required String mimeType,
     required String type,
-    required String transactionId,
+    String? transactionId,
+    String? productId,
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -321,7 +325,8 @@ class DioDocumentsApi implements DocumentsApi {
             contentType: DioMediaType.parse(mimeType),
           ),
           'type': type,
-          'transaction_id': transactionId,
+          'transaction_id': ?transactionId,
+          'product_id': ?productId,
         }),
         options: Options(sendTimeout: const Duration(seconds: 60)),
       );

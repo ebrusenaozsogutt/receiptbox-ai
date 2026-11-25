@@ -7,6 +7,7 @@ import 'package:receiptbox/app.dart';
 import 'package:receiptbox/core/networking/api_error.dart';
 import 'package:receiptbox/features/analytics/data/analytics_api.dart';
 import 'package:receiptbox/features/analytics/data/analytics_providers.dart';
+import 'package:receiptbox/features/products/data/products_api.dart';
 import 'package:receiptbox/core/storage/settings_store.dart';
 import 'package:receiptbox/core/storage/token_store.dart';
 import 'package:receiptbox/features/auth/data/auth_api.dart';
@@ -21,6 +22,7 @@ import 'package:receiptbox/features/health/domain/health_status.dart';
 import 'package:receiptbox/features/transactions/data/transactions_api.dart';
 
 import 'analytics_fakes.dart';
+import 'product_fakes.dart';
 import 'purchase_fakes.dart';
 
 import 'package:material_ui/material_ui.dart';
@@ -172,6 +174,9 @@ class TestApp {
 
   // Home, analytics and budgets (P11), with a fixed "now": 20 November 2026.
   final FakeAnalyticsApi analytics = FakeAnalyticsApi();
+
+  // Products and refunds (P12).
+  final FakeProductsApi products = FakeProductsApi();
   DateTime now = DateTime(2026, 11, 20, 12);
   final FakeDocumentsApi documents = FakeDocumentsApi();
 
@@ -201,6 +206,7 @@ class TestApp {
     extractionApiProvider.overrideWithValue(extraction),
     transactionsApiProvider.overrideWithValue(transactions),
     analyticsApiProvider.overrideWithValue(analytics),
+    productsApiProvider.overrideWithValue(products),
     analyticsClockProvider.overrideWithValue(() => now),
     documentsApiProvider.overrideWithValue(documents),
     captureTempDirProvider.overrideWithValue(NoopTempDir()),

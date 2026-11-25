@@ -335,7 +335,8 @@ class FakeTransactionsApi implements TransactionsApi {
 
 /// The documents endpoints in memory.
 class FakeDocumentsApi implements DocumentsApi {
-  final uploads = <({String mimeType, String type, String transactionId})>[];
+  final uploads =
+      <({String mimeType, String type, String? transactionId, String? productId})>[];
 
   /// How many of the next uploads fail before one works.
   int failUploads = 0;
@@ -346,13 +347,19 @@ class FakeDocumentsApi implements DocumentsApi {
     File file, {
     required String mimeType,
     required String type,
-    required String transactionId,
+    String? transactionId,
+    String? productId,
   }) async {
     if (failUploads > 0) {
       failUploads--;
       throw fakeApiError('NETWORK_UNREACHABLE');
     }
-    uploads.add((mimeType: mimeType, type: type, transactionId: transactionId));
+    uploads.add((
+      mimeType: mimeType,
+      type: type,
+      transactionId: transactionId,
+      productId: productId,
+    ));
     return DocumentInfo(
       id: 'doc-${uploads.length}',
       type: type,

@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart' show TimeOfDay;
 
 import '../../installments/domain/installment_models.dart';
+import '../../products/domain/product_models.dart';
 import 'spending_category.dart';
 
 DateTime _day(String iso) {
@@ -40,6 +41,8 @@ class Purchase {
     required this.documentCount,
     this.isEstimated = false,
     this.isInstallment = false,
+    this.refundedMinor = 0,
+    this.isRefund = false,
   });
 
   final String id;
@@ -59,6 +62,15 @@ class Purchase {
   /// Paid in installments (it has, or had, a plan).
   final bool isInstallment;
 
+  /// P12: the sum of this purchase's refunds; the list and the totals count it net.
+  final int refundedMinor;
+
+  /// P12: a refund that belongs to no purchase (refunds of a purchase are shown on it).
+  final bool isRefund;
+
+  /// What is left after the refunds.
+  int get netMinor => totalMinor - refundedMinor;
+
   factory Purchase.fromJson(Map<String, dynamic> json) => Purchase(
     id: json['id'] as String,
     merchant: json['merchant_display'] as String,
@@ -71,6 +83,8 @@ class Purchase {
     documentCount: json['document_count'] as int? ?? 0,
     isEstimated: json['is_estimated'] as bool? ?? false,
     isInstallment: json['payment_type'] == 'INSTALLMENT',
+    refundedMinor: json['refunded_minor'] as int? ?? 0,
+    isRefund: json['kind'] == 'REFUND',
   );
 }
 
@@ -215,6 +229,10 @@ class PurchaseDetail {
     this.evidenceItems = const [],
     this.merge,
     this.plan,
+    this.refunds = const [],
+    this.refundableMinor = 0,
+    this.products = const [],
+    this.productSuggestions = const [],
   });
 
   final Purchase purchase;
@@ -230,6 +248,14 @@ class PurchaseDetail {
 
   /// P10: the installment plan, when the purchase is paid in installments.
   final InstallmentPlan? plan;
+
+  /// P12: the refunds of this purchase and what can still be refunded.
+  final List<RefundEntry> refunds;
+  final int refundableMinor;
+
+  /// P12: the products made from this purchase, and the product suggestions it has.
+  final List<ProductBrief> products;
+  final List<ProductSuggestion> productSuggestions;
 
   /// The records that can be separated ("Ayır"): every record except the bank rows that are
   /// installment payments.
@@ -272,6 +298,19 @@ class PurchaseDetail {
     plan: json['plan'] == null
         ? null
         : InstallmentPlan.fromJson(json['plan'] as Map<String, dynamic>),
+    refunds: [
+      for (final r in json['refunds'] as List<dynamic>? ?? const [])
+        RefundEntry.fromJson(r as Map<String, dynamic>),
+    ],
+    refundableMinor: json['refundable_minor'] as int? ?? 0,
+    products: [
+      for (final p in json['products'] as List<dynamic>? ?? const [])
+        ProductBrief.fromJson(p as Map<String, dynamic>),
+    ],
+    productSuggestions: [
+      for (final p in json['product_suggestions'] as List<dynamic>? ?? const [])
+        ProductSuggestion.fromJson(p as Map<String, dynamic>),
+    ],
     lines: [
       for (final i in json['items'] as List<dynamic>)
         ReceiptLine.fromJson(i as Map<String, dynamic>),
@@ -342,4 +381,34 @@ class PurchaseInput {
     },
     if (forConfirm || withInstallments) 'installment_count': installmentCount,
   };
+}
+
+/// P12: one refund of a purchase.
+class RefundEntry {
+  const RefundEntry({required this.id, required this.date, required this.amountMinor});
+
+  final String id;
+  final DateTime date;
+  final int amountMinor;
+
+  factory RefundEntry.fromJson(Map<String, dynamic> json) => RefundEntry(
+    id: json['id'] as String,
+    date: _day(json['date'] as String),
+    amountMinor: json['amount_minor'] as int,
+  );
+}
+
+/// P12: a product made from a purchase (its id, name and status).
+class ProductBrief {
+  const ProductBrief({required this.id, required this.name, required this.status});
+
+  final String id;
+  final String name;
+  final ProductStatus status;
+
+  factory ProductBrief.fromJson(Map<String, dynamic> json) => ProductBrief(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    status: ProductStatus.fromKey(json['status'] as String?),
+  );
 }
