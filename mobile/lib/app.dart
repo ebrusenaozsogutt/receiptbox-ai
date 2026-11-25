@@ -24,6 +24,7 @@ import 'features/home/presentation/home_screen.dart';
 import 'features/installments/presentation/installment_schedule_screen.dart';
 import 'features/matching/presentation/merge_feedback.dart';
 import 'features/products/presentation/add_product_screen.dart';
+import 'features/products/presentation/product_detail_screen.dart';
 import 'features/products/presentation/products_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/shell/presentation/main_shell.dart';
@@ -222,6 +223,18 @@ GoRouter router(Ref ref) {
         path: '/products/new',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AddProductScreen(),
+      ),
+      GoRoute(
+        path: '/products/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            ProductDetailScreen(productId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/products/:id/edit',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            AddProductScreen(productId: state.pathParameters['id']!),
       ),
     ],
   );
