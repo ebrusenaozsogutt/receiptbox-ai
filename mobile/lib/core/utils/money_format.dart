@@ -18,6 +18,18 @@ String formatMoneyMinor(int minor) {
 /// "1.349,90 TL" — the way amounts are shown everywhere in the app.
 String formatMoneyTl(int minor) => '${formatMoneyMinor(minor)} TL';
 
+/// "5.420 TL": whole lira, halves rounded up (the category list and the change chip of the home
+/// screen, as in the Figma frame). Display only: the stored amount keeps its kuruş.
+String formatMoneyWholeTl(int minor) {
+  final sign = minor < 0 ? '-' : '';
+  final lira = (minor.abs() + 50) ~/ 100;
+  final grouped = lira.toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (_) => '.',
+  );
+  return '$sign$grouped TL';
+}
+
 /// What the user typed ("494,60", "494.60", "1.349,90 TL", "1349") as minor units, or null when
 /// it is not a usable amount. Same rules as the backend's money parser: a lone separator followed
 /// by exactly three digits is a thousands separator ("1.349" = 1349 TL, "1,349" is refused as

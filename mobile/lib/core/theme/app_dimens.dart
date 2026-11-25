@@ -10,6 +10,9 @@ class AppSpacing {
 
   static const double none = 0;
   static const double badgeV = 3; // vertical padding of a badge pill
+  static const double xxxs = 2; // greeting to month on the home header
+  static const double chipV = 5; // the change chip on the home spending card
+  static const double chipH = 10;
   static const double xxs = 4;
   static const double xs = 6;
   static const double s = 8;
@@ -41,6 +44,9 @@ class AppRadius {
   static const double segment =
       9; // selected segment inside a segmented control
   static const double navAddButton = 18; // the raised (+) button
+  static const double iconButtonBox = 14; // the bell box on the home header
+  static const double track = 3; // the thin category bars
+  static const double chartBar = 6; // top corners of the payment chart bars
 
   static BorderRadius circular(double radius) => BorderRadius.circular(radius);
   static const BorderRadius card = BorderRadius.all(Radius.circular(l));
@@ -107,6 +113,15 @@ class AppSizes {
   static const double timeFieldWidth = 110;
   static const double documentThumb =
       88; // receipt image on the transaction detail
+
+  /// Home screen (Figma "01 · Ana Sayfa").
+  static const double monthChevron = 20;
+  static const double bellIcon = 22;
+  static const double categoryTrack = 6;
+  static const double budgetTrack = 8;
+  static const double paymentAvatar = 36;
+  static const double chartBarWidth = 28;
+  static const double chartBarMaxHeight = 64;
 }
 
 class AppShadows {

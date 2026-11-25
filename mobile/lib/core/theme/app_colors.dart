@@ -61,6 +61,9 @@ class AppColors {
   static const Color subtleShadow = Color(0x14000000);
 
   /// Dim layer behind modal sheets and dialogs.
+  /// The change chip on the dark spending card (Figma "01 · Ana Sayfa", white at 16 %).
+  static const Color heroChip = Color(0x29FFFFFF);
+
   static const Color scrim = Color(0x8016211F);
 
   /// Background of the camera screen (the preview is letter-boxed on it) and the shutter ring.

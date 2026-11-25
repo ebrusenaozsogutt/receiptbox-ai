@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:receiptbox/app.dart';
 import 'package:receiptbox/core/networking/api_error.dart';
+import 'package:receiptbox/features/analytics/data/analytics_api.dart';
+import 'package:receiptbox/features/analytics/data/analytics_providers.dart';
 import 'package:receiptbox/core/storage/settings_store.dart';
 import 'package:receiptbox/core/storage/token_store.dart';
 import 'package:receiptbox/features/auth/data/auth_api.dart';
@@ -18,6 +20,7 @@ import 'package:receiptbox/features/health/data/health_repository.dart';
 import 'package:receiptbox/features/health/domain/health_status.dart';
 import 'package:receiptbox/features/transactions/data/transactions_api.dart';
 
+import 'analytics_fakes.dart';
 import 'purchase_fakes.dart';
 
 import 'package:material_ui/material_ui.dart';
@@ -166,6 +169,10 @@ class TestApp {
 
   // Purchases (P07).
   final FakeTransactionsApi transactions = FakeTransactionsApi();
+
+  // Home, analytics and budgets (P11), with a fixed "now": 20 November 2026.
+  final FakeAnalyticsApi analytics = FakeAnalyticsApi();
+  DateTime now = DateTime(2026, 11, 20, 12);
   final FakeDocumentsApi documents = FakeDocumentsApi();
 
   /// What the camera plugin reports. Default: this phone has no camera.
@@ -193,6 +200,8 @@ class TestApp {
     sharedMediaSourceProvider.overrideWithValue(sharedMedia),
     extractionApiProvider.overrideWithValue(extraction),
     transactionsApiProvider.overrideWithValue(transactions),
+    analyticsApiProvider.overrideWithValue(analytics),
+    analyticsClockProvider.overrideWithValue(() => now),
     documentsApiProvider.overrideWithValue(documents),
     captureTempDirProvider.overrideWithValue(NoopTempDir()),
     camerasLoaderProvider.overrideWithValue(() => cameras()),
