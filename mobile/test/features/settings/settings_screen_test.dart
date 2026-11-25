@@ -97,6 +97,6 @@ void main() {
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
 
-    expect(find.text('Henüz harcama yok'), findsOneWidget);
+    expect(find.byKey(const Key('home_list')), findsOneWidget);
   });
 }

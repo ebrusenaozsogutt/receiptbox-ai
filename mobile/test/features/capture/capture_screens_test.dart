@@ -260,7 +260,7 @@ void main() {
       await tester.tap(find.byKey(const Key('result_done_button')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Henüz harcama yok'), findsOneWidget);
+      expect(find.byKey(const Key('home_list')), findsOneWidget);
       final container = ProviderScope.containerOf(
         tester.element(find.byType(Scaffold).first),
       );

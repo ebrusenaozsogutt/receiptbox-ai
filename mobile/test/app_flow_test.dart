@@ -52,7 +52,7 @@ void main() {
       await _register(tester);
 
       // 3. Signed in: Home with the bottom navigation.
-      expect(find.text('Henüz harcama yok'), findsOneWidget);
+      expect(find.byKey(const Key('home_list')), findsOneWidget);
       expect(find.text('Ana Sayfa'), findsWidgets);
       expect(find.text('Hesap oluştur'), findsNothing);
       expect(app.api.registerCalls, 1);
@@ -100,11 +100,11 @@ void main() {
       await tester.tap(find.text('Kabul ediyorum'));
       await tester.pumpAndSettle();
       await _register(tester);
-      expect(find.text('Henüz harcama yok'), findsOneWidget);
+      expect(find.byKey(const Key('home_list')), findsOneWidget);
 
       await _openApp(tester, app); // kill and start the app again
 
-      expect(find.text('Henüz harcama yok'), findsOneWidget);
+      expect(find.byKey(const Key('home_list')), findsOneWidget);
       expect(find.text('Giriş yap'), findsNothing);
       expect(find.text('Verilerin senin kontrolünde'), findsNothing);
     });
@@ -147,7 +147,7 @@ void main() {
       await tester.tap(find.text('Tekrar dene'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Henüz harcama yok'), findsOneWidget);
+      expect(find.byKey(const Key('home_list')), findsOneWidget);
     });
   });
 
@@ -157,7 +157,7 @@ void main() {
     ) async {
       final app = await TestApp.signedIn();
       await _openApp(tester, app);
-      expect(find.text('Henüz harcama yok'), findsOneWidget);
+      expect(find.byKey(const Key('home_list')), findsOneWidget);
 
       // The network layer announces this when the refresh token is rejected.
       ProviderScope.containerOf(tester.element(find.byType(MaterialApp)))
@@ -204,7 +204,7 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Giriş yap'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Henüz harcama yok'), findsOneWidget);
+      expect(find.byKey(const Key('home_list')), findsOneWidget);
     });
 
     testWidgets('after logout a restart opens on Login, not on Home', (
@@ -219,7 +219,7 @@ void main() {
       await _openApp(tester, app);
 
       expect(find.text('Giriş yap'), findsWidgets);
-      expect(find.text('Henüz harcama yok'), findsNothing);
+      expect(find.byKey(const Key('home_list')), findsNothing);
     });
   });
 

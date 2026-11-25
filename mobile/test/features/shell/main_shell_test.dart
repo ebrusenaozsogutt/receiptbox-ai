@@ -57,7 +57,7 @@ void main() {
       await tester.tap(find.text('Ana Sayfa').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Henüz harcama yok'), findsOneWidget);
+      expect(find.byKey(const Key('home_list')), findsOneWidget);
     });
 
     testWidgets('each tab keeps its place when switching back and forth', (
@@ -125,7 +125,7 @@ void main() {
 
         await tester.tap(find.byType(BackButton));
         await tester.pumpAndSettle();
-        expect(find.text('Henüz harcama yok'), findsOneWidget); // back on Home
+        expect(find.byKey(const Key('home_list')), findsOneWidget); // back on Home
       });
     }
   });
