@@ -36,6 +36,9 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
+### 2026-11-25 — P12 CI confirmed
+- CI run on `main` (`b3a337a`): jobs `backend` (1352 tests on a fresh PostgreSQL, fake provider only, migration 0006 included) and `mobile` (638 Flutter tests) both green. P12 is closed.
+
 ### 2026-11-25 — P12 Products, warranties, returns, refunds (done; emulator run on 2026-11-25)
 - Done:
   - **Suggestions** (spec 10.1, P-085): a purchase from `PRODUCT_SUGGEST_MIN_MINOR` (1.000 TL) in TECHNOLOGY / HOME / CLOTHING is offered by its receipt lines from the threshold, else as a whole; "Hayır, bir daha sorma" is stored in `product_suggestion_dismissals` (migration **0006**). The purchase detail returns the open suggestions, so the review screen and the manual form ask "Bunu ürün olarak takip edelim mi?" right after saving.
