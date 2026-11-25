@@ -260,7 +260,19 @@ class ProductRepository:
                 ~has_product_tx,
             )
         )
-        has_big_item = exists().where(big_item)
+        # Joined flat so that it correlates to the outer purchase: a nested IN (...) inside
+        # EXISTS left `transactions` uncorrelated and one big line anywhere hid every purchase.
+        has_big_item = (
+            select(ReceiptItem.id)
+            .join(Observation, Observation.id == ReceiptItem.observation_id)
+            .where(
+                Observation.user_id == user_id,
+                Observation.transaction_id == Transaction.id,
+                Observation.status == ObservationStatus.CONFIRMED,
+                ReceiptItem.total_price_minor >= min_minor,
+            )
+            .exists()
+        )
         purchases = (
             select(
                 Transaction.id,
