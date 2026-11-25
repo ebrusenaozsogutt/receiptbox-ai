@@ -17,6 +17,7 @@ class DocumentOut(BaseModel):
     size_bytes: int
     sha256: str
     transaction_id: uuid.UUID | None
+    product_id: uuid.UUID | None = None
     created_at: datetime
 
 

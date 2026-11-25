@@ -21,7 +21,7 @@ from app.core.errors import (
     NotFoundError,
     UnsupportedFileTypeError,
 )
-from app.models import Document, Transaction
+from app.models import Document, Product, Transaction
 from app.models.enums import DocumentType
 from app.repositories.documents import DocumentRepository
 from app.security.document_tokens import (
@@ -72,6 +72,7 @@ class DocumentService:
         data: bytes,
         document_type: DocumentType,
         transaction_id: uuid.UUID | None,
+        product_id: uuid.UUID | None = None,
     ) -> Document:
         if len(data) > MAX_DOCUMENT_BYTES:
             raise FileTooLargeError()
@@ -80,6 +81,8 @@ class DocumentService:
             raise UnsupportedFileTypeError()
         if transaction_id is not None:
             await self._require_own_transaction(user_id, transaction_id)
+        if product_id is not None:
+            await self._require_own_product(user_id, product_id)
 
         key = self._storage.new_key(user_id)
         await self._run(self._storage.save, key, data)
@@ -92,6 +95,7 @@ class DocumentService:
                 sha256=hashlib.sha256(data).hexdigest(),
                 size_bytes=len(data),
                 transaction_id=transaction_id,
+                product_id=product_id,
             )
             await self._session.commit()
         except Exception:
@@ -154,6 +158,15 @@ class DocumentService:
                     Transaction.user_id == user_id,
                     Transaction.deleted_at.is_(None),
                 )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            raise NotFoundError()
+
+    async def _require_own_product(self, user_id: uuid.UUID, product_id: uuid.UUID) -> None:
+        found = (
+            await self._session.execute(
+                select(Product.id).where(Product.id == product_id, Product.user_id == user_id)
             )
         ).scalar_one_or_none()
         if found is None:

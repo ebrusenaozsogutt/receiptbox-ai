@@ -8,7 +8,8 @@ from sqlalchemy import text
 from app.core.database import create_engine
 from tests.conftest import alembic_config
 
-EXPECTED_TABLE_COUNT = 19  # the spec 6.1 tables, not counting alembic_version
+SPEC_TABLE_COUNT = 19  # the tables of spec 6.1 (migration 0001)
+EXPECTED_TABLE_COUNT = 20  # + product_suggestion_dismissals (0006, P12)
 
 
 def _fetch(url: str, sql: str) -> list[tuple]:
@@ -42,11 +43,11 @@ def test_downgrade_to_base_then_upgrade_to_head(migrated_database: str) -> None:
 def test_seed_migration_downgrades_on_its_own(migrated_database: str) -> None:
     config = alembic_config(migrated_database)
 
-    command.downgrade(config, "0001")  # undo only the seed
+    command.downgrade(config, "0001")  # undo only the seed (and the later migrations)
     assert _fetch(migrated_database, "SELECT count(*) FROM categories") == [(0,)]
     assert _fetch(migrated_database, "SELECT count(*) FROM merchants") == [(0,)]
     assert _fetch(migrated_database, "SELECT count(*) FROM merchant_aliases") == [(0,)]
-    assert len(_tables(migrated_database) - {"alembic_version"}) == EXPECTED_TABLE_COUNT
+    assert len(_tables(migrated_database) - {"alembic_version"}) == SPEC_TABLE_COUNT
 
     command.upgrade(config, "head")  # and the seed comes back
     assert _fetch(migrated_database, "SELECT count(*) FROM categories") == [(13,)]
@@ -55,4 +56,4 @@ def test_seed_migration_downgrades_on_its_own(migrated_database: str) -> None:
 def test_database_is_left_at_head(migrated_database: str) -> None:
     rows = _fetch(migrated_database, "SELECT version_num FROM alembic_version")
 
-    assert rows == [("0005",)]
+    assert rows == [("0006",)]

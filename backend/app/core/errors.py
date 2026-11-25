@@ -207,6 +207,23 @@ class PlanHasBankRowsError(ConflictError):
     default_message = "Bank rows are already attached to this plan."
 
 
+# ---- products and refunds (P12) -------------------------------------------------------------
+
+
+class RefundTooLargeError(ValidationFailedError):
+    """More than what is left of the purchase (its total minus earlier refunds)."""
+
+    code = "REFUND_TOO_LARGE"
+    default_message = "The refund is larger than what is left of the purchase."
+
+
+class NotARefundRowError(ValidationFailedError):
+    """Only a pending bank CREDIT row can be linked as a refund."""
+
+    code = "NOT_A_REFUND_ROW"
+    default_message = "This record is not a refund from the bank."
+
+
 # ---- documents (P07) ---------------------------------------------------------------------
 
 

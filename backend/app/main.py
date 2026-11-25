@@ -15,6 +15,7 @@ from app.api import (
     installments,
     matches,
     observations,
+    products,
     transactions,
 )
 from app.core.config import Settings, get_settings
@@ -22,6 +23,7 @@ from app.core.database import create_engine, create_session_factory
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging, install_access_log
 from app.repositories.installments import InstallmentRepository
+from app.repositories.products import ProductRepository
 from app.security.rate_limit import SlidingWindowRateLimiter
 from app.services.commentary import CommentaryCache
 from app.services.installment_schedule import first_of_month
@@ -56,6 +58,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 await session.commit()
         except Exception:  # noqa: BLE001
             logging.getLogger("receiptbox.installments").warning("plan_completion_failed")
+        # P12: a return window whose end is over is CLOSED (also done whenever products are read).
+        try:
+            async with app.state.session_factory() as session:
+                await ProductRepository(session).close_expired_windows(business_today())
+                await session.commit()
+        except Exception:  # noqa: BLE001
+            logging.getLogger("receiptbox.products").warning("return_window_closing_failed")
         yield
         await engine.dispose()
 
@@ -80,6 +89,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth.router, prefix=API_PREFIX)
     app.include_router(extract.router, prefix=API_PREFIX)
     app.include_router(documents.router, prefix=API_PREFIX)
+    app.include_router(products.router, prefix=API_PREFIX)  # before /observations/{id}
     app.include_router(observations.router, prefix=API_PREFIX)
     app.include_router(transactions.router, prefix=API_PREFIX)
     app.include_router(matches.router, prefix=API_PREFIX)

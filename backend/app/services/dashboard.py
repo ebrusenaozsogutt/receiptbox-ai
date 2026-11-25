@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.enums import CategoryKey
 from app.schemas.analytics import (
     AttentionItem,
+    AttentionProduct,
     CategoryAmount,
     CategoryChange,
     CompareOut,
@@ -23,6 +24,7 @@ from app.schemas.analytics import (
     YearOut,
 )
 from app.schemas.budgets import BudgetOut, BudgetsOut
+from app.schemas.products import ProductOut
 from app.services.analytics import (
     AnalyticsService,
     Group,
@@ -33,6 +35,11 @@ from app.services.analytics import (
 )
 from app.services.budget_service import BudgetService
 from app.services.installment_schedule import add_months, first_of_month
+from app.services.product_service import (
+    RETURN_ATTENTION_DAYS,
+    WARRANTY_ATTENTION_DAYS,
+    ProductService,
+)
 
 NEXT_MONTHS = 6
 TOP_MERCHANTS = 10
@@ -50,10 +57,16 @@ def _categories(groups: list[Group]) -> list[CategoryAmount]:
 
 
 class DashboardService:
-    def __init__(self, session: AsyncSession, budgets: BudgetService | None = None) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        budgets: BudgetService | None = None,
+        products: ProductService | None = None,
+    ) -> None:
         self._session = session
         self._analytics = AnalyticsService(session)
         self._budgets = budgets or BudgetService(session, self._analytics)
+        self._products = products
 
     def today(self) -> date:
         return self._budgets.today()
@@ -87,7 +100,10 @@ class DashboardService:
                 by_category=_categories(by_category),
             ),
             # Returns (<= 7 days) and warranties (<= 30 days) are added here in P12.
-            attention=[AttentionItem(type="BUDGET", budget=b) for b in budgets if b.state != "OK"],
+            attention=[
+                *await self._product_attention(user_id),
+                *[AttentionItem(type="BUDGET", budget=b) for b in budgets if b.state != "OK"],
+            ],
             due_this_month=DueThisMonth(
                 month=month_key(start),
                 total_minor=sum(p.amount_minor for p in due),
@@ -107,6 +123,29 @@ class DashboardService:
             ),
             next_months=[MonthTotal(month=month_key(m), total_minor=t) for m, t in next_months],
         )
+
+    async def _product_attention(self, user_id: uuid.UUID) -> list[AttentionItem]:
+        """Returns ending within 7 days first, then warranties ending within 30 days, each soonest
+        first (counted from today, whatever month the home screen shows)."""
+        if self._products is None:
+            return []
+        returns: list[AttentionItem] = []
+        warranties: list[AttentionItem] = []
+        for product in await self._products.attention(user_id):
+            window, warranty = product.return_window, product.warranty
+            if (
+                window is not None
+                and window.status == "OPEN"
+                and 0 <= window.days_left <= RETURN_ATTENTION_DAYS
+            ):
+                returns.append(_product_item("RETURN", product, window.end_date, window.days_left))
+            if warranty is not None and 0 <= warranty.days_left <= WARRANTY_ATTENTION_DAYS:
+                warranties.append(
+                    _product_item("WARRANTY", product, warranty.end_date, warranty.days_left)
+                )
+        returns.sort(key=lambda i: i.product.days_left)  # type: ignore[union-attr]
+        warranties.sort(key=lambda i: i.product.days_left)  # type: ignore[union-attr]
+        return returns + warranties
 
     async def spending(
         self,
@@ -186,3 +225,16 @@ class DashboardService:
     async def delete_budget(self, user_id: uuid.UUID, key: CategoryKey) -> None:
         await self._budgets.delete(user_id, key)
         await self._session.commit()
+
+
+def _product_item(kind: str, product: ProductOut, end_date: date, days_left: int) -> AttentionItem:
+    return AttentionItem(
+        type=kind,  # type: ignore[arg-type]
+        product=AttentionProduct(
+            product_id=product.id,
+            name=product.name,
+            merchant_display=product.merchant_display,
+            end_date=end_date,
+            days_left=days_left,
+        ),
+    )

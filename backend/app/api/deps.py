@@ -24,6 +24,7 @@ from app.services.commentary import CommentaryCache
 from app.services.dashboard import DashboardService
 from app.services.document_service import DocumentService
 from app.services.extraction_service import ExtractionService
+from app.services.product_service import ProductService
 from app.services.transaction_service import TransactionService
 from app.storage.backend import StorageBackend
 
@@ -161,8 +162,10 @@ TransactionServiceDep = Annotated[TransactionService, Depends(get_transaction_se
 # ---- analytics and budgets (P11) --------------------------------------------------------------
 
 
-def get_dashboard_service(session: SessionDep) -> DashboardService:
-    return DashboardService(session)
+def get_dashboard_service(
+    session: SessionDep, settings: Annotated[Settings, Depends(get_settings_from_app)]
+) -> DashboardService:
+    return DashboardService(session, products=ProductService(session, settings))
 
 
 DashboardServiceDep = Annotated[DashboardService, Depends(get_dashboard_service)]
@@ -185,3 +188,15 @@ def get_commentary_cache(request: Request) -> CommentaryCache:
 
 
 CommentaryCacheDep = Annotated[CommentaryCache, Depends(get_commentary_cache)]
+
+
+# ---- products (P12) -----------------------------------------------------------------------------
+
+
+def get_product_service(
+    session: SessionDep, settings: Annotated[Settings, Depends(get_settings_from_app)]
+) -> ProductService:
+    return ProductService(session, settings)
+
+
+ProductServiceDep = Annotated[ProductService, Depends(get_product_service)]

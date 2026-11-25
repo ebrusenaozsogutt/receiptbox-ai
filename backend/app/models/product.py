@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
+    UniqueConstraint,
     Uuid,
     false,
 )
@@ -116,4 +117,24 @@ class ReturnWindow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     status: Mapped[ReturnWindowStatus] = mapped_column(
         enum_type(ReturnWindowStatus, "status"), nullable=False, server_default="OPEN"
+    )
+
+
+class ProductSuggestionDismissal(UUIDPrimaryKeyMixin, TimestampMixin, UserOwnedMixin, Base):
+    """P12: "Hayır, bir daha sorma" for one purchase (`receipt_item_id` NULL) or one line of its
+    receipt. Not in spec 6.1: added in migration 0006 because the phase asks to store dismissals
+    (DECISIONS P-085)."""
+
+    __tablename__ = "product_suggestion_dismissals"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "transaction_id", "receipt_item_id", postgresql_nulls_not_distinct=True
+        ),
+    )
+
+    transaction_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False
+    )
+    receipt_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("receipt_items.id", ondelete="CASCADE")
     )

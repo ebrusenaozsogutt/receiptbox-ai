@@ -39,12 +39,17 @@ async def upload_document(
     service: DocumentServiceDep,
     type: Annotated[DocumentType, Form()] = DocumentType.RECEIPT_IMAGE,  # noqa: A002
     transaction_id: Annotated[uuid.UUID | None, Form()] = None,
+    product_id: Annotated[uuid.UUID | None, Form()] = None,
 ) -> DocumentOut:
     """Store a receipt image, an invoice PDF or another file privately (jpeg, png or pdf, up
     to 10 MB). The type is decided from the file's first bytes, not from its name."""
     data = await read_limited(_chunks(file))
     document = await service.upload(
-        user.id, data=data, document_type=type, transaction_id=transaction_id
+        user.id,
+        data=data,
+        document_type=type,
+        transaction_id=transaction_id,
+        product_id=product_id,
     )
     return DocumentOut.model_validate(document)
 

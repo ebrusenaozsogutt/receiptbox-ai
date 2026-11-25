@@ -8,6 +8,7 @@ from datetime import date, datetime, time
 
 from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.models import Category, Document, Observation, ReceiptItem, Transaction
 from app.models.enums import (
@@ -24,6 +25,8 @@ class TransactionRow:
     transaction: Transaction
     category_key: CategoryKey | None
     document_count: int
+    # P12: the sum of the (not deleted) refunds of this purchase.
+    refunded_minor: int = 0
 
 
 @dataclass(frozen=True)
@@ -114,6 +117,15 @@ class TransactionRepository:
         ]
         if transaction_id is not None:
             conditions.append(Transaction.id == transaction_id)
+        else:
+            # P12: a refund of a purchase is shown on that purchase (and counted in its month, as
+            # the analytics do), not as an item of its own; a refund without one stays an item.
+            conditions.append(
+                or_(
+                    Transaction.kind == TransactionKind.PURCHASE,
+                    Transaction.refund_of_id.is_(None),
+                )
+            )
         if date_from is not None:
             conditions.append(Transaction.purchase_date >= date_from)
         if date_to is not None:
@@ -131,9 +143,21 @@ class TransactionRepository:
                 )
             )
 
+        refund = aliased(Transaction)
+        refunded = func.coalesce(
+            select(func.sum(refund.total_minor))
+            .where(
+                refund.refund_of_id == Transaction.id,
+                refund.user_id == user_id,
+                refund.kind == TransactionKind.REFUND,
+                refund.deleted_at.is_(None),
+            )
+            .scalar_subquery(),
+            0,
+        )
         signed_total = case(
             (Transaction.kind == TransactionKind.REFUND, -Transaction.total_minor),
-            else_=Transaction.total_minor,
+            else_=Transaction.total_minor - refunded,
         )
         totals = (
             select(func.count(Transaction.id), func.coalesce(func.sum(signed_total), 0))
@@ -149,7 +173,7 @@ class TransactionRepository:
             .scalar_subquery()
         )
         statement = (
-            select(Transaction, Category.key, documents)
+            select(Transaction, Category.key, documents, refunded)
             .outerjoin(Category, Category.id == Transaction.category_id)
             .where(*conditions)
             .order_by(
@@ -161,8 +185,10 @@ class TransactionRepository:
             .offset(offset)
         )
         rows = [
-            TransactionRow(transaction, key, doc_count)
-            for transaction, key, doc_count in (await self._session.execute(statement)).all()
+            TransactionRow(transaction, key, doc_count, int(refunded_sum))
+            for transaction, key, doc_count, refunded_sum in (
+                await self._session.execute(statement)
+            ).all()
         ]
         return Page(rows=rows, count=count, sum_minor=int(sum_minor))
 

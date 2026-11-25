@@ -107,6 +107,8 @@ REQUIRED_COLUMNS: dict[str, set[str]] = {
     },
     "warranties": {"product_id", "start_date", "end_date", "source", "confirmed"},
     "return_windows": {"product_id", "end_date", "source", "status"},
+    # Not in spec 6.1: P12 stores "bir daha sorma" (migration 0006, DECISIONS P-085).
+    "product_suggestion_dismissals": {"user_id", "transaction_id", "receipt_item_id"},
     "budgets": {"user_id", "category_id", "monthly_limit_minor"},
     "reminders": {"user_id", "type", "target_id", "fire_at", "delivered_at", "dismissed_at"},
     "assistant_turns": {
@@ -156,6 +158,7 @@ NULLABLE_MONEY = {
 USER_OWNED_TABLES = {
     "refresh_tokens", "merchant_aliases", "user_category_rules", "transactions", "observations",
     "match_decisions", "documents", "products", "budgets", "reminders", "assistant_turns",
+    "product_suggestion_dismissals",
 }  # fmt: skip
 
 
@@ -163,9 +166,9 @@ def _tables():
     return Base.metadata.tables
 
 
-def test_exactly_the_19_spec_tables_exist() -> None:
+def test_exactly_the_19_spec_tables_and_the_p12_dismissals_exist() -> None:
     assert set(_tables()) == set(REQUIRED_COLUMNS)
-    assert len(_tables()) == 19
+    assert len(_tables()) == 20
 
 
 @pytest.mark.parametrize("table_name", sorted(REQUIRED_COLUMNS))

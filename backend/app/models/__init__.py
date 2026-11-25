@@ -5,7 +5,13 @@ from app.models.base import Base
 from app.models.budget import Budget
 from app.models.installment import InstallmentPayment, InstallmentPlan
 from app.models.matching import MatchDecision
-from app.models.product import Document, Product, ReturnWindow, Warranty
+from app.models.product import (
+    Document,
+    Product,
+    ProductSuggestionDismissal,
+    ReturnWindow,
+    Warranty,
+)
 from app.models.reference import Category, Merchant, MerchantAlias, UserCategoryRule
 from app.models.reminder import Reminder
 from app.models.transaction import Observation, ReceiptItem, Transaction
@@ -24,6 +30,7 @@ __all__ = [
     "MerchantAlias",
     "Observation",
     "Product",
+    "ProductSuggestionDismissal",
     "ReceiptItem",
     "RefreshToken",
     "Reminder",

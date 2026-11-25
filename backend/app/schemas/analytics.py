@@ -30,12 +30,24 @@ class SpendingSummary(BaseModel):
     by_category: list[CategoryAmount]
 
 
+class AttentionProduct(BaseModel):
+    """P12: a product whose return window (RETURN) or warranty (WARRANTY) ends soon."""
+
+    product_id: uuid.UUID
+    name: str
+    merchant_display: str | None
+    end_date: dt.date
+    # 0 = ends today.
+    days_left: int
+
+
 class AttentionItem(BaseModel):
-    """Something to look at soon. RETURN and WARRANTY items arrive with P12 (the list keeps its
-    shape); BUDGET items are the categories at 80 % or more of their limit."""
+    """Something to look at soon (spec 11.1): returns ending within 7 days, warranties ending
+    within 30 days (active products, counted from today), budgets at 80 % or more."""
 
     type: Literal["RETURN", "WARRANTY", "BUDGET"]
     budget: BudgetOut | None = None
+    product: AttentionProduct | None = None
 
 
 class DuePaymentOut(BaseModel):

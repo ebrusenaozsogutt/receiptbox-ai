@@ -49,6 +49,7 @@ class Transaction(UUIDPrimaryKeyMixin, TimestampMixin, UserOwnedMixin, Base):
     __table_args__ = (
         Index("ix_transactions_user_id_purchase_date", "user_id", "purchase_date"),
         Index("ix_transactions_user_id_merchant_id", "user_id", "merchant_id"),
+        Index("ix_transactions_refund_of_id", "refund_of_id"),  # P12: refunds of a purchase
     )
 
     merchant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("merchants.id"))

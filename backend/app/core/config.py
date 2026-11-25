@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     match_suggest: float = 70.0
     match_record_min: float = 50.0
 
+    # P12, spec 10.1: a purchase (or receipt line) from this amount in TECHNOLOGY, HOME or
+    # CLOTHING is suggested as a product (100000 kuruş = 1.000 TRY).
+    product_suggest_min_minor: int = 100_000
+
     log_level: str = "INFO"
 
     @field_validator("ai_model_extract", mode="before")

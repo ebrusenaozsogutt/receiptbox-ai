@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.bank_profiles import profile_for
 from app.core.config import Settings
-from app.core.errors import NotFoundError, ObservationNotPendingError
+from app.core.errors import NotARefundRowError, NotFoundError, ObservationNotPendingError
 from app.matching.engine import MatchOutcome
 from app.matching.installment_matcher import InstallmentOutcome, InstallmentRow
 from app.matching.merchant_normalizer import MerchantMatch, MerchantNormalizer, clean_name
@@ -34,14 +34,22 @@ from app.models.enums import (
     ObservationSource,
     ObservationStatus,
     PaymentType,
+    TransactionKind,
 )
 from app.repositories.documents import DocumentRepository
 from app.repositories.merchants import MerchantRepository
 from app.repositories.observations import ObservationRepository
+from app.repositories.products import ProductRepository
 from app.repositories.transactions import TransactionRepository, TransactionRow
 from app.schemas.documents import DocumentOut
 from app.schemas.installments import PlanIn, PlanPatch
 from app.schemas.matches import MatchOut, MergeOut, SuggestionResponse
+from app.schemas.products import (
+    RefundIn,
+    RefundLinkIn,
+    RefundSuggestionList,
+    RefundSuggestionOut,
+)
 from app.schemas.transactions import (
     BatchLinked,
     BatchMerged,
@@ -53,6 +61,8 @@ from app.schemas.transactions import (
     ItemOut,
     ManualTransactionRequest,
     ObservationOut,
+    ProductBrief,
+    RefundEntry,
     TransactionDetail,
     TransactionList,
     TransactionOut,
@@ -63,6 +73,8 @@ from app.services.budget_service import BudgetService
 from app.services.extraction_service import BUSINESS_TIMEZONE, compute_fingerprint
 from app.services.installment_service import InstallmentService, RowContext, capture_date_of
 from app.services.match_service import Evaluation, MatchService, without_pending
+from app.services.product_service import ProductService
+from app.services.refund_service import RefundService
 from app.storage.backend import StorageBackend, StorageError
 
 logger = logging.getLogger("receiptbox.transactions")
@@ -84,6 +96,9 @@ class TransactionService:
         self._merchants = MerchantRepository(session)
         self._documents = DocumentRepository(session)
         self._normalizer = MerchantNormalizer(self._merchants)
+        self._settings = settings
+        self._products = ProductRepository(session)
+        self._refunds = RefundService(session)
 
     # ---- observations (the review queue) ------------------------------------------------------
 
@@ -794,7 +809,95 @@ class TransactionService:
             items=[ItemOut.model_validate(item) for item in items],
             documents=[DocumentOut.model_validate(d) for d in documents],
             plan=await self._installments.plan_out(user_id, transaction_id),
+            **await self._refund_and_product_fields(user_id, row.transaction),
         )
+
+    async def _refund_and_product_fields(
+        self, user_id: uuid.UUID, transaction: Transaction
+    ) -> dict[str, Any]:
+        """P12: the refunds, what is left to refund, the products and the product suggestions of a
+        purchase (empty for a refund)."""
+        if transaction.kind != TransactionKind.PURCHASE:
+            return {}
+        refunds = await self._products.refunds_of(user_id, transaction.id)
+        products = await self._products.of_transaction(user_id, transaction.id)
+        suggestions = await ProductService(self._session, self._settings).suggestions(
+            user_id, transaction.id
+        )
+        return {
+            "refunds": [
+                RefundEntry(id=r.id, date=r.purchase_date, amount_minor=r.total_minor)
+                for r in refunds
+            ],
+            "refundable_minor": max(
+                0, transaction.total_minor - sum(r.total_minor for r in refunds)
+            ),
+            "products": [ProductBrief(id=p.id, name=p.name, status=p.status) for p in products],
+            "product_suggestions": suggestions.items,
+        }
+
+    # ---- refunds (P12) ----------------------------------------------------------------------
+
+    async def refund(
+        self, user_id: uuid.UUID, transaction_id: uuid.UUID, body: RefundIn
+    ) -> TransactionDetail:
+        """Spec 9: "İade edildi", full or partial. Answers the purchase with its refunds."""
+        purchase = await self._refunds.purchase(user_id, transaction_id)
+        await self._refunds.refund(
+            user_id,
+            purchase,
+            amount_minor=body.amount_minor,
+            day=body.date,
+            today=business_today(),
+            product_id=body.product_id,
+        )
+        await self._commit(user_id)
+        return await self._detail(user_id, transaction_id)
+
+    async def refund_suggestions(self, user_id: uuid.UUID) -> RefundSuggestionList:
+        """The pending bank CREDIT rows with the purchases they may refund (suggestions only)."""
+        items = []
+        for observation in await self._refunds.pending_credit_rows(user_id):
+            if observation.amount_minor is None or observation.obs_date is None:
+                continue
+            items.append(
+                RefundSuggestionOut(
+                    observation_id=observation.id,
+                    merchant_raw=observation.merchant_raw,
+                    amount_minor=observation.amount_minor,
+                    obs_date=observation.obs_date,
+                    candidates=await self._refunds.candidates(user_id, observation),
+                )
+            )
+        return RefundSuggestionList(items=items)
+
+    async def link_refund(
+        self, user_id: uuid.UUID, observation_id: uuid.UUID, body: RefundLinkIn
+    ) -> TransactionDetail:
+        """The user says: this bank CREDIT row is a refund of that purchase. The row becomes the
+        evidence of a REFUND transaction (amount and date from the bank)."""
+        observation = await self._observations.require(user_id, observation_id)
+        if observation.status != ObservationStatus.PENDING_REVIEW:
+            raise ObservationNotPendingError()
+        if (
+            observation.source != ObservationSource.BANK_SCREENSHOT
+            or observation.direction != Direction.CREDIT
+            or not observation.amount_minor
+            or observation.obs_date is None
+        ):
+            raise NotARefundRowError()
+        purchase = await self._refunds.purchase(user_id, body.transaction_id)
+        refund = await self._refunds.refund(
+            user_id,
+            purchase,
+            amount_minor=observation.amount_minor,
+            day=observation.obs_date,
+            today=max(business_today(), observation.obs_date),
+        )
+        observation.transaction_id = refund.id
+        observation.status = ObservationStatus.CONFIRMED
+        await self._commit(user_id)
+        return await self._detail(user_id, purchase.id)
 
 
 @dataclass(frozen=True)
@@ -851,6 +954,8 @@ def _transaction_out(row: TransactionRow) -> TransactionOut:
         note=t.note,
         document_count=row.document_count,
         created_at=t.created_at,
+        refund_of_id=t.refund_of_id,
+        refunded_minor=row.refunded_minor,
     )
 
 

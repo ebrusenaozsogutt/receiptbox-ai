@@ -17,11 +17,13 @@ from app.models.enums import (
     ObservationSource,
     ObservationStatus,
     PaymentType,
+    ProductStatus,
     TransactionKind,
 )
 from app.schemas.documents import DocumentOut
 from app.schemas.installments import PlanOut
 from app.schemas.matches import MatchOut, MergeOut
+from app.schemas.products import ProductSuggestionOut
 
 MAX_TOTAL_MINOR = 100_000_000  # 1,000,000 TRY, the same sanity limit as the extraction (5.3)
 _Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -160,6 +162,22 @@ class TransactionOut(BaseModel):
     note: str | None
     document_count: int
     created_at: dt.datetime
+    # P12: the purchase this refund belongs to (null for a purchase).
+    refund_of_id: uuid.UUID | None = None
+    # P12: the sum of this purchase's refunds (it is counted net in the list and the analytics).
+    refunded_minor: int = 0
+
+
+class RefundEntry(BaseModel):
+    id: uuid.UUID
+    date: dt.date
+    amount_minor: int
+
+
+class ProductBrief(BaseModel):
+    id: uuid.UUID
+    name: str
+    status: ProductStatus
 
 
 class TransactionDetail(TransactionOut):
@@ -172,6 +190,12 @@ class TransactionDetail(TransactionOut):
     outcome: Literal["CREATED", "MERGED", "LINKED"] = "CREATED"
     match: MergeOut | None = None
     plan: PlanOut | None = None
+    # P12: the refunds of this purchase, what can still be refunded, its products, and the
+    # product suggestions of this purchase (the app asks "Bunu ürün olarak takip edelim mi?").
+    refunds: list[RefundEntry] = Field(default_factory=list)
+    refundable_minor: int = 0
+    products: list[ProductBrief] = Field(default_factory=list)
+    product_suggestions: list[ProductSuggestionOut] = Field(default_factory=list)
 
 
 class TransactionList(BaseModel):
