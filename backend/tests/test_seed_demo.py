@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import User
 from app.services.analytics import AnalyticsService, month_end
 from app.services.budget_service import BudgetService
+from app.services.product_service import ProductService
 from scripts.seed_demo import seed
+from tests.conftest import make_test_settings
 
 NOVEMBER = date(2026, 11, 1)
 
@@ -38,6 +40,27 @@ async def test_the_demo_month_has_the_figma_numbers(db_session: AsyncSession) ->
     ]
     [budget] = await BudgetService(db_session).usage(user.id, NOVEMBER)
     assert (budget.pct, budget.state) == (90, "WARNING")
+
+
+async def test_the_demo_products_need_attention_in_2_and_20_days(db_session: AsyncSession) -> None:
+    user = await _user(db_session, "demo-products@example.test")
+    today = date(2026, 11, 25)
+
+    await seed(db_session, user.email, NOVEMBER, today=today)
+
+    service = ProductService(db_session, make_test_settings(), today=lambda: today)
+    products = await service.products(user.id)
+    assert sorted(p.name for p in products.items) == [
+        "AirPods Pro",
+        "Dizüstü bilgisayar",
+        'Samsung 55" TV',
+    ]
+    soon = {p.name: p for p in await service.attention(user.id)}
+    assert soon['Samsung 55" TV'].return_window.days_left == 2  # type: ignore[union-attr]
+    assert soon["AirPods Pro"].warranty.days_left == 20  # type: ignore[union-attr]
+    # the AirPods purchase is two years old: the month keeps the Figma numbers
+    analytics = AnalyticsService(db_session)
+    assert await analytics.spending_total(user.id, NOVEMBER, month_end(NOVEMBER)) == 1_872_000
 
 
 @pytest.mark.parametrize("email", ["someone@gmail.com", "real.person@company.com.tr"])

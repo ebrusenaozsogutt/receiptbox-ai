@@ -8,6 +8,9 @@ yet. Everything is made up (no real receipts or bank data). Amounts follow the F
 "01 · Ana Sayfa": 18.720,00 TL in the month by five categories, 17.200,00 TL the month before,
 three installment purchases whose payments of the month are 2.083,17 + 412,50 + 412,50 TL, and a
 Market budget of 6.000 TL (90 %, so it shows under "Dikkat gerektirenler").
+P12 adds three products: the Teknosa TV with a store return period ending in 2 days, AirPods
+whose legal warranty ends in 20 days (bought two years ago, so the month's totals stay) and the
+MediaMarkt laptop (all in "Teknoloji Kasam").
 
 The database is DATABASE_URL (default: the docker compose database on 127.0.0.1:5433).
 """
@@ -16,17 +19,27 @@ import argparse
 import asyncio
 import os
 import sys
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.models import Category, Merchant, Transaction, User
-from app.models.enums import CategoryKey, InstallmentPaymentStatus, PaymentType
+from app.models import Category, Merchant, Product, ReturnWindow, Transaction, User, Warranty
+from app.models.enums import (
+    CategoryKey,
+    Channel,
+    InstallmentPaymentStatus,
+    PaymentType,
+    ProductStatus,
+    ReturnWindowSource,
+    ReturnWindowStatus,
+    WarrantySource,
+)
 from app.models.installment import InstallmentPayment, InstallmentPlan
 from app.services.budget_service import BudgetService
 from app.services.installment_schedule import add_months, first_of_month
 from app.services.installment_service import InstallmentService
+from app.services.product_defaults import default_warranty_end
 
 DEFAULT_DATABASE_URL = "postgresql+asyncpg://receiptbox:receiptbox@127.0.0.1:5433/receiptbox"
 DEMO_DOMAINS = ("@example.com", "@example.test")
@@ -69,7 +82,77 @@ async def _ids(session: AsyncSession) -> tuple[dict[CategoryKey, object], dict[s
     return categories, merchants
 
 
-async def seed(session: AsyncSession, email: str, month: date) -> str:
+async def seed_products(
+    session: AsyncSession,
+    user: User,
+    add,
+    start: date,
+    today: date,  # noqa: ANN001
+) -> int:
+    """P12: products for the home "Dikkat gerektirenler" and the Products tab (dates relative to
+    `today`): the Teknosa TV of the chosen month with a store return period ending in 2 days,
+    AirPods bought two years ago with a legal warranty ending in 20 days, and the MediaMarkt
+    laptop (installments) in "Teknoloji Kasam". The chosen month's totals do not change (the
+    AirPods purchase is two years old)."""
+    tv_purchase = (
+        await session.execute(
+            select(Transaction).where(
+                Transaction.user_id == user.id,
+                Transaction.merchant_display == "Teknosa",
+                Transaction.purchase_date == start.replace(day=6),
+            )
+        )
+    ).scalar_one()
+    tv_purchase.channel = Channel.IN_STORE
+    old_day = add_months(today, -24) + timedelta(days=20)
+    airpods_purchase = add("Teknosa", CategoryKey.TECHNOLOGY, old_day, 8_999_00)
+    laptop_purchase = (
+        await session.execute(
+            select(Transaction).where(
+                Transaction.user_id == user.id, Transaction.merchant_display == "MediaMarkt"
+            )
+        )
+    ).scalar_one()
+    await session.flush()
+    made = [
+        (tv_purchase, 'Samsung 55" TV', today + timedelta(days=2)),
+        (airpods_purchase, "AirPods Pro", None),
+        (laptop_purchase, "Dizüstü bilgisayar", None),
+    ]
+    for purchase, name, return_end in made:
+        product = Product(
+            user_id=user.id,
+            transaction_id=purchase.id,
+            name=name,
+            product_category=CategoryKey.TECHNOLOGY.value,
+            purchase_date=purchase.purchase_date,
+            purchase_price_minor=purchase.total_minor,
+            status=ProductStatus.ACTIVE,
+        )
+        session.add(product)
+        await session.flush()
+        session.add(
+            Warranty(
+                product_id=product.id,
+                start_date=purchase.purchase_date,
+                end_date=default_warranty_end(purchase.purchase_date),
+                source=WarrantySource.LEGAL_DEFAULT,
+                confirmed=name != 'Samsung 55" TV',
+            )
+        )
+        if return_end is not None:
+            session.add(
+                ReturnWindow(
+                    product_id=product.id,
+                    end_date=return_end,
+                    source=ReturnWindowSource.STORE_POLICY,
+                    status=ReturnWindowStatus.OPEN,
+                )
+            )
+    return len(made)
+
+
+async def seed(session: AsyncSession, email: str, month: date, *, today: date | None = None) -> str:
     if not email.lower().endswith(DEMO_DOMAINS):
         raise SystemExit("Refused: only demo accounts (@example.com / @example.test).")
     user = (
@@ -120,8 +203,10 @@ async def seed(session: AsyncSession, email: str, month: date) -> str:
         )
         assert isinstance(plan, InstallmentPlan)
     await BudgetService(session).put(user.id, CategoryKey.GROCERY, MARKET_BUDGET)
+    products = await seed_products(session, user, add, start, today or date.today())
     await session.commit()
-    return f"Seeded {len(THIS_MONTH) + len(PREVIOUS_MONTH) + len(INSTALLMENTS)} purchases."
+    purchases = len(THIS_MONTH) + len(PREVIOUS_MONTH) + len(INSTALLMENTS) + 1
+    return f"Seeded {purchases} purchases and {products} products."
 
 
 async def main() -> None:
