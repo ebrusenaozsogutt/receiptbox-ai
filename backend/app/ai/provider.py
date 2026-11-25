@@ -65,6 +65,11 @@ class AIProvider(Protocol):
 
     def classify_category(self, merchant: str, items: list[str]) -> CategoryKey: ...
 
+    def write_commentary(self, facts: str) -> str:
+        """P11: one or two sentences about a spending comparison. `facts` contains only numbers
+        the app computed (totals, change, category amounts): never transactions or shops."""
+        ...
+
     # Later phase (P14).
 
     def run_assistant(self, messages: list[Any], tools: list[Any], executor: Any) -> Any: ...

@@ -96,3 +96,14 @@ class ReceiptExtraction(BaseModel):
     payment_method: PaymentMethod = "UNKNOWN"
     installment_count: int | None
     items: list[ReceiptItem] = []
+
+
+# ---- the comparison commentary (P11) ----------------------------------------------------------
+
+
+class RawCommentary(BaseModel):
+    """What the model returns for the comparison commentary: one or two Turkish sentences."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    text: str

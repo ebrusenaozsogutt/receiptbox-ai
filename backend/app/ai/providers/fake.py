@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.ai.prompts import BANK_ROWS, CATEGORY_CLASSIFY, RECEIPT_EXTRACT
+from app.ai.prompts import BANK_ROWS, CATEGORY_CLASSIFY, COMPARISON_COMMENTARY, RECEIPT_EXTRACT
 from app.ai.provider import (
     ExtractionHints,
     ProviderConfigError,
@@ -55,6 +55,11 @@ class FakeProvider:
         self._categories = {_merchant_key(m): k for m, k in (categories or {}).items()}
         self.calls = 0  # receipt extractions; tests look at this
         self.classify_calls = 0  # category classifications
+        # P11: every facts text the comparison commentary received (tests inspect them), the
+        # answer it gives, and an error to raise instead.
+        self.commentary_inputs: list[str] = []
+        self.commentary_answer = "Bu dönemde harcaman önceki döneme göre arttı."
+        self.commentary_error: Exception | None = None
 
     @classmethod
     def from_directory(cls, directory: str | Path) -> "FakeProvider":
@@ -141,6 +146,21 @@ class FakeProvider:
         if key is None:
             raise ProviderOutputError("The fake provider has no category for this merchant.")
         return key
+
+    def write_commentary(self, facts: str) -> str:
+        self.commentary_inputs.append(facts)
+        log_call(
+            provider=self.name,
+            model=self.model,
+            prompt_version=COMPARISON_COMMENTARY,
+            latency_ms=0,
+            input_tokens=None,
+            output_tokens=None,
+            outcome="error" if self.commentary_error else "ok",
+        )
+        if self.commentary_error is not None:
+            raise self.commentary_error
+        return self.commentary_answer
 
     def run_assistant(self, messages: list[Any], tools: list[Any], executor: Any) -> Any:
         raise NotImplementedError("The assistant arrives in P14.")

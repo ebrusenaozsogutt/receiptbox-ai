@@ -22,6 +22,7 @@ from pydantic import ValidationError
 from app.ai.prompts import (
     BANK_ROWS,
     CATEGORY_CLASSIFY,
+    COMPARISON_COMMENTARY,
     RECEIPT_EXTRACT,
     load_bank_prompt,
     load_prompt,
@@ -32,7 +33,7 @@ from app.ai.provider import (
     ProviderUnavailableError,
     log_call,
 )
-from app.ai.schemas import RawBankExtraction, RawBankRow, RawReceiptExtraction
+from app.ai.schemas import RawBankExtraction, RawBankRow, RawCommentary, RawReceiptExtraction
 from app.models.enums import CategoryKey
 
 BACKOFF_SECONDS = (1.0, 2.0, 4.0)
@@ -65,6 +66,7 @@ class GeminiProvider:
         self._clock = clock
         self._receipt_prompt = load_prompt(RECEIPT_EXTRACT)
         self._category_prompt = load_prompt(CATEGORY_CLASSIFY)
+        self._commentary_prompt = load_prompt(COMPARISON_COMMENTARY)
 
     def extract_receipt(self, masked_text: str, hints: ExtractionHints) -> RawReceiptExtraction:
         return self._generate(
@@ -88,6 +90,17 @@ class GeminiProvider:
             schema=CategoryKey,
             parse=lambda text: CategoryKey(text.strip().strip('"')),
         )
+
+    def write_commentary(self, facts: str) -> str:
+        answer: RawCommentary = self._generate(
+            facts,
+            system_prompt=self._commentary_prompt,
+            prompt_version=COMPARISON_COMMENTARY,
+            mime_type="application/json",
+            schema=RawCommentary,
+            parse=lambda text: RawCommentary.model_validate_json(text),
+        )
+        return answer.text
 
     def _generate(
         self,

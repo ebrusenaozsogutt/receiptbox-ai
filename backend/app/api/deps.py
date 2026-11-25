@@ -20,6 +20,8 @@ from app.security.rate_limit import SlidingWindowRateLimiter
 from app.security.tokens import decode_access_token
 from app.services.auth import AuthService
 from app.services.bank_service import BankService
+from app.services.commentary import CommentaryCache
+from app.services.dashboard import DashboardService
 from app.services.document_service import DocumentService
 from app.services.extraction_service import ExtractionService
 from app.services.transaction_service import TransactionService
@@ -154,3 +156,32 @@ def get_transaction_service(
 
 
 TransactionServiceDep = Annotated[TransactionService, Depends(get_transaction_service)]
+
+
+# ---- analytics and budgets (P11) --------------------------------------------------------------
+
+
+def get_dashboard_service(session: SessionDep) -> DashboardService:
+    return DashboardService(session)
+
+
+DashboardServiceDep = Annotated[DashboardService, Depends(get_dashboard_service)]
+
+
+def get_optional_ai_provider(request: Request) -> AIProvider | None:
+    """The provider for optional AI features (the comparison commentary): None instead of an
+    error when it cannot be built, so the screen simply shows nothing."""
+    try:
+        return get_ai_provider(request)
+    except ExtractionFailedError:
+        return None
+
+
+OptionalAIProvider = Annotated[AIProvider | None, Depends(get_optional_ai_provider)]
+
+
+def get_commentary_cache(request: Request) -> CommentaryCache:
+    return request.app.state.commentary_cache
+
+
+CommentaryCacheDep = Annotated[CommentaryCache, Depends(get_commentary_cache)]
