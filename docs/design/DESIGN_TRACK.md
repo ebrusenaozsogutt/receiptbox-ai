@@ -17,7 +17,7 @@ Runs in parallel with P00–P04. Output: approved screens + design tokens that P
 | 2 | Receipt review (fields + confidence badges + items) | P07 | ✅ Implemented in P07 from this frame (app bar, receipt card, banner, fields, items, action bar); 🟨 the category colours are provisional (P-059) | [Figma](https://www.figma.com/design/dXpZpN53pLMmkYylQwmK1H) · frame "02 · Fiş Kontrol" |
 | 3 | Bank import review (rows + match badges) | P08–P10 | ⬜ | |
 | 4 | Match suggestion sheet | P09 | ⬜ | |
-| 5 | Product detail (warranty, return, documents) | P12 | ⬜ | |
+| 5 | Product detail (warranty, return, documents) | P12 | 🟨 Built in P12 from the tokens and the home badges (no Figma frame): card with name, category, merchant and date, price and financing cost, GARANTİ (days left, source label, ONAYLANMADI) and İADE (date or status) blocks, documents, actions Belgeyi Gör / İade Edildi / Düzenle / Arşivle; also Teknoloji Kasam and the suggestion sheet. Emulator screenshots `docs/design/screens/p12_*.png`; **please design or review it in Figma** | |
 | 6 | Assistant chat (suggested questions, action buttons) | P14 | ⬜ | |
 | 7 | (+) action sheet, bottom navigation | P03 | ✅ Bottom nav built from the Figma component (node 2:22). 🟨 The (+) sheet is a first draft in the same style, no Figma frame yet | [Figma](https://www.figma.com/design/dXpZpN53pLMmkYylQwmK1H) · page "🎨 Tasarım Sistemi" |
 | 8 | Login / Register / Consent | P03 | 🟨 Implemented in P03 from the tokens and the Button / input components; **no Figma frames yet**, please design or review them | |

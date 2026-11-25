@@ -28,11 +28,11 @@ Service history, repair analysis (stretch / future).
 
 ## Acceptance criteria
 
-- [ ] Qualifying receipt → product suggestion → product with warranty (LEGAL_DEFAULT, unconfirmed) and correct return window per channel.
-- [ ] Partial refund reduces that month's spending by the refunded amount only; full refund marks product RETURNED.
-- [ ] Bank CREDIT row suggested as refund of the right purchase.
-- [ ] Attention list on Home shows a return ending in 2 days and a warranty ending in 20 days.
-- [ ] Isolation tests for products/warranties/returns/refunds.
+- [x] Qualifying receipt → product suggestion → product with warranty (LEGAL_DEFAULT, unconfirmed) and correct return window per channel.
+- [x] Partial refund reduces that month's spending by the refunded amount only; full refund marks product RETURNED.
+- [x] Bank CREDIT row suggested as refund of the right purchase.
+- [x] Attention list on Home shows a return ending in 2 days and a warranty ending in 20 days.
+- [x] Isolation tests for products/warranties/returns/refunds.
 
 ## Tests
 

@@ -326,6 +326,24 @@ No new migration. Rebuild the backend (`docker compose -f infra/docker-compose.y
 
 **Swagger**: `GET /api/v1/analytics/home?month=2026-11`, `/analytics/spending?from=2026-11-01&to=2026-11-30&group_by=merchant`, `/analytics/compare?...`, `/analytics/year?year=2026`, `PUT /api/v1/budgets` with `{"category_key": "GROCERY", "monthly_limit_minor": 600000}`. The budget reminders are in the table `reminders` (types BUDGET_80 / BUDGET_100, one each per category per month).
 
+### 3.2.10 Try products, warranties, returns and refunds (P12)
+
+New migration **0006** (the "do not ask again" answers and an index on refunds). Rebuild and migrate the backend (`docker compose -f infra/docker-compose.yml up -d --build backend`, then `docker compose -f infra/docker-compose.yml exec -T backend alembic upgrade head`) and the app (3.3).
+
+**The rules.** A purchase from 1.000 TL in Teknoloji, Ev & Yaşam or Giyim is offered as a product. Dates are suggestions with a visible source, never silent facts: the warranty is the purchase date + 2 years with the label "Yasal asgari süre (2 yıl)" and stays **ONAYLANMADI** until you accept or change it; the return window is purchase + 14 days only when bought **Online** ("Mesafeli satışta cayma hakkı"); for **Mağazada** there is no default and the app asks for the store's return period. A refund (full or part) lowers the spending of the month of the **original** purchase by the refunded amount only. A refund of the whole remaining amount, or "İade Edildi" on a product, marks the product **İade edildi**, closes its return window and deletes its pending reminders.
+
+**Demo data (optional, development only).** `uv run python -m scripts.seed_demo --email <a throw-away @example.com account>` now also adds three products: a TV whose return ends in **2 days**, AirPods whose warranty ends in **20 days**, and a laptop bought in installments.
+
+**On the emulator or a phone**
+1. Share or scan a receipt of a technology item from 1.000 TL (or **+ → Manuel Harcama**, Giyim, 1.200 TL). After **Kaydet**: "Bunu ürün olarak takip edelim mi?" → **Evet** opens the product: GARANTİ with ONAYLANMADI and the 2-year label; İADE 14 days for Online, "Mağazanın iade süresini gir" for Mağazada. **Hayır, bir daha sorma** never asks for that purchase again.
+2. **Ürünler**: "Teknoloji Kasam" (technology products, the warranty that ends first on top), the other products, filters Aktif / İade edildi / Arşiv, **+** for a product by hand.
+3. Partial refund: open the purchase in **Harcamalar → İade ve ürün → İade edildi → Bir kısmı**, enter an amount. The list shows the net amount with "İade: -X TL"; the home total drops by exactly that amount in the purchase's month.
+4. Full refund: on the product **İade Edildi → Tamamı**: the product shows İADE EDİLDİ and the return window "İade edildi"; it leaves "Dikkat gerektirenler".
+5. Bank refund: share a card-list screenshot with a **+** (credit) row of a shop you bought from in the last 60 days. Under **Olası iadeler** the row says "X alışverişinin iadesi olabilir"; **İade olarak bağla** asks which purchase. Nothing is linked without your answer.
+6. **Ana Sayfa → Dikkat gerektirenler**: returns ending within 7 days (İADE) and warranties ending within 30 days (GARANTİ) with the days left, then the budgets.
+
+**Swagger**: `GET/POST /api/v1/products`, `GET /products/suggestions`, `POST /products/suggestions/dismiss`, `GET/PATCH/DELETE /products/{id}`, `PUT /products/{id}/warranty`, `PUT /products/{id}/return-window`, `POST /transactions/{id}/refund` with `{"amount_minor": 100000, "date": "2026-11-25"}`, `GET /refunds/suggestions`, `POST /observations/{id}/link-refund`.
+
 ### 3.3 The Android app
 
 1. Start an emulator: Android Studio → **Virtual Device Manager → ▶**, or `flutter emulators --launch <emulator_id>`. Wait until you see the Android home screen.

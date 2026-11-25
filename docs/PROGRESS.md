@@ -18,7 +18,7 @@ Update after every phase. Newest entry on top of the log.
 | P09 | Matching engine 1:1 | ✅ Done | 2026-11-23 |
 | P10 | Installments 1:N | ✅ Done | 2026-11-23 |
 | P11 | Dashboard, analytics, budgets | ✅ Done | 2026-11-25 |
-| P12 | Products, warranties, returns, refunds | ⬜ | |
+| P12 | Products, warranties, returns, refunds | ✅ Done | 2026-11-25 |
 | P13 | Reminders & local notifications | ⬜ | |
 | P14 | AI assistant | ⬜ | |
 | P15 | Evaluation harness & experiments | ⬜ | |
@@ -35,6 +35,29 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner:
 - Known gaps / follow-ups:
 -->
+
+### 2026-11-25 — P12 Products, warranties, returns, refunds (done; emulator run on 2026-11-25)
+- Done:
+  - **Suggestions** (spec 10.1, P-085): a purchase from `PRODUCT_SUGGEST_MIN_MINOR` (1.000 TL) in TECHNOLOGY / HOME / CLOTHING is offered by its receipt lines from the threshold, else as a whole; "Hayır, bir daha sorma" is stored in `product_suggestion_dismissals` (migration **0006**). The purchase detail returns the open suggestions, so the review screen and the manual form ask "Bunu ürün olarak takip edelim mi?" right after saving.
+  - **Products** (`product_service.py`, `api/products.py`): list / detail / create (from a purchase, a receipt line or by hand) / edit / archive / delete, `PUT /warranty`, `PUT /return-window`. **Defaults are labelled suggestions** (P-086): warranty = purchase + 2 years, LEGAL_DEFAULT, unconfirmed until accepted or edited; return window = + 14 days only for ONLINE (LEGAL_DEFAULT); IN_STORE / UNKNOWN get none and the user is asked. Expired open windows are closed at start-up. Detail: financing cost for installment purchases, what can still be refunded, the documents (upload accepts `product_id`).
+  - **Refunds** (`refund_service.py`, P-087): full and partial, dated between the purchase and today, at most the remaining amount; spending drops in the ORIGINAL purchase month only by the refunded amount. A whole-remaining refund or "İade Edildi" on a product → product RETURNED, its return window RETURNED, its pending WARRANTY_EXPIRY / RETURN_DEADLINE reminders deleted. **P11 gap fixed**: the purchase list shows a refund under its purchase (net amount and "İade: -X TL"), the same as the analytics.
+  - **Bank CREDIT rows** (`matching/refund_matcher.py`, pure, P-088): same merchant, amount <= remaining, within 60 days → "X alışverişinin iadesi olabilir" with **İade olarak bağla**; never automatic.
+  - **Home "Dikkat gerektirenler"** (P-089): returns ending within 7 days (İADE) and warranties within 30 days (GARANTİ) with the days left, then the budgets.
+  - **Mobile**: Ürünler tab with "Teknoloji Kasam" (sorted by warranty days left), other products and filters; product detail from spec 10.3 built from the tokens (no Figma frame, DESIGN_TRACK row 5); product form; refund dialog (Tamamı / Bir kısmı); refund-link sheet; suggestion sheet.
+  - **Demo seed**: three products (a TV whose return ends in 2 days, AirPods whose warranty ends in 20 days, an installment laptop); the month keeps the Figma numbers.
+- Tests added: backend **1352** (was 1301): `test_warranty_defaults.py` (7), `test_refund_matcher.py` (8), `test_product_suggestions.py` (5), `tests/api/test_products.py` (18) and `tests/api/test_refunds.py` (10) with a cross-user isolation test for every new endpoint, `test_seed_demo.py` (+1), schema / migration tests for 0006. Flutter **638** (was 623): products screens, product detail, refund dialog, refund link, suggestion sheet, list with refunds. FakeProvider only.
+- Checks run on 2026-11-25: `ruff check`, `ruff format --check`, `pytest` (1352 passed, Docker database running), `flutter analyze` (no issues), `flutter test` (638 passed).
+- Manual test steps for the owner: README §3.2.10.
+- **Checked on the emulator on 2026-11-25** (debug build, real backend, a throw-away seeded demo account, deleted afterwards; screenshots `docs/design/screens/p12_*.png`):
+  - Home: İADE Samsung 55" TV **2 gün**, GARANTİ AirPods Pro **20 gün**, then the Market budget.
+  - A synthetic Vatan Bilgisayar slip (3.499 TL, Teknoloji, Online) → the suggestion sheet → **Evet** → product with warranty 25 Kasım 2028 (Yasal asgari süre, ONAYLANMADI) and return 09 Aralık 2026 (14 days, cayma hakkı). A manual LC Waikiki purchase (1.200 TL, Giyim, Mağazada) → product with the same warranty and no return default ("Mağazanın iade süresini gir").
+  - Partial refund 1.000 TL: list "2.499,00 TL · İade: -1.000,00 TL", home 22.219 → **21.219 TL**. Full refund of the rest from the product: İADE EDİLDİ, return window "İade edildi".
+  - A synthetic card list with "+4.790,00 TL TEKNOSA" → "Teknosa alışverişinin iadesi olabilir" → linked to the 06 Kasım TV purchase → home **13.930 TL** (= 21.219 − 2.499 − 4.790) and the TV left the attention list.
+  - Fixed during the run: a manual purchase was not offered as a product when another purchase had a big receipt line (the SQL check for "no big line" was not tied to its purchase); two regression tests added.
+- Known gaps / follow-ups:
+  - Product reminders (warranty / return) are created in P13; P12 only removes pending ones.
+  - A refund whose original purchase was deleted is hidden from the list (it no longer changes any spending).
+  - In the bank import, "Seçilenleri Kaydet" needs at least one selected purchase row; a CREDIT row can be linked with its own button at any time.
 
 ### 2026-11-25 — P11 CI confirmed
 - CI run on `main` (`90ca894`): jobs `backend` (1301 tests on a fresh PostgreSQL, fake provider only, including the home-under-500-ms test) and `mobile` (623 Flutter tests) both green. P11 is closed. The P09/P10 "Geri al" follow-up (`e28c2a8`) went out in the same push.
