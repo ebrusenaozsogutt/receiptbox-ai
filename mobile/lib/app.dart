@@ -19,6 +19,8 @@ import 'features/capture/presentation/capture_result_screen.dart';
 import 'features/capture/presentation/pick_image_screen.dart';
 import 'features/capture/presentation/review/review_screen.dart';
 import 'features/home/presentation/home_screen.dart';
+import 'features/installments/presentation/installment_schedule_screen.dart';
+import 'features/matching/presentation/merge_feedback.dart';
 import 'features/products/presentation/add_product_screen.dart';
 import 'features/products/presentation/products_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
@@ -26,7 +28,6 @@ import 'features/shell/presentation/main_shell.dart';
 import 'features/transactions/presentation/manual_transaction_screen.dart';
 import 'features/transactions/presentation/transaction_detail_screen.dart';
 import 'features/transactions/presentation/transactions_screen.dart';
-import 'features/installments/presentation/installment_schedule_screen.dart';
 
 part 'app.g.dart';
 
@@ -76,6 +77,7 @@ GoRouter router(Ref ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
+    observers: [MergedSnackBarDismisser()],
     refreshListenable: refresh,
     redirect: (context, state) => appRedirect(
       auth: ref.read(authProvider),

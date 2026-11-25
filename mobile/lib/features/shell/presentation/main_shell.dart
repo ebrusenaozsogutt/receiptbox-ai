@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../capture/presentation/shared_media_listener.dart';
+import '../../matching/presentation/merge_feedback.dart';
 import 'add_sheet.dart';
 import 'bottom_nav.dart';
 
@@ -18,11 +19,15 @@ class MainShell extends StatelessWidget {
         body: navigationShell,
         bottomNavigationBar: AppBottomNav(
           selectedIndex: navigationShell.currentIndex,
-          onTabSelected: (index) => navigationShell.goBranch(
-            index,
-            // Tapping the tab you are on goes back to its first screen.
-            initialLocation: index == navigationShell.currentIndex,
-          ),
+          onTabSelected: (index) {
+            // Another tab: the "Geri al" of the screen you leave does not follow you.
+            if (index != navigationShell.currentIndex) dismissMergedSnackBar();
+            navigationShell.goBranch(
+              index,
+              // Tapping the tab you are on goes back to its first screen.
+              initialLocation: index == navigationShell.currentIndex,
+            );
+          },
           onAddPressed: () => showAddSheet(context),
         ),
       ),

@@ -474,6 +474,55 @@ void main() {
       expect(find.text('Birleştirme geri alındı.'), findsOneWidget);
     });
 
+    testWidgets('Geri al closes by itself after about 6 seconds', (tester) async {
+      final app = await _openReview(tester);
+      app.transactions.nextSave = Saved(_mergedInto(app));
+      const text = 'Bu fiş mevcut bir harcamayla eşleşti ve birleştirildi.';
+
+      await tester.tap(_reviewSave);
+      await tester.pumpAndSettle();
+      expect(find.text(text), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 5));
+      expect(find.text(text), findsOneWidget); // still there to be undone
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+      expect(find.text(text), findsNothing); // an action no longer keeps it forever
+    });
+
+    testWidgets('opening another page closes Geri al: it never covers Kaydet', (
+      tester,
+    ) async {
+      final app = await _openReview(tester);
+      app.transactions.nextSave = Saved(_mergedInto(app));
+      const text = 'Bu fiş mevcut bir harcamayla eşleşti ve birleştirildi.';
+
+      await tester.tap(_reviewSave);
+      await tester.pumpAndSettle();
+      expect(find.text(text), findsOneWidget); // shown on the list after saving
+
+      await tester.tap(find.byKey(const Key('add_manual_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(text), findsNothing);
+      expect(find.text('Geri al'), findsNothing);
+      expect(find.byKey(const Key('manual_save')).hitTestable(), findsOneWidget);
+    });
+
+    testWidgets('switching tabs closes Geri al', (tester) async {
+      final app = await _openReview(tester);
+      app.transactions.nextSave = Saved(_mergedInto(app));
+
+      await tester.tap(_reviewSave);
+      await tester.pumpAndSettle();
+      expect(find.text('Geri al'), findsOneWidget);
+
+      await tester.tap(find.text('Ana Sayfa').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Geri al'), findsNothing);
+    });
+
     testWidgets('a receipt that may be a saved purchase asks first', (
       tester,
     ) async {

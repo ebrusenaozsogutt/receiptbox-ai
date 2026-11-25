@@ -36,6 +36,11 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
+### 2026-11-25 — P09/P10 follow-up: "Geri al" no longer stays on screen
+- Cause (found from the Flutter source, not guessed): in our Flutter version a `SnackBar` with an action has `persist: true` by default (`snack_bar.dart`: `persist ?? action != null`), so the 10-second duration was ignored and "Geri al" stayed until it was swiped away; that is why it covered the Kaydet button of the next screen on the emulator.
+- Done: `merge_feedback.dart` shows it for **6 seconds** with `persist: false`, keeps the controller of the one on screen and closes it when a new page is pushed on top (`MergedSnackBarDismisser`, a `NavigatorObserver` on the router; dialogs, bottom sheets, going back and the first page of a tab do not count; closed after the frame) or when another tab is chosen (`MainShell`).
+- Tests added: Flutter +3 (`matching_screens_test.dart`): closes by itself after about 6 s (still there at 5 s), opening the manual form closes it and its Kaydet is tappable, switching tabs closes it. Existing "Geri al" tests unchanged.
+
 ### 2026-11-23 — P10 CI confirmed
 - CI run on `main` (`50472a3`): jobs `backend` (1258 tests on a fresh PostgreSQL, fake provider only, `ruff format --check` included) and `mobile` (600 Flutter tests) both green. P10 is closed. (An earlier local commit of the same day, `605dfdb`, had one test line that `ruff format` would have changed; it was fixed before the push, so no red run exists.)
 
@@ -56,6 +61,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
   - **Found on the emulator and fixed**: the purchase detail crashed ("Duplicate keys found: evidence_bank") when a purchase had two bank rows. Now one evidence chip per kind ("Banka (2)"), the detail's evidence carries `is_installment_payment` / `installment_seq` / `installment_count`, and installment payments are not listed under "Birleşmiş kayıtlar" (no **Ayır**, see P-077). Widget tests added for both.
   - Seen there, not caused by P10: the one-row card list gave OCR garbage again (the same list with three rows read perfectly); the Gemini connection of this PC dropped for minutes (the app said "okunamadı", **Tekrar dene** worked); on the emulator the "Geri al" snackbar stayed longer than its 10 seconds and covered the Kaydet button of the next screen until it was swiped away (the cause was not investigated; the real phone should be checked); the read-failure text of a bank screenshot says "Fiş şu an okunamadı" (P08 wording, not changed).
 - Known gaps / follow-ups:
+  - **Postponed by the owner on 2026-11-25** (no Android phone at the moment): the real-statement check below and the real-phone checks; tracked as DECISIONS O-005, the installment month logic is not changed until then.
   - **Which month is "payment 1"?** The first due month is the month after the purchase (spec 8.1) and is not moved by the bank rows. In the run above the rows dated Ekim / Kasım of a 10 Ekim purchase appeared as the payments of Kasım / Aralık. The matcher accepts both readings and the API takes `first_due_month`, but the app has no editor for it. **Please check with two real months of your Garanti / Akbank statements** whether the row date is the month charged or the purchase date (Kuveyt prints the purchase date on every row: confirmed from your data, handled). Options for a later phase are in DECISIONS P-074.
   - Interest: a purchase whose bank rows differ more than about 2 % from receipt total / n cannot merge with its estimated purchase on its own; set the plan's total payable first (P-075).
   - A bank row that is a payment cannot be separated again ("Ayır" is not offered; the API answers `NOT_MERGED`). Delete the purchase or cancel the plan instead.
