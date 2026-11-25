@@ -13,7 +13,7 @@ Runs in parallel with P00–P04. Output: approved screens + design tokens that P
 
 | # | Screen | Used in phase | Status | Link |
 |---|---|---|---|---|
-| 1 | Home (spending → attention → due this month) | P11 | 🟨 Draft v1 | [Figma](https://www.figma.com/design/dXpZpN53pLMmkYylQwmK1H) · frame "01 · Ana Sayfa" |
+| 1 | Home (spending → attention → due this month) | P11 | ✅ Implemented in P11 from this frame (header with month picker and bell, spending card with change chip, Kategoriler, Dikkat gerektirenler, Bu ay ödenecekler with the 6-month bars); emulator vs Figma in `docs/design/screens/p11_home_*.png`. Differences: "Merhaba 👋" without a name (no name is stored), a settings button next to the bell, "N taksit" without the payment method (not known) | [Figma](https://www.figma.com/design/dXpZpN53pLMmkYylQwmK1H) · frame "01 · Ana Sayfa" |
 | 2 | Receipt review (fields + confidence badges + items) | P07 | ✅ Implemented in P07 from this frame (app bar, receipt card, banner, fields, items, action bar); 🟨 the category colours are provisional (P-059) | [Figma](https://www.figma.com/design/dXpZpN53pLMmkYylQwmK1H) · frame "02 · Fiş Kontrol" |
 | 3 | Bank import review (rows + match badges) | P08–P10 | ⬜ | |
 | 4 | Match suggestion sheet | P09 | ⬜ | |
@@ -22,7 +22,7 @@ Runs in parallel with P00–P04. Output: approved screens + design tokens that P
 | 7 | (+) action sheet, bottom navigation | P03 | ✅ Bottom nav built from the Figma component (node 2:22). 🟨 The (+) sheet is a first draft in the same style, no Figma frame yet | [Figma](https://www.figma.com/design/dXpZpN53pLMmkYylQwmK1H) · page "🎨 Tasarım Sistemi" |
 | 8 | Login / Register / Consent | P03 | 🟨 Implemented in P03 from the tokens and the Button / input components; **no Figma frames yet**, please design or review them | |
 | 9 | Transactions list & detail | P07 | 🟨 Implemented in P07 (list grouped by day with filters, detail with evidence chips and document viewer, manual form) from the tokens and the review screen's components; **no Figma frames yet**, please design or review them | |
-| 10 | Installment schedule, Budgets, Settings | P10–P13 | ⬜ | |
+| 10 | Installment schedule, Budgets, Settings | P10–P13 | 🟨 Schedule (P10), Analytics and Budgets (P11) built from the tokens and the home cards; **no Figma frames yet** | |
 
 ## Design tokens to deliver
 

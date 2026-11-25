@@ -25,11 +25,11 @@ Exports, custom date-range charts beyond the above, subscriptions.
 
 ## Acceptance criteria
 
-- [ ] SQL results equal a Python reference calculation on a seeded dataset (≥ 200 transactions incl. refunds and installments) — test.
-- [ ] Installment payments never appear in spending totals; appear in due-this-month.
-- [ ] Commentary prompt contains no raw transactions, only aggregates (test inspects prompt).
-- [ ] Budget 80%/100% reminders created exactly once per category per month.
-- [ ] Home loads < 500 ms on seeded data locally.
+- [x] SQL results equal a Python reference calculation on a seeded dataset (≥ 200 transactions incl. refunds and installments) — test.
+- [x] Installment payments never appear in spending totals; appear in due-this-month.
+- [x] Commentary prompt contains no raw transactions, only aggregates (test inspects prompt).
+- [x] Budget 80%/100% reminders created exactly once per category per month.
+- [x] Home loads < 500 ms on seeded data locally.
 
 ## Tests
 

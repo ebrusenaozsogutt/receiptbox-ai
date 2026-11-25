@@ -310,6 +310,22 @@ No new migration. Rebuild the backend (`docker compose -f infra/docker-compose.y
 
 **Swagger** (Register and **Authorize** as in 3.2.2): `PUT /api/v1/transactions/{id}/installment-plan` with `{"count": 6}`, `PATCH /api/v1/installment-plans/{id}` with `{"status": "CANCELLED"}`, `GET /api/v1/installments/schedule?from=2026-11-01&to=2027-06-01`. The stored candidates with their features are in `match_decisions` where `match_type = 'INSTALLMENT'`.
 
+### 3.2.9 Try the home screen, analytics and budgets (P11)
+
+No new migration. Rebuild the backend (`docker compose -f infra/docker-compose.yml up -d --build backend`) and the app (3.3).
+
+**The rules.** Spending = your purchases in the month you bought them, minus refunds (a refund is taken off the month of the purchase it refunds). An installment purchase counts once, with its full total, in its purchase month. Installment payments are never spending: they are only in **Bu ay ödenecekler**.
+
+**A ready-made demo month (optional, development only).** Register a throw-away account whose e-mail ends with `@example.com` (in the app or in Swagger), then from `backend/`: `uv run python -m scripts.seed_demo --email <that e-mail>`. It refuses any other address and any account that already has purchases. Log in with that account: the home screen shows the numbers of the Figma frame.
+
+**On the emulator or a phone**
+1. **Ana Sayfa**, from top to bottom: the month (tap it to pick another month), the dark card with this month's spending and the change against the month before, **Kategoriler** (tap **Tümü** for all), **Dikkat gerektirenler** (budgets at 80 % or more), **Bu ay ödenecekler** (the installments due this month and six bars for the coming months).
+2. Check one month by hand: open **Harcamalar**, filter the month with **Tarih**, add up the purchases yourself and compare with the home total (refunds arrive in P12; installment payments must not be added).
+3. **Bütçeler** (Harcamalar → the chart icon → Bütçeler): set a limit for Market a little above what you spent this month, then add a Market purchase so that you pass 80 %: the home screen lists "Market bütçesi" in orange; above 100 % it is red.
+4. **Analiz** (Harcamalar → the chart icon): Hafta / Ay / Yıl, the change against the period before with the categories that changed most, the ten places you spent most. With AI consent a one- or two-sentence comment may appear; it is written only from these numbers and disappears if the AI fails.
+
+**Swagger**: `GET /api/v1/analytics/home?month=2026-11`, `/analytics/spending?from=2026-11-01&to=2026-11-30&group_by=merchant`, `/analytics/compare?...`, `/analytics/year?year=2026`, `PUT /api/v1/budgets` with `{"category_key": "GROCERY", "monthly_limit_minor": 600000}`. The budget reminders are in the table `reminders` (types BUDGET_80 / BUDGET_100, one each per category per month).
+
 ### 3.3 The Android app
 
 1. Start an emulator: Android Studio → **Virtual Device Manager → ▶**, or `flutter emulators --launch <emulator_id>`. Wait until you see the Android home screen.
