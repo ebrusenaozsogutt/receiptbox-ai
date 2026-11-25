@@ -36,6 +36,9 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
+### 2026-11-25 — P11 CI confirmed
+- CI run on `main` (`90ca894`): jobs `backend` (1301 tests on a fresh PostgreSQL, fake provider only, including the home-under-500-ms test) and `mobile` (623 Flutter tests) both green. P11 is closed. The P09/P10 "Geri al" follow-up (`e28c2a8`) went out in the same push.
+
 ### 2026-11-25 — P11 Dashboard, analytics, budgets (done; emulator run on 2026-11-25)
 - Done:
   - **All numbers from SQL** in `backend/app/services/analytics.py` (as the owner asked; Python only shapes rows, fills empty months and derives a percentage from two SQL totals). **Spending view** (spec 6.3): purchases by purchase date, not deleted, net of refunds; a refund is subtracted from the ORIGINAL purchase's day, category and merchant (a refund of a deleted purchase is not counted, a refund without an original reduces its own day); a purchase without a category counts as "Diğer"; observations are never summed (a merged purchase is one transaction). **Payments-due view**: installment payments of plans that are not cancelled, by due month. Installment payments are never in the spending view (a test removes every plan and shows that no monthly total moves).
