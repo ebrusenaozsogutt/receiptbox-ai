@@ -36,6 +36,9 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
+### 2026-11-26 — P13 CI confirmed
+- CI run on `main` (`352090e`): jobs `backend` (1389 tests on a fresh PostgreSQL, fake provider only, migration 0007 included) and `mobile` (702 Flutter tests) both green. P13 is closed.
+
 ### 2026-11-26 — P13 Reminders & local notifications (done; emulator run on 2026-11-26)
 - Done:
   - **Rules** (`app/reminders/scheduler.py`, pure, P-090): warranty -30/-7 days, return -3/-1 day, last installment on the 1st of its due month, all 10:00 Europe/Istanbul; budgets keep P11's "when the threshold is reached".
