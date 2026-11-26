@@ -29,6 +29,9 @@ ALLOWED_EXTRA_FIELDS = (
     "input_tokens",
     "output_tokens",
     "outcome",
+    # P14 assistant: the tool's name and the number of tool calls (never arguments or answers).
+    "tool",
+    "tool_calls",
 )
 
 

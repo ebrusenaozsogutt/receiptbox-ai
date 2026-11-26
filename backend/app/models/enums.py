@@ -120,3 +120,12 @@ class ReminderType(StrEnum):
     INSTALLMENT_END = "INSTALLMENT_END"
     BUDGET_80 = "BUDGET_80"
     BUDGET_100 = "BUDGET_100"
+
+
+class AssistantOutcome(StrEnum):
+    """P14: how an assistant turn ended (stored for the P15 evaluation)."""
+
+    ANSWERED = "ANSWERED"  # the model's answer passed the number check
+    CORRECTED = "CORRECTED"  # it passed after one correction message
+    TEMPLATE = "TEMPLATE"  # a templated answer built from the tool output was used
+    FAILED = "FAILED"  # the provider failed before any tool result could be used

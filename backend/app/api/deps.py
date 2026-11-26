@@ -11,6 +11,7 @@ from app.core.config import Settings
 from app.core.database import get_session
 from app.core.errors import (
     AiConsentRequiredError,
+    AssistantUnavailableError,
     ExtractionFailedError,
     InvalidTokenError,
 )
@@ -18,6 +19,7 @@ from app.models import User
 from app.repositories.users import UserRepository
 from app.security.rate_limit import SlidingWindowRateLimiter
 from app.security.tokens import decode_access_token
+from app.services.assistant_service import AssistantService
 from app.services.auth import AuthService
 from app.services.bank_service import BankService
 from app.services.commentary import CommentaryCache
@@ -208,3 +210,50 @@ def get_reminder_service(session: SessionDep) -> ReminderService:
 
 
 ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]
+
+
+# ---- assistant (P14) ----------------------------------------------------------------------------
+
+
+async def get_assistant_user(user: CurrentUser, request: Request) -> User:
+    """Signed in + consented (the question and tool results go to the AI provider) + inside the
+    assistant's rate limit (20 per minute). Consent first, so a refused call uses no quota."""
+    if not user.ai_consent:
+        raise AiConsentRequiredError(
+            "The assistant needs your AI consent. You can turn it on in Settings."
+        )
+    request.app.state.assistant_limiter.check(str(user.id))
+    return user
+
+
+AssistantUser = Annotated[User, Depends(get_assistant_user)]
+
+
+def get_assistant_provider(request: Request) -> AIProvider:
+    """Like get_ai_provider, but a provider that cannot be built is ASSISTANT_UNAVAILABLE."""
+    try:
+        return get_ai_provider(request)
+    except ExtractionFailedError:
+        raise AssistantUnavailableError() from None
+
+
+def get_assistant_service(
+    session: SessionDep,
+    settings: Annotated[Settings, Depends(get_settings_from_app)],
+    storage: Annotated[StorageBackend, Depends(get_storage)],
+) -> AssistantService:
+    """Without a provider: enough for DELETE /assistant/history."""
+    return AssistantService(session, settings, storage, None)
+
+
+def get_assistant_chat_service(
+    session: SessionDep,
+    settings: Annotated[Settings, Depends(get_settings_from_app)],
+    storage: Annotated[StorageBackend, Depends(get_storage)],
+    provider: Annotated[AIProvider, Depends(get_assistant_provider)],
+) -> AssistantService:
+    return AssistantService(session, settings, storage, provider)
+
+
+AssistantServiceDep = Annotated[AssistantService, Depends(get_assistant_service)]
+AssistantChatServiceDep = Annotated[AssistantService, Depends(get_assistant_chat_service)]

@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.api import (
     analytics,
+    assistant,
     auth,
     documents,
     extract,
@@ -79,6 +80,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Spec 15.2 / P05: 20 extractions per minute per user. The provider is created lazily.
     app.state.extract_limiter = SlidingWindowRateLimiter(limit=20, window_seconds=60)
+    # P14: 20 assistant questions per minute and user (spec 15.2).
+    app.state.assistant_limiter = SlidingWindowRateLimiter(limit=20, window_seconds=60)
     app.state.ai_provider = None
     app.state.storage = LocalStorage(settings.storage_root)
     # P11: the comparison commentary, per user and per comparison (in-process, no Redis).
@@ -97,6 +100,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(matches.router, prefix=API_PREFIX)
     app.include_router(installments.router, prefix=API_PREFIX)
     app.include_router(analytics.router, prefix=API_PREFIX)
+    app.include_router(assistant.router, prefix=API_PREFIX)
     return app
 
 

@@ -1,10 +1,11 @@
 from typing import Any
 
-from sqlalchemy import Index, Integer, Text, text
+from sqlalchemy import Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, TimestampMixin, UserOwnedMixin, UUIDPrimaryKeyMixin
+from app.models.base import Base, TimestampMixin, UserOwnedMixin, UUIDPrimaryKeyMixin, enum_type
+from app.models.enums import AssistantOutcome
 
 
 class AssistantTurn(UUIDPrimaryKeyMixin, TimestampMixin, UserOwnedMixin, Base):
@@ -22,3 +23,7 @@ class AssistantTurn(UUIDPrimaryKeyMixin, TimestampMixin, UserOwnedMixin, Base):
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
     )
     latency_ms: Mapped[int | None] = mapped_column(Integer)
+    # P14 (migration 0008): for the P15 evaluation. Never the prompt text itself.
+    outcome: Mapped[AssistantOutcome | None] = mapped_column(enum_type(AssistantOutcome, "outcome"))
+    model: Mapped[str | None] = mapped_column(String(100))
+    prompt_version: Mapped[str | None] = mapped_column(String(50))

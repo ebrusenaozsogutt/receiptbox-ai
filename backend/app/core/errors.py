@@ -164,6 +164,15 @@ class ExtractionFailedError(AppError):
     default_message = "The receipt could not be read right now. You can enter it manually."
 
 
+class AssistantUnavailableError(AppError):
+    """P14: the AI provider did not answer in time, refused (quota, 429) or failed, before any
+    tool result could be used. Nothing about the question is echoed."""
+
+    status_code = 503
+    code = "ASSISTANT_UNAVAILABLE"
+    default_message = "The assistant cannot answer right now. Try again in a moment."
+
+
 class BankScreenNotSupportedError(AppError):
     """The screenshot is a current-account screen (ATM, transfers, fees), not a card transaction
     list or a POS slip. Nothing was saved (DECISIONS D-014)."""
