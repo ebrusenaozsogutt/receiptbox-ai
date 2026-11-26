@@ -36,6 +36,10 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
+### 2026-11-26 — P14 CI confirmed
+- CI run on `main` (`5bd5040`): jobs `backend` (1473 tests on a fresh PostgreSQL, fake provider only, migration 0008 included) and `mobile` (716 Flutter tests) both green. P14 is closed.
+- The first run (`4e80d7d`) failed in `mobile`: the OPEN_DOCUMENT routing test opened a PDF, and `pdfx` cannot render on the Linux runner (it passed on Windows). The test now opens an image document (`5bd5040`); the app itself is unchanged.
+
 ### 2026-11-26 — P14 AI assistant (done; emulator run with real Gemini on 2026-11-26)
 - Done:
   - **8 typed tools** (`app/ai/tools/`, P-094): `query_transactions`, `aggregate_spending`, `compare_periods`, `search_products`, `get_product_details`, `get_upcoming_deadlines`, `get_installment_schedule`, `find_documents`. Each one is a Pydantic argument model, its JSON schema, an executor on the existing services and the user from the JWT. No `user_id` argument: an unknown field is refused. No SQL that repeats P10–P13: `AnalyticsService` got an optional category filter and the purchase list got an amount sort and net min/max. Dates are re-validated and clamped. Outputs carry formatted amounts only.
