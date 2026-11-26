@@ -21,6 +21,10 @@ class DataChangedInterceptor extends Interceptor {
 
   final void Function() onChanged;
 
+  /// Set to true in `Options.extra` for a POST that changes nothing the reminders depend on
+  /// (P14: an assistant question).
+  static const ignoreKey = 'data_changed_ignore';
+
   static const _writes = {'POST', 'PUT', 'PATCH', 'DELETE'};
 
   @override
@@ -30,7 +34,8 @@ class DataChangedInterceptor extends Interceptor {
   ) {
     final method = response.requestOptions.method.toUpperCase();
     final status = response.statusCode ?? 0;
-    if (_writes.contains(method) && status >= 200 && status < 300) {
+    final ignored = response.requestOptions.extra[ignoreKey] == true;
+    if (!ignored && _writes.contains(method) && status >= 200 && status < 300) {
       onChanged();
     }
     handler.next(response);

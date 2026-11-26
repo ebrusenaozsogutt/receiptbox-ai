@@ -1,5 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../auth/domain/auth_state.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../domain/purchase_models.dart';
 import '../domain/spending_category.dart';
 import 'transactions_api.dart';
@@ -31,10 +33,19 @@ class PurchaseFilter {
   );
 }
 
-@riverpod
+/// Kept alive (P14): the assistant sets a filter before Harcamalar is on screen; an
+/// auto-disposed filter would be dropped before the list reads it. Cleared on sign-out.
+@Riverpod(keepAlive: true)
 class PurchaseFilterController extends _$PurchaseFilterController {
   @override
-  PurchaseFilter build() => const PurchaseFilter();
+  PurchaseFilter build() {
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next.status != AuthStatus.authenticated) {
+        state = const PurchaseFilter();
+      }
+    });
+    return const PurchaseFilter();
+  }
 
   void set(PurchaseFilter filter) => state = filter;
   void clear() => state = const PurchaseFilter();

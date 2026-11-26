@@ -18,7 +18,10 @@ import 'installment_widgets.dart';
 /// "Taksitler": what is to be paid each month for the purchases bought in installments. These
 /// are payments, NOT spending: a purchase is counted once, in the month it was bought.
 class InstallmentScheduleScreen extends ConsumerWidget {
-  const InstallmentScheduleScreen({super.key});
+  const InstallmentScheduleScreen({super.key, this.focusMonth});
+
+  /// "YYYY-MM": scroll to this month (P14: the assistant's "Taksitleri gör").
+  final String? focusMonth;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -44,20 +47,44 @@ class InstallmentScheduleScreen extends ConsumerWidget {
                       'ekranında taksit satırı görürsek aylık ödemeler burada '
                       'listelenir.',
                 )
-              : _ScheduleBody(schedule: data),
+              : _ScheduleBody(schedule: data, focusMonth: focusMonth),
         ),
       ),
     );
   }
 }
 
-class _ScheduleBody extends StatelessWidget {
-  const _ScheduleBody({required this.schedule});
+class _ScheduleBody extends StatefulWidget {
+  const _ScheduleBody({required this.schedule, this.focusMonth});
 
   final InstallmentSchedule schedule;
+  final String? focusMonth;
+
+  @override
+  State<_ScheduleBody> createState() => _ScheduleBodyState();
+}
+
+class _ScheduleBodyState extends State<_ScheduleBody> {
+  final _focusKey = GlobalKey();
+
+  static String _monthKey(DateTime month) =>
+      '${month.year.toString().padLeft(4, '0')}-'
+      '${month.month.toString().padLeft(2, '0')}';
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.focusMonth != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final target = _focusKey.currentContext;
+        if (target != null && target.mounted) Scrollable.ensureVisible(target);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final schedule = widget.schedule;
     final months = schedule.months.where((m) => m.items.isNotEmpty).toList();
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.screenH),
@@ -92,7 +119,10 @@ class _ScheduleBody extends StatelessWidget {
         ),
         for (final month in months) ...[
           const SizedBox(height: AppSpacing.l),
-          _MonthSection(month: month),
+          KeyedSubtree(
+            key: _monthKey(month.month) == widget.focusMonth ? _focusKey : null,
+            child: _MonthSection(month: month),
+          ),
         ],
         const SizedBox(height: AppSpacing.l),
         const _Legend(),

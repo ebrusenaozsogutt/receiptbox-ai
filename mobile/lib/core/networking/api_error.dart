@@ -52,6 +52,8 @@ String messageForCode(String code, {int? retryAfterSeconds}) {
       return 'Girdiğin bilgiler geçersiz. Kontrol edip tekrar dene.';
     case 'AI_CONSENT_REQUIRED':
       return "Yapay zekâ ile okuma kapalı. Ayarlar'dan açabilirsin.";
+    case 'ASSISTANT_UNAVAILABLE':
+      return 'Asistan şu an yanıt veremiyor. Biraz sonra tekrar dene.';
     case 'EXTRACTION_FAILED':
       return 'Fiş şu an okunamadı. Tekrar dene ya da elle ekle.';
     case 'EXTRACTION_REJECTED':

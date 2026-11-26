@@ -121,6 +121,10 @@ class AppSizes {
   static const double budgetTrack = 8;
   static const double paymentAvatar = 36;
   static const double chartBarWidth = 28;
+
+  /// Assistant chat (P14, no Figma frame: built from the tokens above).
+  static const double chatBubbleMaxWidth = 320;
+  static const double typingDot = 6;
   static const double chartBarMaxHeight = 64;
 }
 

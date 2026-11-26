@@ -30,7 +30,9 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
-  final _search = TextEditingController();
+  late final _search = TextEditingController(
+    text: ref.read(purchaseFilterControllerProvider).search,
+  );
   Timer? _debounce;
 
   @override
@@ -80,6 +82,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Widget build(BuildContext context) {
     final filter = ref.watch(purchaseFilterControllerProvider);
     final list = ref.watch(purchaseListProvider);
+    // A filter set elsewhere (an assistant answer's "Harcamaları gör") shows its search text.
+    ref.listen(purchaseFilterControllerProvider, (_, next) {
+      if (next.search != _search.text.trim()) _search.text = next.search;
+    });
     return SafeArea(
       child: Column(
         children: [
@@ -468,7 +474,9 @@ class _PurchaseRow extends StatelessWidget {
                           : formatMoneyTl(purchase.netMinor),
                       key: Key('purchase_amount_${purchase.id}'),
                       style: AppTextStyles.bodyStrong.copyWith(
-                        color: purchase.isRefund ? AppColors.success : AppColors.text,
+                        color: purchase.isRefund
+                            ? AppColors.success
+                            : AppColors.text,
                       ),
                     ),
                     if (purchase.refundedMinor > 0)

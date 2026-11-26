@@ -199,7 +199,9 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/installments',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const InstallmentScheduleScreen(),
+        builder: (context, state) => InstallmentScheduleScreen(
+          focusMonth: state.uri.queryParameters['month'],
+        ),
       ),
       GoRoute(
         path: '/transactions/new',
