@@ -104,7 +104,16 @@ class ReminderSync {
         exact: exact,
       );
     }
+    // A due reminder is shown only when notifications are allowed: Android drops it silently
+    // otherwise, and it must not be remembered as shown (e.g. the first sync runs while the
+    // permission dialog is still open).
+    final canShow = await gateway.notificationsEnabled();
+    final handled = {...plan.handled};
     for (final item in plan.showNow) {
+      if (!canShow) {
+        handled.remove(item.reminderId);
+        continue;
+      }
       await gateway.show(
         id: item.id,
         title: item.message.title,
@@ -112,10 +121,10 @@ class ReminderSync {
         payload: item.message.route,
       );
     }
-    await prefs.setHandled(plan.handled);
+    await prefs.setHandled(handled);
     return SyncOutcome(
       scheduled: plan.schedule.length,
-      shown: plan.showNow.length,
+      shown: canShow ? plan.showNow.length : 0,
       cancelled: cancelled,
     );
   }

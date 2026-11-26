@@ -133,6 +133,27 @@ void main() {
     expect(h.gateway.shown.single.payload, '/budgets');
   });
 
+  test('a due reminder waits while notifications are not allowed', () async {
+    // Found on the emulator: the first sync ran while the permission dialog was still open;
+    // the budget notification was dropped by Android but remembered as shown.
+    final h = await Harness.create();
+    h.gateway.enabled = false;
+    h.api.items = [
+      Reminder(
+        id: 'bud',
+        type: ReminderType.budget80,
+        fireAt: start.subtract(const Duration(minutes: 1)),
+      ),
+    ];
+
+    await h.sync.sync();
+    expect(h.gateway.shown, isEmpty);
+
+    h.gateway.enabled = true; // the user tapped "Allow"
+    await h.sync.sync();
+    expect(h.gateway.shown, hasLength(1));
+  });
+
   test('the debug notifications survive a sync', () async {
     final h = await Harness.create();
     await h.gateway.schedule(
