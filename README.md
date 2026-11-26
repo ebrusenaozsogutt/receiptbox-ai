@@ -361,6 +361,21 @@ New migration **0007** (a reminder can exist only once). Rebuild and migrate the
 
 **Swagger**: `GET /api/v1/reminders/upcoming?days=60`, `POST /api/v1/reminders/{id}/dismiss`.
 
+### 3.2.12 Try the AI assistant (P14)
+
+New migration **0008**. Rebuild and migrate the backend (`docker compose -f infra/docker-compose.yml up -d --build backend`, then `docker compose -f infra/docker-compose.yml exec -T backend alembic upgrade head`) and the app (3.3). The assistant needs `GEMINI_API_KEY` and the AI consent. **Model**: `gemini-3.5-flash` (the default) allows only 20 requests a day on the free tier (2-3 per question); put `AI_MODEL_ASSISTANT=gemini-3.5-flash-lite` in your `.env` (see DECISIONS O-006).
+
+**What it does.** Turkish questions about your own records. The model may only call 8 typed tools (purchases, totals, comparisons, products, a product's card, deadlines, installments, documents); your user id is never one of their arguments. Every number in the answer must appear in this turn's tool results, otherwise the answer is corrected once or replaced by a templated one. The buttons under an answer open the screen where you can check each number.
+
+**On the emulator or a phone** (demo seed, 3.2.9 / 3.2.10):
+1. **Asistan** tab. Without the AI consent it says why and offers **Ayarlar'a git**; switch on "Yapay zekâ ile fiş okuma" and come back.
+2. Tap the five suggestions one by one (**Geçmişi temizle** brings them back). Expected with the demo month: Market this month **5.420,00 TL**; AirPods warranty **16 Aralık, 20 gün**; remaining installments = **Taksitler → Kalan taksit toplamı**; the five most expensive purchases; "Kulaklığın faturası" finds AirPods' invoice (upload one first: product → Belgeler).
+3. Tap each button under the answers and compare: Harcamalar opens with the filters set (the header shows the count and the total), the product card, the document, Taksitler.
+4. Ask your own: something with no data ("Geçen ay sağlığa ne harcadım?" → "Kayıtlarında bununla ilgili bilgi bulamadım."), last year, a comparison ("Bu ay geçen aya göre daha mı çok harcadım?" → the home card's %8,8 / 1.520 TL), one shop.
+5. Turn off the Wi-Fi of the emulator or stop the backend and ask: the red message with **Tekrar dene**.
+
+**Swagger**: `POST /api/v1/assistant/chat` `{"message": "...", "history": []}` returns `answer`, `actions` and `tool_calls` (names and arguments); `DELETE /api/v1/assistant/history`. Every turn is in the table `assistant_turns` (outcome, latency, model, prompt version).
+
 ### 3.3 The Android app
 
 1. Start an emulator: Android Studio → **Virtual Device Manager → ▶**, or `flutter emulators --launch <emulator_id>`. Wait until you see the Android home screen.
