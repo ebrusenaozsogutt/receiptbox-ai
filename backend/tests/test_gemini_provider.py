@@ -10,9 +10,10 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from google.genai import errors
+from google.genai import errors, types
 from pydantic import SecretStr
 
+from app.ai.assistant import ChatMessage, ToolSpec
 from app.ai.provider import (
     ExtractionHints,
     ProviderConfigError,
@@ -311,12 +312,6 @@ def test_classification_failures_are_provider_errors() -> None:
         provider.classify_category("X", [])
 
 
-def test_the_assistant_is_not_implemented_yet() -> None:
-    provider, _, _ = make([])
-    with pytest.raises(NotImplementedError):
-        provider.run_assistant([], [], None)
-
-
 # ---- configuration ---------------------------------------------------------------------------
 
 
@@ -371,3 +366,203 @@ def test_model_names_from_the_environment_win(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setenv("AI_MODEL_EXTRACT", "my-extract-model")
 
     assert Settings().ai_model_extract == "my-extract-model"  # type: ignore[call-arg]
+
+
+# ---- P14: the assistant loop (run_assistant) ----------------------------------------------------
+# Manual function calling, the tool-call limit, the correction message, back-off on 429 and the
+# 20 s budget of a turn. Kept in this file: it is the only test file allowed to import the SDK.
+
+ASSISTANT_TOOLS = [
+    ToolSpec(
+        "aggregate_spending",
+        "Totals.",
+        {"type": "object", "properties": {"date_from": {"type": "string"}}},
+    )
+]
+ASSISTANT_MESSAGES = [
+    ChatMessage("system", "SYSTEM PROMPT"),
+    ChatMessage("user", "Önceki soru"),
+    ChatMessage("assistant", "Önceki cevap"),
+    ChatMessage("user", "Bu ay ne harcadım?"),
+]
+
+
+def fn_call(name: str = "aggregate_spending", **args: Any) -> SimpleNamespace:
+    return SimpleNamespace(id=f"call-{name}", name=name, args=args)
+
+
+def model_reply(*, calls: list[SimpleNamespace] | None = None, text: str = "") -> SimpleNamespace:
+    content = types.Content(role="model", parts=[types.Part(text=text or "thinking")])
+    return SimpleNamespace(
+        function_calls=calls or None,
+        text=text,
+        candidates=[SimpleNamespace(content=content)],
+        usage_metadata=SimpleNamespace(prompt_token_count=10, candidates_token_count=5),
+    )
+
+
+class AssistantClock:
+    def __init__(self) -> None:
+        self.now = 100.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+class AssistantStubClient:
+    def __init__(self, script: list[Any], clock: AssistantClock, step_seconds: float = 0.0) -> None:
+        self._script = list(script)
+        self._clock = clock
+        self._step = step_seconds
+        self.calls: list[dict[str, Any]] = []
+        self.models = SimpleNamespace(generate_content=self._generate)
+
+    def _generate(self, **kwargs: Any) -> Any:
+        # Contents are copied: the provider keeps appending to the same list.
+        self.calls.append({**kwargs, "contents": list(kwargs["contents"])})
+        self._clock.now += self._step
+        step = self._script.pop(0)
+        if isinstance(step, BaseException):
+            raise step
+        return step
+
+
+class StubExecutor:
+    def __init__(self, deadline: float, *, limit: int = 4, wrong: tuple[str, ...] = ()) -> None:
+        self.deadline = deadline
+        self.limit = limit
+        self.wrong = wrong
+        self.tool_calls: list[tuple[str, dict[str, Any]]] = []
+        self.checked: list[str] = []
+
+    def tools_left(self) -> int:
+        return self.limit - len(self.tool_calls)
+
+    def call_tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
+        self.tool_calls.append((name, args))
+        return {"data": {"total": "1.549,90 TL"}, "notice": "veri"}
+
+    def check_answer(self, answer: str) -> str | None:
+        self.checked.append(answer)
+        return "DÜZELT" if any(w in answer for w in self.wrong) else None
+
+
+def make_assistant(
+    script: list[Any], step_seconds: float = 0.0
+) -> tuple[GeminiProvider, AssistantStubClient, AssistantClock]:
+    clock = AssistantClock()
+    client = AssistantStubClient(script, clock, step_seconds)
+
+    def sleep(seconds: float) -> None:
+        clock.now += seconds
+
+    provider = GeminiProvider(
+        api_key="unused",
+        model="extract-model",
+        assistant_model="assistant-model",
+        client=client,
+        sleep=sleep,
+        clock=clock,
+    )
+    return provider, client, clock
+
+
+def test_a_tool_call_then_an_answer() -> None:
+    provider, client, clock = make_assistant(
+        [
+            model_reply(calls=[fn_call(date_from="2026-11-01")]),
+            model_reply(text="1.549,90 TL harcadın."),
+        ]
+    )
+    executor = StubExecutor(clock.now + 20)
+
+    result = provider.run_assistant(ASSISTANT_MESSAGES, ASSISTANT_TOOLS, executor)
+
+    assert result.answer == "1.549,90 TL harcadın."
+    assert result.corrections == 0
+    assert executor.tool_calls == [("aggregate_spending", {"date_from": "2026-11-01"})]
+    first, second = client.calls
+    assert first["model"] == "assistant-model"  # AI_MODEL_ASSISTANT, not the extraction model
+    config = first["config"]
+    assert config.system_instruction == "SYSTEM PROMPT"
+    assert config.automatic_function_calling.disable is True
+    assert config.tool_config.function_calling_config.mode == "AUTO"
+    declaration = config.tools[0].function_declarations[0]
+    assert declaration.name == "aggregate_spending"
+    assert declaration.parameters_json_schema == ASSISTANT_TOOLS[0].parameters
+    assert [c.role for c in first["contents"]] == ["user", "model", "user"]
+    # The second request carries the model's call and the wrapped tool output with its id.
+    response_part = second["contents"][-1].parts[0].function_response
+    assert (response_part.id, response_part.name) == (
+        "call-aggregate_spending",
+        "aggregate_spending",
+    )
+    assert response_part.response == {"data": {"total": "1.549,90 TL"}, "notice": "veri"}
+
+
+def test_after_the_limit_the_model_may_only_answer() -> None:
+    provider, client, clock = make_assistant(
+        [model_reply(calls=[fn_call()]), model_reply(text="Tamam.")]
+    )
+    executor = StubExecutor(clock.now + 20, limit=1)
+
+    provider.run_assistant(ASSISTANT_MESSAGES, ASSISTANT_TOOLS, executor)
+
+    modes = [c["config"].tool_config.function_calling_config.mode for c in client.calls]
+    assert modes == ["AUTO", "NONE"]
+
+
+def test_one_correction_then_the_answer_is_returned_as_it_is() -> None:
+    provider, client, clock = make_assistant(
+        [
+            model_reply(text="yaklaşık 1.550 TL"),
+            model_reply(text="yine 1.550 TL"),
+            model_reply(text="unused"),
+        ]
+    )
+    executor = StubExecutor(clock.now + 20, wrong=("1.550",))
+
+    result = provider.run_assistant(ASSISTANT_MESSAGES, ASSISTANT_TOOLS, executor)
+
+    assert result.answer == "yine 1.550 TL"  # the service then uses its template
+    assert result.corrections == 1
+    assert len(client.calls) == 2
+    assert client.calls[1]["contents"][-1].parts[0].text == "DÜZELT"
+
+
+def test_429_is_retried_with_back_off_inside_the_budget() -> None:
+    provider, client, clock = make_assistant(
+        [errors.APIError(429, {"error": {"message": "quota"}}), model_reply(text="Tamam.")]
+    )
+    executor = StubExecutor(clock.now + 20)
+
+    assert provider.run_assistant(ASSISTANT_MESSAGES, ASSISTANT_TOOLS, executor).answer == "Tamam."
+    assert len(client.calls) == 2
+
+
+def test_the_turn_budget_ends_the_loop() -> None:
+    # Every request takes 8 s: after two tool rounds the 20 s are gone.
+    provider, client, clock = make_assistant(
+        [
+            model_reply(calls=[fn_call()]),
+            model_reply(calls=[fn_call()]),
+            model_reply(calls=[fn_call()]),
+            model_reply(text="x"),
+        ],
+        step_seconds=8.0,
+    )
+    executor = StubExecutor(clock.now + 20)
+
+    with pytest.raises(ProviderUnavailableError):
+        provider.run_assistant(ASSISTANT_MESSAGES, ASSISTANT_TOOLS, executor)
+    assert len(client.calls) == 3
+
+
+def test_a_refusal_is_unavailable_and_not_echoed() -> None:
+    provider, client, clock = make_assistant(
+        [errors.APIError(400, {"error": {"message": "SECRET"}})]
+    )
+
+    with pytest.raises(ProviderUnavailableError) as raised:
+        provider.run_assistant(ASSISTANT_MESSAGES, ASSISTANT_TOOLS, StubExecutor(clock.now + 20))
+    assert "SECRET" not in str(raised.value)

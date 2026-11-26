@@ -11,8 +11,9 @@ output (`RawReceiptExtraction`, plain strings); `app/ai/validation.py` turns it 
 import logging
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Protocol
+from typing import Protocol
 
+from app.ai.assistant import AssistantExecutor, AssistantResult, ChatMessage, ToolSpec
 from app.ai.schemas import RawBankRow, RawReceiptExtraction
 from app.core.config import Settings
 from app.models.enums import CategoryKey
@@ -70,9 +71,15 @@ class AIProvider(Protocol):
         the app computed (totals, change, category amounts): never transactions or shops."""
         ...
 
-    # Later phase (P14).
-
-    def run_assistant(self, messages: list[Any], tools: list[Any], executor: Any) -> Any: ...
+    def run_assistant(
+        self,
+        messages: list[ChatMessage],
+        tools: list[ToolSpec],
+        executor: AssistantExecutor,
+    ) -> AssistantResult:
+        """P14: the model's function-calling loop (see app/ai/assistant.py). Blocking: called in
+        a worker thread. Raises ProviderUnavailableError on timeout / quota / network failure."""
+        ...
 
 
 def log_call(
@@ -118,6 +125,7 @@ def get_provider(settings: Settings) -> AIProvider:
         return GeminiProvider(
             api_key=api_key,
             model=settings.ai_model_extract,
+            assistant_model=settings.ai_model_assistant,
             timeout_seconds=settings.ai_timeout_seconds,
             thinking_level=settings.ai_thinking_level.strip() or None,
         )

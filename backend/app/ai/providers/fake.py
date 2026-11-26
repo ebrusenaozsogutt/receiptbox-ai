@@ -13,11 +13,25 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.ai.prompts import BANK_ROWS, CATEGORY_CLASSIFY, COMPARISON_COMMENTARY, RECEIPT_EXTRACT
+from app.ai.assistant import (
+    MAX_CORRECTIONS,
+    AssistantExecutor,
+    AssistantResult,
+    ChatMessage,
+    ToolSpec,
+)
+from app.ai.prompts import (
+    ASSISTANT,
+    BANK_ROWS,
+    CATEGORY_CLASSIFY,
+    COMPARISON_COMMENTARY,
+    RECEIPT_EXTRACT,
+)
 from app.ai.provider import (
     ExtractionHints,
     ProviderConfigError,
     ProviderOutputError,
+    ProviderUnavailableError,
     log_call,
 )
 from app.ai.schemas import RawBankExtraction, RawBankRow, RawReceiptExtraction
@@ -40,6 +54,7 @@ def _merchant_key(merchant: str) -> str:
 class FakeProvider:
     name = "fake"
     model = "fake-fixtures"
+    assistant_model = "fake-assistant"
     prompt_version = RECEIPT_EXTRACT
 
     def __init__(
@@ -60,6 +75,12 @@ class FakeProvider:
         self.commentary_inputs: list[str] = []
         self.commentary_answer = "Bu dönemde harcaman önceki döneme göre arttı."
         self.commentary_error: Exception | None = None
+        # P14: one script per chat turn (consumed in order), what each turn was asked, the
+        # wrapped tool outputs the "model" received and the correction messages it got.
+        self.assistant_scripts: list[list[dict[str, Any]]] = []
+        self.assistant_requests: list[tuple[list[ChatMessage], list[ToolSpec]]] = []
+        self.assistant_tool_outputs: list[list[dict[str, Any]]] = []
+        self.assistant_corrections: list[str] = []
 
     @classmethod
     def from_directory(cls, directory: str | Path) -> "FakeProvider":
@@ -162,5 +183,67 @@ class FakeProvider:
             raise self.commentary_error
         return self.commentary_answer
 
-    def run_assistant(self, messages: list[Any], tools: list[Any], executor: Any) -> Any:
-        raise NotImplementedError("The assistant arrives in P14.")
+    # ---- P14: the assistant --------------------------------------------------------------------
+
+    def script_assistant(self, *steps: dict[str, Any]) -> None:
+        """Queue the "model's" moves for the next chat turn. A step is one of:
+        {"tool": name, "args": {...}}   call a tool; a string argument "$i.path.to.field" is
+                                        taken from the output of this turn's i-th tool call
+        {"answer": text}                answer; if the number check sends a correction, the
+                                        script continues with its next answer step
+        {"error": "unavailable"}        fail like a timeout / 429
+        `args` and `answer` may also be callables that get this turn's tool outputs."""
+        self.assistant_scripts.append(list(steps))
+
+    def run_assistant(
+        self, messages: list[ChatMessage], tools: list[ToolSpec], executor: AssistantExecutor
+    ) -> AssistantResult:
+        self.assistant_requests.append((list(messages), list(tools)))
+        outputs: list[dict[str, Any]] = []
+        self.assistant_tool_outputs.append(outputs)
+        log_call(
+            provider=self.name,
+            model=self.assistant_model,
+            prompt_version=ASSISTANT,
+            latency_ms=0,
+            input_tokens=None,
+            output_tokens=None,
+            outcome="ok" if self.assistant_scripts else "no_fixture",
+        )
+        if not self.assistant_scripts:
+            raise ProviderOutputError("The fake provider has no assistant script.")
+        corrections = 0
+        last_answer: str | None = None
+        for step in self.assistant_scripts.pop(0):
+            if "error" in step:
+                raise ProviderUnavailableError("The AI provider refused the request.")
+            if "tool" in step:
+                args = step.get("args") or {}
+                args = args(outputs) if callable(args) else _resolve(args, outputs)
+                outputs.append(executor.call_tool(step["tool"], args))
+                continue
+            answer = step["answer"]
+            last_answer = answer(outputs) if callable(answer) else answer
+            correction = executor.check_answer(last_answer)
+            if correction is None or corrections >= MAX_CORRECTIONS:
+                return AssistantResult(answer=last_answer, corrections=corrections)
+            corrections += 1
+            self.assistant_corrections.append(correction)
+        if last_answer is not None:
+            return AssistantResult(answer=last_answer, corrections=corrections)
+        raise ProviderOutputError("The fake assistant script has no answer.")
+
+
+def _resolve(value: Any, outputs: list[dict[str, Any]]) -> Any:
+    """ "$0.products.0.product_id" -> outputs[0]["data"]["products"][0]["product_id"]."""
+    if isinstance(value, dict):
+        return {key: _resolve(item, outputs) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_resolve(item, outputs) for item in value]
+    if isinstance(value, str) and value.startswith("$") and value[1:2].isdigit():
+        index, *path = value[1:].split(".")
+        node: Any = outputs[int(index)].get("data", {})
+        for part in path:
+            node = node[int(part)] if isinstance(node, list) else node[part]
+        return node
+    return value

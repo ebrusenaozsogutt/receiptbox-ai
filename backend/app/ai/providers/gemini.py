@@ -19,7 +19,15 @@ from google import genai
 from google.genai import errors, types
 from pydantic import ValidationError
 
+from app.ai.assistant import (
+    MAX_CORRECTIONS,
+    AssistantExecutor,
+    AssistantResult,
+    ChatMessage,
+    ToolSpec,
+)
 from app.ai.prompts import (
+    ASSISTANT,
     BANK_ROWS,
     CATEGORY_CLASSIFY,
     COMPARISON_COMMENTARY,
@@ -52,11 +60,14 @@ class GeminiProvider:
         model: str,
         timeout_seconds: float = 30.0,
         thinking_level: str | None = None,
+        assistant_model: str | None = None,
         client: Any | None = None,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.model = model
+        # P14: the assistant may use another model (AI_MODEL_ASSISTANT); default: the same one.
+        self.assistant_model = assistant_model or model
         self._timeout_seconds = timeout_seconds
         self._thinking = (
             types.ThinkingConfig(thinking_level=thinking_level) if thinking_level else None
@@ -195,5 +206,137 @@ class GeminiProvider:
         )
         return extraction.rows
 
-    def run_assistant(self, messages: list[Any], tools: list[Any], executor: Any) -> Any:
-        raise NotImplementedError("The assistant arrives in P14.")
+    # ---- P14: the assistant ----------------------------------------------------------------
+
+    def run_assistant(
+        self, messages: list[ChatMessage], tools: list[ToolSpec], executor: AssistantExecutor
+    ) -> AssistantResult:
+        """Manual function calling (the SDK's automatic calling is off): the model asks for tool
+        calls, the executor runs them for the signed-in user, their wrapped outputs go back;
+        until the model answers in text. After MAX_TOOL_CALLS the model may only answer. An
+        answer that fails the number check gets one correction message. The whole turn must end
+        by `executor.deadline`; 429 / 5xx are retried with back-off inside it."""
+        system = "\n\n".join(m.text for m in messages if m.role == "system")
+        contents: list[types.Content] = [
+            types.Content(
+                role="model" if m.role == "assistant" else "user", parts=[types.Part(text=m.text)]
+            )
+            for m in messages
+            if m.role != "system"
+        ]
+        declarations = [
+            types.FunctionDeclaration(
+                name=t.name, description=t.description, parameters_json_schema=t.parameters
+            )
+            for t in tools
+        ]
+        started = self._clock()
+        state: dict[str, Any] = {"outcome": "error", "backoff": 0}
+        input_tokens = output_tokens = 0
+        corrections = 0
+        try:
+            while True:
+                config = self._assistant_config(
+                    system, declarations, "AUTO" if executor.tools_left() > 0 else "NONE"
+                )
+                response = self._send(
+                    contents=contents, config=config, deadline=executor.deadline, state=state
+                )
+                usage = getattr(response, "usage_metadata", None)
+                input_tokens += getattr(usage, "prompt_token_count", None) or 0
+                output_tokens += getattr(usage, "candidates_token_count", None) or 0
+                candidates = getattr(response, "candidates", None) or []
+                model_turn = candidates[0].content if candidates else None
+                calls = getattr(response, "function_calls", None) or []
+                if calls:
+                    if model_turn is not None:
+                        contents.append(model_turn)  # keeps the model's thought signatures
+                    parts = [
+                        types.Part(
+                            function_response=types.FunctionResponse(
+                                id=call.id,
+                                name=call.name,
+                                response=executor.call_tool(call.name or "", dict(call.args or {})),
+                            )
+                        )
+                        for call in calls
+                    ]
+                    contents.append(types.Content(role="user", parts=parts))
+                    continue
+                text = (response.text or "").strip()
+                correction = executor.check_answer(text) if text else None
+                if correction is not None and corrections < MAX_CORRECTIONS:
+                    corrections += 1
+                    if model_turn is not None:
+                        contents.append(model_turn)
+                    contents.append(types.Content(role="user", parts=[types.Part(text=correction)]))
+                    continue
+                state["outcome"] = "ok" if correction is None else "unchecked_answer"
+                return AssistantResult(
+                    answer=text,
+                    corrections=corrections,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                )
+        finally:
+            log_call(
+                provider=self.name,
+                model=self.assistant_model,
+                prompt_version=ASSISTANT,
+                latency_ms=int((self._clock() - started) * 1000),
+                input_tokens=input_tokens or None,
+                output_tokens=output_tokens or None,
+                outcome=state["outcome"],
+            )
+
+    def _assistant_config(
+        self, system: str, declarations: list[types.FunctionDeclaration], mode: str
+    ) -> Callable[[float], types.GenerateContentConfig]:
+        def make(remaining: float) -> types.GenerateContentConfig:
+            return types.GenerateContentConfig(
+                system_instruction=system,
+                tools=[types.Tool(function_declarations=declarations)],
+                tool_config=types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(mode=mode)
+                ),
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                temperature=0.0,
+                thinking_config=self._thinking,
+                http_options=types.HttpOptions(timeout=max(1, int(remaining * 1000))),
+            )
+
+        return make
+
+    def _send(
+        self,
+        *,
+        contents: list[types.Content],
+        config: Callable[[float], types.GenerateContentConfig],
+        deadline: float,
+        state: dict[str, Any],
+    ) -> Any:
+        """One request of the assistant loop, with back-off on 429 / 5xx before `deadline`."""
+        while True:
+            remaining = deadline - self._clock()
+            if remaining <= 0:
+                state["outcome"] = "timeout"
+                raise ProviderUnavailableError(_NO_ANSWER_IN_TIME)
+            try:
+                return self._client.models.generate_content(
+                    model=self.assistant_model, contents=contents, config=config(remaining)
+                )
+            except errors.APIError as error:
+                code = getattr(error, "code", None)
+                if code in _RETRYABLE_HTTP_CODES and state["backoff"] < len(BACKOFF_SECONDS):
+                    delay = BACKOFF_SECONDS[state["backoff"]]
+                    state["backoff"] += 1
+                    if self._clock() + delay >= deadline:
+                        state["outcome"] = "timeout"
+                        raise ProviderUnavailableError(_NO_ANSWER_IN_TIME) from None
+                    self._sleep(delay)
+                    continue
+                state["outcome"] = f"http_{code}" if code else "api_error"
+                raise ProviderUnavailableError("The AI provider refused the request.") from None
+            except Exception:  # noqa: BLE001  (timeouts and connection errors differ per SDK)
+                state["outcome"] = "network_error"
+                raise ProviderUnavailableError("The AI provider could not be reached.") from None
