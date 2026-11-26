@@ -112,8 +112,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: const Text('Yapay zekâ ile fiş okuma'),
               subtitle: const Text(
                 'Açıkken, fişten okunan ve kişisel bilgileri silinmiş metin '
-                'harici bir yapay zekâ servisine gönderilir. Kapalıyken yalnızca '
-                'elle giriş yapabilirsin.',
+                'harici bir yapay zekâ servisine gönderilir. Asistan da bu izinle '
+                'çalışır: sorun ve cevap için gereken kayıtların aynı servise gider. '
+                'Kapalıyken yalnızca elle giriş yapabilirsin.',
               ),
               value: aiConsent,
               onChanged: _setAiConsent,

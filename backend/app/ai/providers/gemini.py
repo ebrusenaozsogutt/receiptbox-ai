@@ -335,7 +335,11 @@ class GeminiProvider:
                         raise ProviderUnavailableError(_NO_ANSWER_IN_TIME) from None
                     self._sleep(delay)
                     continue
-                state["outcome"] = f"http_{code}" if code else "api_error"
+                # The status name (e.g. INVALID_ARGUMENT) says why without echoing any content.
+                status = str(getattr(error, "status", "") or "")
+                state["outcome"] = (f"http_{code}" if code else "api_error") + (
+                    f"_{status}" if status.replace("_", "").isalpha() else ""
+                )
                 raise ProviderUnavailableError("The AI provider refused the request.") from None
             except Exception:  # noqa: BLE001  (timeouts and connection errors differ per SDK)
                 state["outcome"] = "network_error"

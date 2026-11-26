@@ -120,7 +120,13 @@ class _ScheduleBodyState extends State<_ScheduleBody> {
         for (final month in months) ...[
           const SizedBox(height: AppSpacing.l),
           KeyedSubtree(
-            key: _monthKey(month.month) == widget.focusMonth ? _focusKey : null,
+            // The first month needs no scrolling: scrolling to it would hide the
+            // "Kalan taksit toplamı" card above it (found on the emulator).
+            key:
+                month != months.first &&
+                    _monthKey(month.month) == widget.focusMonth
+                ? _focusKey
+                : null,
             child: _MonthSection(month: month),
           ),
         ],

@@ -27,7 +27,7 @@ from app.ai.tools.base import (
 )
 from app.core.text import normalize_alias_key
 from app.models.enums import CategoryKey, TransactionKind
-from app.services.analytics import AnalyticsService, Group, compare_categories
+from app.services.analytics import AnalyticsService, Group, compare_categories, month_end
 from app.services.dashboard import DashboardService
 from app.services.transaction_service import TransactionService
 
@@ -322,23 +322,27 @@ async def _compare_periods(ctx: ToolContext, args: ComparePeriodsArgs) -> Output
     }
 
 
+def _period_label(date_from: date, date_to: date) -> str:
+    """'Kasım 2026 harcamaları' for a whole month, '2025 harcamaları' for a whole year, else the
+    two days (found on the emulator: "A dönemini gör" did not say which period)."""
+    if date_from.day == 1 and date_to == month_end(date_from):
+        return f"{month_tr(date_from)} harcamaları"
+    if (date_from.month, date_from.day, date_to.month, date_to.day) == (1, 1, 12, 31) and (
+        date_from.year == date_to.year
+    ):
+        return f"{date_from.year} harcamaları"
+    return f"{period_tr(date_from, date_to)} harcamaları"
+
+
 def _compare_actions(args: ComparePeriodsArgs, output: Output) -> list[Action]:
-    return [
-        _list_action(
-            date.fromisoformat(output["a"]["from"]),
-            date.fromisoformat(output["a"]["to"]),
-            None,
-            None,
-            "A dönemini gör",
-        ),
-        _list_action(
-            date.fromisoformat(output["b"]["from"]),
-            date.fromisoformat(output["b"]["to"]),
-            None,
-            None,
-            "B dönemini gör",
-        ),
-    ]
+    actions = []
+    for side in ("a", "b"):
+        date_from = date.fromisoformat(output[side]["from"])
+        date_to = date.fromisoformat(output[side]["to"])
+        actions.append(
+            _list_action(date_from, date_to, None, None, _period_label(date_from, date_to))
+        )
+    return actions
 
 
 def _compare_summary(args: ComparePeriodsArgs, output: Output) -> str:
