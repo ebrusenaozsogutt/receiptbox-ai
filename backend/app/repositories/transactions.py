@@ -5,6 +5,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time
+from typing import Literal
 
 from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -107,9 +108,15 @@ class TransactionRepository:
         merchant_id: uuid.UUID | None = None,
         search: str | None = None,
         transaction_id: uuid.UUID | None = None,
+        min_minor: int | None = None,
+        max_minor: int | None = None,
+        order: Literal["date_desc", "amount_desc"] = "date_desc",
         limit: int,
         offset: int,
     ) -> Page:
+        """The purchases (and refunds without a purchase) matching the filters. `min_minor`,
+        `max_minor` and the `amount_desc` order use the NET amount (after refunds), the amount
+        the list shows (P14: the assistant's "en pahalı alışverişlerim")."""
         _require_uuid(user_id)
         conditions = [
             Transaction.user_id == user_id,
@@ -159,6 +166,10 @@ class TransactionRepository:
             (Transaction.kind == TransactionKind.REFUND, -Transaction.total_minor),
             else_=Transaction.total_minor - refunded,
         )
+        if min_minor is not None:
+            conditions.append(signed_total >= min_minor)
+        if max_minor is not None:
+            conditions.append(signed_total <= max_minor)
         totals = (
             select(func.count(Transaction.id), func.coalesce(func.sum(signed_total), 0))
             .select_from(Transaction)
@@ -177,6 +188,7 @@ class TransactionRepository:
             .outerjoin(Category, Category.id == Transaction.category_id)
             .where(*conditions)
             .order_by(
+                *([signed_total.desc()] if order == "amount_desc" else []),
                 Transaction.purchase_date.desc(),
                 Transaction.purchase_time.desc().nulls_last(),
                 Transaction.created_at.desc(),

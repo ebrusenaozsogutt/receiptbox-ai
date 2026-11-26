@@ -678,6 +678,9 @@ class TransactionService:
         search: str | None,
         limit: int,
         offset: int,
+        min_minor: int | None = None,
+        max_minor: int | None = None,
+        order: Literal["date_desc", "amount_desc"] = "date_desc",
     ) -> TransactionList:
         page = await self._transactions.list(
             user_id,
@@ -686,6 +689,9 @@ class TransactionService:
             category=category,
             merchant_id=merchant_id,
             search=search,
+            min_minor=min_minor,
+            max_minor=max_minor,
+            order=order,
             limit=limit,
             offset=offset,
         )

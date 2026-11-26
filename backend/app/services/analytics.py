@@ -109,13 +109,25 @@ class AnalyticsService:
 
     # ---- spending view ------------------------------------------------------------------------
 
-    async def spending_total(self, user_id: uuid.UUID, date_from: date, date_to: date) -> int:
+    async def spending_total(
+        self,
+        user_id: uuid.UUID,
+        date_from: date,
+        date_to: date,
+        *,
+        category: CategoryKey | None = None,
+    ) -> int:
+        """Net spending of the period; with `category`, of that category only (P14)."""
         _check_user_id(user_id)
+        params: dict[str, object] = {"user_id": user_id, "date_from": date_from, "date_to": date_to}
+        join, where = "", "WHERE l.day BETWEEN :date_from AND :date_to"
+        if category is not None:
+            join, where = _CATEGORY_JOIN, where + " AND c.key = :category"
+            params["category"] = category.value
         statement = text(
             f"WITH lines AS ({_SPENDING_LINES}) "
-            "SELECT COALESCE(SUM(amount), 0) FROM lines WHERE day BETWEEN :date_from AND :date_to"
+            f"SELECT COALESCE(SUM(l.amount), 0) FROM lines l {join} {where}"
         )
-        params = {"user_id": user_id, "date_from": date_from, "date_to": date_to}
         return int((await self._session.execute(statement, params)).scalar_one())
 
     async def spending_by(
@@ -126,13 +138,20 @@ class AnalyticsService:
         group_by: GroupBy,
         *,
         limit: int | None = None,
+        category: CategoryKey | None = None,
     ) -> list[Group]:
         """Net spending of the period by category / merchant (largest first; groups that net to
         zero are left out), by month (every month of the period, oldest first, also empty ones) or
-        by ISO week (weeks that have spending, oldest first)."""
+        by ISO week (weeks that have spending, oldest first). With `category`, only the spending
+        of that category is grouped (P14)."""
         _check_user_id(user_id)
-        params = {"user_id": user_id, "date_from": date_from, "date_to": date_to}
+        params: dict[str, object] = {"user_id": user_id, "date_from": date_from, "date_to": date_to}
         where = "WHERE l.day BETWEEN :date_from AND :date_to"
+        # The category join is needed for the filter; grouping by category has it already.
+        join = _CATEGORY_JOIN if category is not None and group_by != "category" else ""
+        if category is not None:
+            where += " AND c.key = :category"
+            params["category"] = category.value
         if group_by == "category":
             sql = (
                 f"WITH lines AS ({_SPENDING_LINES}) "
@@ -143,14 +162,15 @@ class AnalyticsService:
         elif group_by == "merchant":
             sql = (
                 f"WITH lines AS ({_SPENDING_LINES}) "
-                f"SELECT l.merchant, l.merchant, SUM(l.amount) AS total FROM lines l {where} "
+                "SELECT l.merchant, l.merchant, SUM(l.amount) AS total "
+                f"FROM lines l {join} {where} "
                 "GROUP BY l.merchant HAVING SUM(l.amount) <> 0 ORDER BY total DESC, l.merchant"
             )
         elif group_by == "month":
             sql = (
                 f"WITH lines AS ({_SPENDING_LINES}) "
                 "SELECT to_char(l.day, 'YYYY-MM') AS k, to_char(l.day, 'YYYY-MM'), "
-                f"SUM(l.amount) FROM lines l {where} GROUP BY k ORDER BY k"
+                f"SUM(l.amount) FROM lines l {join} {where} GROUP BY k ORDER BY k"
             )
         elif group_by == "week":
             sql = (
@@ -158,7 +178,7 @@ class AnalyticsService:
                 """SELECT to_char(l.day, 'IYYY-"W"IW') AS k,
                           to_char(date_trunc('week', l.day), 'YYYY-MM-DD'),
                           SUM(l.amount) """
-                f"FROM lines l {where} GROUP BY k, 2 ORDER BY 2"
+                f"FROM lines l {join} {where} GROUP BY k, 2 ORDER BY 2"
             )
         else:  # pragma: no cover - guarded by the API's Literal
             raise ValueError(group_by)
