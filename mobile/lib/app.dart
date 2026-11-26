@@ -26,6 +26,8 @@ import 'features/matching/presentation/merge_feedback.dart';
 import 'features/products/presentation/add_product_screen.dart';
 import 'features/products/presentation/product_detail_screen.dart';
 import 'features/products/presentation/products_screen.dart';
+import 'features/reminders/presentation/notification_intro_screen.dart';
+import 'features/reminders/presentation/reminder_bootstrap.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/shell/presentation/main_shell.dart';
 import 'features/transactions/presentation/manual_transaction_screen.dart';
@@ -150,6 +152,11 @@ GoRouter router(Ref ref) {
         builder: (context, state) => const SettingsScreen(),
       ),
       GoRoute(
+        path: '/notifications/intro',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const NotificationIntroScreen(),
+      ),
+      GoRoute(
         path: '/capture/scan',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const CameraScreen(),
@@ -247,9 +254,15 @@ class ReceiptBoxApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Start listening for shared files right away (see SharedInbox).
     ref.read(sharedInboxProvider);
+    final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: 'ReceiptBox AI',
-      routerConfig: ref.watch(routerProvider),
+      routerConfig: router,
+      // Local reminders (P13): sync on sign-in, resume and changes; open tapped ones.
+      builder: (context, child) => ReminderBootstrap(
+        router: router,
+        child: child ?? const SizedBox.shrink(),
+      ),
       theme: AppTheme.light(),
       // Turkish is the only UI language.
       locale: const Locale('tr', 'TR'),

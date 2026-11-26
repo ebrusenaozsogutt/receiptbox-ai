@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:receiptbox/core/networking/session_events.dart';
 
 import 'support/fakes.dart';
+import 'support/settings_helpers.dart';
 
 Future<void> _openApp(WidgetTester tester, TestApp app) async {
   // A new ProviderScope = a freshly started app. Device storage (tokens, preferences) stays.
@@ -181,6 +182,7 @@ void main() {
       await _openApp(tester, app);
       await _openSettings(tester);
 
+      await scrollSettingsTo(tester, find.text('Çıkış yap'));
       await tester.tap(find.text('Çıkış yap'));
       await tester.pumpAndSettle();
 
@@ -213,6 +215,7 @@ void main() {
       final app = await TestApp.signedIn();
       await _openApp(tester, app);
       await _openSettings(tester);
+      await scrollSettingsTo(tester, find.text('Çıkış yap'));
       await tester.tap(find.text('Çıkış yap'));
       await tester.pumpAndSettle();
 
@@ -229,6 +232,7 @@ void main() {
       await _openApp(tester, app);
       await _openSettings(tester);
 
+      await scrollSettingsTo(tester, find.text('Hesabı sil'));
       await tester.tap(find.text('Hesabı sil'));
       await tester.pumpAndSettle();
       expect(
@@ -255,6 +259,7 @@ void main() {
       await _openApp(tester, app);
       await _openSettings(tester);
 
+      await scrollSettingsTo(tester, find.text('Hesabı sil'));
       await tester.tap(find.text('Hesabı sil'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('İptal'));
@@ -276,6 +281,7 @@ void main() {
       await _openApp(tester, app);
       await _openSettings(tester);
 
+      await scrollSettingsTo(tester, find.text('Hesabı sil'));
       await tester.tap(find.text('Hesabı sil'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Hesabı sil'));
@@ -293,6 +299,7 @@ void main() {
       final app = await TestApp.signedIn();
       await _openApp(tester, app);
       await _openSettings(tester);
+      await scrollSettingsTo(tester, find.text('Hesabı sil'));
       await tester.tap(find.text('Hesabı sil'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Hesabı sil'));

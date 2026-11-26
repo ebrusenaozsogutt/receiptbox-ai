@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../reminders/presentation/notification_settings_section.dart';
 import '../../../core/networking/api_error.dart';
 import '../../../core/storage/settings_store.dart';
 import '../../../core/theme/app_button_styles.dart';
@@ -135,6 +136,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ref.read(keepReceiptImagesProvider.notifier).set(value),
             ),
           ),
+          const SizedBox(height: AppSpacing.xxl),
+          const _SectionLabel('BİLDİRİMLER'),
+          const NotificationSettingsSection(),
           const SizedBox(height: AppSpacing.xxl),
           const _SectionLabel('BAĞLANTI'),
           const Card(child: ServerStatusTile()),

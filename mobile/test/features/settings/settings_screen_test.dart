@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../support/fakes.dart';
+import '../../support/settings_helpers.dart';
 
 Future<TestApp> _openSettings(WidgetTester tester, {TestApp? app}) async {
   final testApp = app ?? await TestApp.signedIn();
@@ -27,6 +28,9 @@ void main() {
     expect(find.text('ebru@example.com'), findsOneWidget);
     expect(find.text('HESAP'), findsOneWidget);
     expect(find.text('GİZLİLİK'), findsOneWidget);
+    await scrollSettingsTo(tester, find.text('BİLDİRİMLER'));
+    expect(find.text('BİLDİRİMLER'), findsOneWidget);
+    await scrollSettingsTo(tester, find.text('Hesabı sil'));
     expect(find.text('BAĞLANTI'), findsOneWidget);
     expect(find.text('Çıkış yap'), findsOneWidget);
     expect(find.text('Hesabı sil'), findsOneWidget);
@@ -87,6 +91,7 @@ void main() {
 
   testWidgets('shows the server status row', (tester) async {
     await _openSettings(tester);
+    await scrollSettingsTo(tester, find.text('Sunucu: bağlı'));
 
     expect(find.text('Sunucu: bağlı'), findsOneWidget);
   });

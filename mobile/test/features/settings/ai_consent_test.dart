@@ -172,7 +172,8 @@ void main() {
       final app = await _signedIn(tester);
       await _openSettings(tester);
 
-      expect(find.byType(Switch), findsNWidgets(2));
+      expect(_aiSwitch, findsOneWidget);
+      expect(find.byKey(const Key('keep_images_switch')), findsOneWidget);
       await tester.tap(_aiSwitch);
       await tester.pumpAndSettle();
 
