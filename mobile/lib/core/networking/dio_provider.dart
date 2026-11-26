@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../config/app_config.dart';
 import '../storage/token_store.dart';
 import 'auth_interceptor.dart';
+import 'data_changed.dart';
 import 'session_events.dart';
 
 part 'dio_provider.g.dart';
@@ -36,5 +37,11 @@ Dio dio(Ref ref) {
   );
   dio.interceptors.add(interceptor);
   interceptor.attach(dio);
+  // P13: a successful write may move a reminder deadline.
+  dio.interceptors.add(
+    DataChangedInterceptor(
+      () => ref.read(dataChangedSignalProvider.notifier).signal(),
+    ),
+  );
   return dio;
 }

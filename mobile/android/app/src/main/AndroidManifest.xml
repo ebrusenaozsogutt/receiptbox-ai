@@ -4,6 +4,13 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+    <!-- P13 local reminders. POST_NOTIFICATIONS is asked at run time (Android 13+) after an
+         explanation screen. SCHEDULE_EXACT_ALARM is only used when the user granted it (Android
+         14 denies it by default); otherwise the reminders are inexact. BOOT_COMPLETED lets the
+         plugin put the scheduled reminders back after a restart. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:allowBackup="false"
         android:label="ReceiptBox AI"
@@ -53,6 +60,21 @@
                 <data android:mimeType="image/*"/>
             </intent-filter>
         </activity>
+        <!-- flutter_local_notifications: shows scheduled reminders and restores them after a
+             reboot or an app update (P13). -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
