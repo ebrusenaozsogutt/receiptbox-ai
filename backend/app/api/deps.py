@@ -25,6 +25,7 @@ from app.services.dashboard import DashboardService
 from app.services.document_service import DocumentService
 from app.services.extraction_service import ExtractionService
 from app.services.product_service import ProductService
+from app.services.reminder_service import ReminderService
 from app.services.transaction_service import TransactionService
 from app.storage.backend import StorageBackend
 
@@ -200,3 +201,10 @@ def get_product_service(
 
 
 ProductServiceDep = Annotated[ProductService, Depends(get_product_service)]
+
+
+def get_reminder_service(session: SessionDep) -> ReminderService:
+    return ReminderService(session)
+
+
+ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]

@@ -75,6 +75,7 @@ from app.services.installment_service import InstallmentService, RowContext, cap
 from app.services.match_service import Evaluation, MatchService, without_pending
 from app.services.product_service import ProductService
 from app.services.refund_service import RefundService
+from app.services.reminder_service import ReminderService
 from app.storage.backend import StorageBackend, StorageError
 
 logger = logging.getLogger("receiptbox.transactions")
@@ -103,10 +104,12 @@ class TransactionService:
     # ---- observations (the review queue) ------------------------------------------------------
 
     async def _commit(self, user_id: uuid.UUID) -> None:
-        """Commit, after creating the budget reminders the change may have reached (P11). Every
-        write of this service ends here, so a purchase saved, merged, edited or deleted is checked
-        against the budgets of the current month in the same transaction."""
+        """Commit, after creating the budget reminders the change may have reached (P11) and
+        recomputing the deadline reminders (P13: installment plans created, changed or cancelled,
+        refunds that return a product, purchases deleted). Every write of this service ends
+        here, so both happen in the same transaction."""
         await BudgetService(self._session).check_reminders(user_id)
+        await ReminderService(self._session).sync(user_id)
         await self._session.commit()
 
     async def list_observations(

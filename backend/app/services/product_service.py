@@ -50,6 +50,7 @@ from app.schemas.products import (
 from app.services.extraction_service import BUSINESS_TIMEZONE
 from app.services.product_defaults import days_left, default_return_end, default_warranty_end
 from app.services.refund_service import RefundService
+from app.services.reminder_service import ReminderService
 
 SUGGESTED_CATEGORIES = (CategoryKey.TECHNOLOGY, CategoryKey.HOME, CategoryKey.CLOTHING)
 RETURN_ATTENTION_DAYS = 7
@@ -120,6 +121,12 @@ class ProductService:
         self.today = today
 
     # ---- reads ----------------------------------------------------------------------------------
+
+    async def _commit(self, user_id: uuid.UUID) -> None:
+        """Commit a change to a product, its warranty or return window, after recomputing the
+        deadline reminders in the same transaction (P13)."""
+        await ReminderService(self._session).sync(user_id)
+        await self._session.commit()
 
     async def products(
         self, user_id: uuid.UUID, statuses: list[ProductStatus] | None = None
@@ -233,7 +240,7 @@ class ProductService:
                         else ReturnWindowStatus.CLOSED,
                     )
                 )
-        await self._session.commit()
+        await self._commit(user_id)
         return await self.detail(user_id, product.id)
 
     async def patch(
@@ -260,13 +267,13 @@ class ProductService:
                 product.status = status
                 if status == ProductStatus.ARCHIVED:
                     await self._repo.delete_reminders(user_id, [product.id])
-        await self._session.commit()
+        await self._commit(user_id)
         return await self.detail(user_id, product_id)
 
     async def delete(self, user_id: uuid.UUID, product_id: uuid.UUID) -> None:
         if await self._repo.delete(user_id, product_id) == 0:
             raise NotFoundError()
-        await self._session.commit()
+        await self._commit(user_id)
 
     async def put_warranty(
         self, user_id: uuid.UUID, product_id: uuid.UUID, body: WarrantyIn
@@ -289,7 +296,7 @@ class ProductService:
         warranty.end_date = body.end_date
         warranty.source = body.source
         warranty.confirmed = body.confirmed
-        await self._session.commit()
+        await self._commit(user_id)
         return await self.detail(user_id, product_id)
 
     async def put_return_window(
@@ -323,7 +330,7 @@ class ProductService:
                 if body.end_date >= self.today()
                 else ReturnWindowStatus.CLOSED
             )
-        await self._session.commit()
+        await self._commit(user_id)
         return await self.detail(user_id, product_id)
 
     # ---- suggestions (spec 10.1) --------------------------------------------------------------

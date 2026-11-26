@@ -16,6 +16,7 @@ from app.api import (
     matches,
     observations,
     products,
+    reminders,
     transactions,
 )
 from app.core.config import Settings, get_settings
@@ -90,6 +91,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(extract.router, prefix=API_PREFIX)
     app.include_router(documents.router, prefix=API_PREFIX)
     app.include_router(products.router, prefix=API_PREFIX)  # before /observations/{id}
+    app.include_router(reminders.router, prefix=API_PREFIX)
     app.include_router(observations.router, prefix=API_PREFIX)
     app.include_router(transactions.router, prefix=API_PREFIX)
     app.include_router(matches.router, prefix=API_PREFIX)
