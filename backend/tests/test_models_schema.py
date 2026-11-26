@@ -267,6 +267,12 @@ def test_required_indexes_exist() -> None:
     assert "ix_reminders_user_id_fire_at" in _index_names("reminders")
 
 
+def test_a_reminder_is_unique_per_user_type_target_and_time() -> None:
+    """P13: recomputing reminders is idempotent (INSERT ... ON CONFLICT DO NOTHING)."""
+    names = {c.name for c in Base.metadata.tables["reminders"].constraints}
+    assert "uq_reminders_user_id_type_target_id_fire_at" in names
+
+
 def test_required_unique_constraints_exist() -> None:
     assert frozenset({"email"}) in _unique_column_sets("users")
     assert frozenset({"key"}) in _unique_column_sets("categories")
