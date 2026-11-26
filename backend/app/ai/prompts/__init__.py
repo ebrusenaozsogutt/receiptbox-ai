@@ -8,6 +8,7 @@ RECEIPT_EXTRACT = "receipt_extract.v1"
 CATEGORY_CLASSIFY = "category_classify.v1"
 BANK_ROWS = "bank_rows.v1"
 COMPARISON_COMMENTARY = "comparison_commentary.v1"
+ASSISTANT = "assistant.v1"
 
 
 def load_prompt(version: str) -> str:
