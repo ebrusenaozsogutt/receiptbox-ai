@@ -22,7 +22,7 @@ Runs in parallel with P00–P04. Output: approved screens + design tokens that P
 | 7 | (+) action sheet, bottom navigation | P03 | ✅ Bottom nav built from the Figma component (node 2:22). 🟨 The (+) sheet is a first draft in the same style, no Figma frame yet | [Figma](https://www.figma.com/design/dXpZpN53pLMmkYylQwmK1H) · page "🎨 Tasarım Sistemi" |
 | 8 | Login / Register / Consent | P03 | 🟨 Implemented in P03 from the tokens and the Button / input components; **no Figma frames yet**, please design or review them | |
 | 9 | Transactions list & detail | P07 | 🟨 Implemented in P07 (list grouped by day with filters, detail with evidence chips and document viewer, manual form) from the tokens and the review screen's components; **no Figma frames yet**, please design or review them | |
-| 10 | Installment schedule, Budgets, Settings | P10–P13 | 🟨 Schedule (P10), Analytics and Budgets (P11) built from the tokens and the home cards; **no Figma frames yet** | |
+| 10 | Installment schedule, Budgets, Settings | P10–P13 | 🟨 Schedule (P10), Analytics and Budgets (P11) built from the tokens and the home cards; P13 added the notification explanation screen ("Son günleri kaçırma") and Settings → BİLDİRİMLER (screenshots `docs/design/screens/p13_*.png`); **no Figma frames yet** | |
 
 ## Design tokens to deliver
 

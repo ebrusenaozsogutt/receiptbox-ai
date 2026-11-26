@@ -19,7 +19,7 @@ Update after every phase. Newest entry on top of the log.
 | P10 | Installments 1:N | ✅ Done | 2026-11-23 |
 | P11 | Dashboard, analytics, budgets | ✅ Done | 2026-11-25 |
 | P12 | Products, warranties, returns, refunds | ✅ Done | 2026-11-25 |
-| P13 | Reminders & local notifications | ⬜ | |
+| P13 | Reminders & local notifications | ✅ Done | 2026-11-26 |
 | P14 | AI assistant | ⬜ | |
 | P15 | Evaluation harness & experiments | ⬜ | |
 | P16 | Hardening, security tests, demo | ⬜ | |
@@ -35,6 +35,29 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner:
 - Known gaps / follow-ups:
 -->
+
+### 2026-11-26 — P13 Reminders & local notifications (done; emulator run on 2026-11-26)
+- Done:
+  - **Rules** (`app/reminders/scheduler.py`, pure, P-090): warranty -30/-7 days, return -3/-1 day, last installment on the 1st of its due month, all 10:00 Europe/Istanbul; budgets keep P11's "when the threshold is reached".
+  - **Idempotent recompute** (`services/reminder_service.py`, P-091): unique (user, type, target, fire_at) (migration **0007**, duplicates removed first) + `ON CONFLICT DO NOTHING`; `sync` runs before every ProductService / TransactionService commit (product create/edit/delete, warranty and return changes, refunds, plans created/changed/cancelled, purchases deleted) and before the list is read. Returned, archived or deleted products, cancelled plans and deleted purchases lose their reminders; a time already passed is not created late; dismissed ones stay dismissed.
+  - **Endpoints**: `GET /reminders/upcoming?days=60` (1–366; not dismissed, from one day ago; with what the text needs: deadline, days before, product, merchant, category), `POST /reminders/{id}/dismiss` (204, idempotent, 404 for another user's).
+  - **Mobile** (`features/reminders/`, P-092, P-093): `flutter_local_notifications` + `timezone`; an explanation screen before the Android 13+ permission; exact alarms only when granted, otherwise inexact (never throws); sync on sign-in, resume and after every successful write (debounced); stable ids (FNV-1a of the reminder id, debug ids 1–4 untouched); a due reminder is shown once and only when notifications are allowed; sign-out cancels everything; tapping opens the product, Taksitler or Bütçeler, also from a cold start. Turkish texts with case endings from a tested helper ("AirPods'un garanti süresinin bitmesine 30 gün kaldı.", "Trendyol'dan aldığın ayakkabının iade süresi yarın bitiyor.", "MediaMarkt taksitlerinin sonuncusu bu ay.", "Market bütçenin %80'ine ulaştın."). Settings → BİLDİRİMLER: one switch per kind (stored on the phone), exact alarms row, debug-only "2 dakika sonra bildir" per kind. The home bell is unchanged (no notification center).
+- Tests added: backend **1389** (was 1352): `test_reminder_rules.py` (9), `test_reminder_idempotency.py` (13), `tests/api/test_reminders.py` (14, isolation for both endpoints), schema/migration tests for 0007. Flutter **702** (was 638): id hashing and planning (`notification_plan_test.dart`), texts and case endings, `ReminderSync` with fakes (no duplicates after resumes, moved deadline, returned product, offline, exact alarms, sign-out), screens (permission flow, deep links, cold start, switches, debug buttons); the Settings tests now scroll (the screen got longer). FakeProvider only.
+- Checks run on 2026-11-26: `ruff check`, `ruff format --check`, `pytest` (1389 passed, Docker database running), `flutter analyze` (no issues), `flutter test` (702 passed).
+- Manual test steps for the owner: README §3.2.11.
+- **Checked on the emulator on 2026-11-26** (Android 17 / API 37 image, debug build, real backend, a throw-away seeded demo account deleted afterwards; screenshots `docs/design/screens/p13_*.png`):
+  - Permission: "Son günleri kaçırma" first, then the system dialog; after Allow, "Market bütçenin %80'ine ulaştın." appeared at once; tapping it opened Bütçeler.
+  - Scheduled on the phone (from the plugin's store): TV return -1 day on 27 Kasım 10:00 ("Teknosa'dan aldığın Samsung 55" TV'nin iade süresi yarın bitiyor."), AirPods warranty -7 days on 9 Aralık 10:00.
+  - Debug buttons: all four arrived about 2–3 minutes later (inexact); İade and Garanti opened the TV's product card, Taksit opened Taksitler, Bütçe opened Bütçeler.
+  - AirPods warranty changed to 1 Ocak 2027: 9 Aralık was cancelled, 2 Aralık (30 gün) and 25 Aralık (7 gün) scheduled, without restarting the app. "İade Edildi" on AirPods: both removed.
+  - Five leave/reopen cycles: still exactly one pending notification and one system alarm, nothing shown twice.
+  - Fixed during the run: the first sync ran while the permission dialog was still open; the budget notification was dropped by Android but remembered as shown. A due reminder is now shown (and remembered) only when notifications are allowed; regression test added.
+- Known gaps / to re-check on a real phone:
+  - **Battery optimisation** (Samsung "Uyku modundaki uygulamalar", Xiaomi MIUI/HyperOS autostart and battery saver) can delay or drop inexact alarms; check that a debug reminder arrives with the screen off and the app swiped away.
+  - **Exact alarms**: Android 14+ denies them by default, so reminders are inexact (the system may deliver up to about an hour after 10:00); check "Tam zamanlı bildirimler → Aç" on the phone.
+  - **Reboot**: the scheduled reminders should come back after a restart (boot receiver); not tested on the emulator.
+  - The large notification icon is still the default Flutter launcher icon (the app icon is not designed yet; the small status-bar icon is ReceiptBox's receipt).
+  - A reminder whose time passes while the phone is off for more than a day is not shown (the list looks back one day).
 
 ### 2026-11-25 — P12 CI confirmed
 - CI run on `main` (`b3a337a`): jobs `backend` (1352 tests on a fresh PostgreSQL, fake provider only, migration 0006 included) and `mobile` (638 Flutter tests) both green. P12 is closed.

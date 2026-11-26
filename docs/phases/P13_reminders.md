@@ -23,10 +23,10 @@ FCM/server push, e-mail reminders.
 
 ## Acceptance criteria
 
-- [ ] Changing a warranty end date reschedules exactly the right reminders (backend tests).
-- [ ] Reminders for a returned product disappear.
-- [ ] On a device, a reminder set 2 minutes ahead (debug helper) fires and deep-links correctly.
-- [ ] No duplicate notifications after multiple app resumes.
+- [x] Changing a warranty end date reschedules exactly the right reminders (backend tests).
+- [x] Reminders for a returned product disappear.
+- [x] On a device, a reminder set 2 minutes ahead (debug helper) fires and deep-links correctly.
+- [x] No duplicate notifications after multiple app resumes.
 
 ## Tests
 

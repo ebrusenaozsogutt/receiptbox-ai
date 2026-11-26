@@ -344,6 +344,23 @@ New migration **0006** (the "do not ask again" answers and an index on refunds).
 
 **Swagger**: `GET/POST /api/v1/products`, `GET /products/suggestions`, `POST /products/suggestions/dismiss`, `GET/PATCH/DELETE /products/{id}`, `PUT /products/{id}/warranty`, `PUT /products/{id}/return-window`, `POST /transactions/{id}/refund` with `{"amount_minor": 100000, "date": "2026-11-25"}`, `GET /refunds/suggestions`, `POST /observations/{id}/link-refund`.
 
+### 3.2.11 Try reminders and notifications (P13)
+
+New migration **0007** (a reminder can exist only once). Rebuild and migrate the backend (`docker compose -f infra/docker-compose.yml up -d --build backend`, then `docker compose -f infra/docker-compose.yml exec -T backend alembic upgrade head`) and the app (3.3).
+
+**The rules.** Warranty: 30 and 7 days before the end. Return: 3 days and 1 day before the last day. Last installment: on the 1st of the month it is due. All at **10:00 Istanbul time**. Budgets: at once, when 80 % / 100 % is reached. A reminder whose time has already passed when the date is set is not sent late (the home "Dikkat gerektirenler" shows it). A returned, archived or deleted product, a cancelled plan or a deleted purchase loses its reminders. Notifications are local: the phone schedules them from `GET /reminders/upcoming` (no server push).
+
+**On the emulator or a phone (Android 13+)**
+1. Sign in: the screen **"Son günleri kaçırma"** explains the notifications; **Bildirimlere izin ver** opens the system dialog (Allow). **Şimdi değil** never asks again from there; Settings can.
+2. With the demo seed (3.2.9, 3.2.10) the Market budget is at 90 %: right after allowing, **"Market bütçenin %80'ine ulaştın."** appears. Tap it: **Bütçeler** opens.
+3. **Ayarlar → BİLDİRİMLER**: one switch per kind (Garanti, İade, Taksit, Bütçe; stored on the phone), **Tam zamanlı bildirimler** (Açık / Kapalı; "Aç" opens the system page), and in debug builds **"Geliştirici: 2 dakika sonra bildir"** with one button per kind. Tap the four, wait 2–3 minutes (without exact alarms Android may delay a little), tap each notification: Garanti / İade → the product, Taksit → Taksitler, Bütçe → Bütçeler.
+4. Change a product's warranty end (product → Tarihi değiştir): the reminders move at once. Mark a product **İade Edildi**: its reminders disappear.
+5. Leave and reopen the app several times: no notification appears twice.
+
+**To see what is scheduled** (debug build, emulator): `adb shell run-as com.receiptbox.receiptbox cat shared_prefs/scheduled_notifications.xml` lists every pending notification with its time and text; `adb shell dumpsys alarm | findstr receiptbox` shows the system alarms.
+
+**Swagger**: `GET /api/v1/reminders/upcoming?days=60`, `POST /api/v1/reminders/{id}/dismiss`.
+
 ### 3.3 The Android app
 
 1. Start an emulator: Android Studio → **Virtual Device Manager → ▶**, or `flutter emulators --launch <emulator_id>`. Wait until you see the Android home screen.
