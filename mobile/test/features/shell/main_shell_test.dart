@@ -36,7 +36,7 @@ void main() {
     final tabs = {
       'Harcamalar': 'Henüz harcama yok',
       'Ürünler': 'Ürünlerin burada olacak',
-      'Asistan': 'Asistan yakında burada',
+      'Asistan': 'Asistan kapalı', // P14: no AI consent in this test
     };
     for (final tab in tabs.entries) {
       testWidgets('${tab.key} -> "${tab.value}"', (tester) async {
@@ -126,7 +126,10 @@ void main() {
 
         await tester.tap(find.byType(BackButton));
         await tester.pumpAndSettle();
-        expect(find.byKey(const Key('home_list')), findsOneWidget); // back on Home
+        expect(
+          find.byKey(const Key('home_list')),
+          findsOneWidget,
+        ); // back on Home
       });
     }
   });

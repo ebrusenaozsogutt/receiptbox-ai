@@ -7,6 +7,7 @@ import 'package:receiptbox/features/reminders/data/notification_gateway.dart';
 import 'package:receiptbox/features/reminders/data/reminder_sync.dart';
 import 'package:receiptbox/features/reminders/data/reminders_api.dart';
 import 'package:receiptbox/app.dart';
+import 'package:receiptbox/features/assistant/data/assistant_api.dart';
 import 'package:receiptbox/core/networking/api_error.dart';
 import 'package:receiptbox/features/analytics/data/analytics_api.dart';
 import 'package:receiptbox/features/analytics/data/analytics_providers.dart';
@@ -25,6 +26,7 @@ import 'package:receiptbox/features/health/domain/health_status.dart';
 import 'package:receiptbox/features/transactions/data/transactions_api.dart';
 
 import 'analytics_fakes.dart';
+import 'assistant_fakes.dart';
 import 'product_fakes.dart';
 import 'reminder_fakes.dart';
 import 'purchase_fakes.dart';
@@ -188,6 +190,7 @@ class TestApp {
   // the explanation screen does not get in the way of the other tests.
   final FakeRemindersApi reminders = FakeRemindersApi();
   final FakeNotificationGateway notifications = FakeNotificationGateway();
+  final FakeAssistantApi assistant = FakeAssistantApi();
 
   /// What the camera plugin reports. Default: this phone has no camera.
   Future<List<CameraDescription>> Function() cameras = () async => [];
@@ -220,6 +223,7 @@ class TestApp {
     documentsApiProvider.overrideWithValue(documents),
     remindersApiProvider.overrideWithValue(reminders),
     notificationGatewayProvider.overrideWithValue(notifications),
+    assistantApiProvider.overrideWithValue(assistant),
     reminderClockProvider.overrideWithValue(() => now),
     captureTempDirProvider.overrideWithValue(NoopTempDir()),
     camerasLoaderProvider.overrideWithValue(() => cameras()),
