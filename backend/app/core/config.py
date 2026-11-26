@@ -8,7 +8,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 MIN_JWT_SECRET_LENGTH = 32  # HS256 needs a key of at least 256 bits
 
 DEFAULT_MODEL_EXTRACT = "gemini-3.5-flash-lite"  # fast, generous free quota: receipts
-DEFAULT_MODEL_ASSISTANT = "gemini-3.5-flash"  # P14
+# P14: flash-lite, not flash: the free tier of flash allows only 20 requests a day and a question
+# needs 2-3 (owner decision D-015, 2026-11-26).
+DEFAULT_MODEL_ASSISTANT = "gemini-3.5-flash-lite"
 
 
 class Settings(BaseSettings):

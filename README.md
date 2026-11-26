@@ -363,7 +363,7 @@ New migration **0007** (a reminder can exist only once). Rebuild and migrate the
 
 ### 3.2.12 Try the AI assistant (P14)
 
-New migration **0008**. Rebuild and migrate the backend (`docker compose -f infra/docker-compose.yml up -d --build backend`, then `docker compose -f infra/docker-compose.yml exec -T backend alembic upgrade head`) and the app (3.3). The assistant needs `GEMINI_API_KEY` and the AI consent. **Model**: `gemini-3.5-flash` (the default) allows only 20 requests a day on the free tier (2-3 per question); put `AI_MODEL_ASSISTANT=gemini-3.5-flash-lite` in your `.env` (see DECISIONS O-006).
+New migration **0008**. Rebuild and migrate the backend (`docker compose -f infra/docker-compose.yml up -d --build backend`, then `docker compose -f infra/docker-compose.yml exec -T backend alembic upgrade head`) and the app (3.3). The assistant needs `GEMINI_API_KEY` and the AI consent. **Model**: `gemini-3.5-flash-lite` by default (DECISIONS D-015); `gemini-3.5-flash` allows only 20 requests a day on the free tier (2-3 per question). Leave `AI_MODEL_ASSISTANT` empty in your `.env` to use the default.
 
 **What it does.** Turkish questions about your own records. The model may only call 8 typed tools (purchases, totals, comparisons, products, a product's card, deadlines, installments, documents); your user id is never one of their arguments. Every number in the answer must appear in this turn's tool results, otherwise the answer is corrected once or replaced by a templated one. The buttons under an answer open the screen where you can check each number.
 

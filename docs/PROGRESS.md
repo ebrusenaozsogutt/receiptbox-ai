@@ -90,7 +90,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
     - Gemini error outcomes now carry the API status name (e.g. `http_400_INVALID_ARGUMENT`, never content).
     - The Settings consent text now mentions the assistant.
 - Known gaps / follow-ups:
-  - **Model quota (DECISIONS O-006):** the default `gemini-3.5-flash` allows 20 requests a day on the free tier and was used up by the first test round. The run used `gemini-3.5-flash-lite` through a temporary override; your `.env` was not changed.
+  - ~~**Model quota (DECISIONS O-006):** the default `gemini-3.5-flash` allows 20 requests a day on the free tier and was used up by the first test round.~~ → the default is now `gemini-3.5-flash-lite` (D-015, owner decision on 2026-11-26).
   - The cause of the occasional HTTP 400 on the request after a tool call is not known yet. It was the outcome of most `flash` calls before that quota ran out, and of one `flash-lite` call; none of the later calls had it. The next occurrence will log the status name. When it happens after a tool result, the user still gets the templated answer.
   - 429 back-off is not useful when the **daily** quota is exhausted (it waits up to 7 s, then answers 503).
   - The document viewer (P07) spins forever on a file that is not a valid PDF; it should show an error (seen with a hand-made test file).
