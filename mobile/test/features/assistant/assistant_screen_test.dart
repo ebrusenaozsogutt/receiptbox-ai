@@ -273,8 +273,9 @@ void main() {
           actions: const [
             AssistantAction(
               type: AssistantActionType.openDocument,
-              label: 'Fatura aç',
-              params: {'id': 'doc-1', 'pdf': 'true'},
+              label: 'Fiş görüntüsü aç',
+              // An image: pdfx cannot render on the Linux CI runner; this test is about routing.
+              params: {'id': 'doc-1', 'pdf': 'false'},
             ),
           ],
         ),
@@ -288,7 +289,7 @@ void main() {
       final viewer = tester.widget<DocumentViewerScreen>(
         find.byType(DocumentViewerScreen),
       );
-      expect((viewer.documentId, viewer.isPdf), ('doc-1', true));
+      expect((viewer.documentId, viewer.isPdf), ('doc-1', false));
     });
   });
 
