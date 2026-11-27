@@ -41,8 +41,9 @@ from app.ai.prompts import ASSISTANT, load_prompt
 from app.ai.provider import AIProvider, ProviderError
 from app.ai.tools import TOOLS, Action, ToolArgumentError, ToolContext
 from app.ai.tools.base import CATEGORY_LABELS, day_tr
+from app.ai.usage import DailyLimitReached
 from app.core.config import Settings
-from app.core.errors import AppError, AssistantUnavailableError
+from app.core.errors import AiDailyLimitError, AppError, AssistantUnavailableError
 from app.models.enums import AssistantOutcome
 from app.repositories.assistant_turns import AssistantTurnRepository
 from app.services.installment_schedule import add_months, first_of_month
@@ -264,10 +265,12 @@ class AssistantService:
                 self._provider.run_assistant, messages, tool_specs(), executor
             )
             answer, outcome = self._final_answer(result, executor)
-        except ProviderError:
+        except ProviderError as error:
             if not executor.successful():
                 await self._store(user_id, question, executor, None, [], started, "FAILED")
                 await self._session.commit()
+                if isinstance(error, DailyLimitReached):
+                    raise AiDailyLimitError() from None
                 raise AssistantUnavailableError() from None
             # The model stopped after some tools answered: answer from what they returned.
             answer, outcome = self._template(executor), AssistantOutcome.TEMPLATE

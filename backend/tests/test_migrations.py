@@ -9,7 +9,7 @@ from app.core.database import create_engine
 from tests.conftest import alembic_config
 
 SPEC_TABLE_COUNT = 19  # the tables of spec 6.1 (migration 0001)
-EXPECTED_TABLE_COUNT = 20  # + product_suggestion_dismissals (0006, P12)
+EXPECTED_TABLE_COUNT = 21  # + product_suggestion_dismissals (0006, P12), ai_daily_requests (0009)
 
 
 def _fetch(url: str, sql: str) -> list[tuple]:
@@ -56,4 +56,4 @@ def test_seed_migration_downgrades_on_its_own(migrated_database: str) -> None:
 def test_database_is_left_at_head(migrated_database: str) -> None:
     rows = _fetch(migrated_database, "SELECT version_num FROM alembic_version")
 
-    assert rows == [("0008",)]
+    assert rows == [("0009",)]

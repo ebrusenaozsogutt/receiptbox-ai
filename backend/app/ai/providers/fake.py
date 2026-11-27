@@ -35,6 +35,7 @@ from app.ai.provider import (
     log_call,
 )
 from app.ai.schemas import RawBankExtraction, RawBankRow, RawReceiptExtraction
+from app.ai.usage import DailyLimitReached
 from app.core.text import normalize_alias_key
 from app.models.enums import CategoryKey
 
@@ -216,6 +217,8 @@ class FakeProvider:
         last_answer: str | None = None
         for step in self.assistant_scripts.pop(0):
             if "error" in step:
+                if step["error"] == "daily_limit":
+                    raise DailyLimitReached("The daily limit of free AI requests is used up.")
                 raise ProviderUnavailableError("The AI provider refused the request.")
             if "tool" in step:
                 args = step.get("args") or {}

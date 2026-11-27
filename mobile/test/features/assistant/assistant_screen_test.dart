@@ -175,6 +175,20 @@ void main() {
     ]);
   });
 
+  testWidgets('the daily free AI limit is explained', (tester) async {
+    final app = await openAssistant(tester);
+    app.assistant.fail('AI_DAILY_LIMIT');
+
+    await askChip(tester, 0);
+
+    expect(
+      find.text(
+        'Asistanın bugünkü ücretsiz kullanım hakkı doldu. Yarın tekrar sorabilirsin.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   group('action buttons open the screen with the numbers', () {
     testWidgets('OPEN_TRANSACTIONS sets the filters and opens Harcamalar', (
       tester,

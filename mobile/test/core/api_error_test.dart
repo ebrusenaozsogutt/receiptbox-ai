@@ -38,6 +38,9 @@ void main() {
       'VALIDATION_ERROR':
           'Girdiğin bilgiler geçersiz. Kontrol edip tekrar dene.',
       'NOT_FOUND': 'İstenen kayıt bulunamadı.',
+      'AI_DAILY_LIMIT':
+          'Bugünkü ücretsiz yapay zekâ kullanım hakkı doldu. Yarın tekrar '
+          'deneyebilirsin; fişi şimdi elle girebilirsin.',
       'INTERNAL_ERROR': 'Sunucuda bir sorun oluştu. Biraz sonra tekrar dene.',
     };
     for (final entry in expectations.entries) {

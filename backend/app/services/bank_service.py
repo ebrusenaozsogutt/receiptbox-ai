@@ -31,8 +31,10 @@ from app.ai.bank_validation import (
 )
 from app.ai.prompts import BANK_ROWS
 from app.ai.provider import AIProvider, ProviderError
+from app.ai.usage import DailyLimitReached
 from app.core.config import Settings
 from app.core.errors import (
+    AiDailyLimitError,
     BankScreenNotSupportedError,
     ExtractionFailedError,
     TextTooLargeError,
@@ -125,6 +127,8 @@ class BankService:
             raw_rows = await asyncio.to_thread(
                 self._provider.extract_bank_rows, masked_text, bank_key
             )
+        except DailyLimitReached:
+            raise AiDailyLimitError() from None
         except ProviderError as error:
             logger.warning("bank_extraction_failed", extra={"error_type": type(error).__name__})
             raise ExtractionFailedError() from None

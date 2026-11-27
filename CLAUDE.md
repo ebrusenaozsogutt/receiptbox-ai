@@ -27,6 +27,7 @@ You are implementing **ReceiptBox AI**, an Android purchase-memory app (Flutter 
 - **No provider SDK imports outside `backend/app/ai/providers/`.** Model names come from env vars.
 - **No raw PII**: bank screenshot images never leave the device; OCR text is masked on device; never log OCR text, tokens, e-mails, or amounts together with merchant names.
 - **Never commit** secrets, `.env`, real receipts, real bank screenshots, or anything under `ai/datasets/`.
+- **Gemini free tier only.** Billing is never enabled and paid usage is not an option; never suggest enabling billing. Real calls stay under the daily cap (`AI_MAX_REQUESTS_PER_DAY`); experiments are cached, paced and may span several days (D-016).
 - **Tests use `FakeProvider`**, never a real LLM. Real-LLM calls only in `ai/experiments/` and manual runs.
 - UI strings are **Turkish**; code, identifiers, comments, docs are **English**.
 - Prefer boring, explicit code over clever abstractions. No new dependency without a one-line justification in the PR/commit message.

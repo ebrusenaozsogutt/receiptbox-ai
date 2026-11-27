@@ -122,10 +122,13 @@ def get_provider(settings: Settings) -> AIProvider:
         api_key = settings.gemini_api_key.get_secret_value()
         if not api_key:
             raise ProviderConfigError("GEMINI_API_KEY is not set.")
+        from app.ai.usage import PostgresDailyGate
+
         return GeminiProvider(
             api_key=api_key,
             model=settings.ai_model_extract,
             assistant_model=settings.ai_model_assistant,
+            gate=PostgresDailyGate(settings.database_url, settings.ai_max_requests_per_day),
             timeout_seconds=settings.ai_timeout_seconds,
             thinking_level=settings.ai_thinking_level.strip() or None,
         )

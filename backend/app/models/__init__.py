@@ -1,5 +1,6 @@
 """Importing this package registers every table on `Base.metadata` (Alembic relies on that)."""
 
+from app.models.ai_usage import AiDailyRequests
 from app.models.assistant import AssistantTurn
 from app.models.base import Base
 from app.models.budget import Budget
@@ -18,6 +19,7 @@ from app.models.transaction import Observation, ReceiptItem, Transaction
 from app.models.user import RefreshToken, User
 
 __all__ = [
+    "AiDailyRequests",
     "AssistantTurn",
     "Base",
     "Budget",

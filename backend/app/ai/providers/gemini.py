@@ -11,6 +11,8 @@
   messages of the SDK are not logged or passed on (they could echo parts of the request).
 """
 
+import hashlib
+import json
 import time
 from collections.abc import Callable
 from typing import Any
@@ -42,9 +44,31 @@ from app.ai.provider import (
     log_call,
 )
 from app.ai.schemas import RawBankExtraction, RawBankRow, RawCommentary, RawReceiptExtraction
+from app.ai.usage import DailyLimitReached, RequestGate, ResponseCache
 from app.models.enums import CategoryKey
 
 BACKOFF_SECONDS = (1.0, 2.0, 4.0)
+
+
+def _cache_key(model: str, contents: Any, config: types.GenerateContentConfig) -> str:
+    """Everything that decides the answer, without the per-call timeout."""
+
+    def plain(value: Any) -> Any:
+        if hasattr(value, "model_dump"):
+            return value.model_dump(exclude_none=True)
+        if isinstance(value, list):
+            return [plain(item) for item in value]
+        return value
+
+    material = {
+        "model": model,
+        "contents": plain(contents),
+        "config": config.model_dump(exclude={"http_options"}, exclude_none=True),
+    }
+    text = json.dumps(material, default=str, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 _RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
 _NO_ANSWER_IN_TIME = "The AI provider did not answer in time."
 
@@ -61,6 +85,8 @@ class GeminiProvider:
         timeout_seconds: float = 30.0,
         thinking_level: str | None = None,
         assistant_model: str | None = None,
+        gate: RequestGate | None = None,
+        response_cache: ResponseCache | None = None,
         client: Any | None = None,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
@@ -75,6 +101,9 @@ class GeminiProvider:
         self._client = client if client is not None else genai.Client(api_key=api_key)
         self._sleep = sleep
         self._clock = clock
+        # D-016: every real request passes the daily cap; a cache hit (P15 experiments) is free.
+        self._gate = gate
+        self._cache = response_cache
         self._receipt_prompt = load_prompt(RECEIPT_EXTRACT)
         self._category_prompt = load_prompt(CATEGORY_CLASSIFY)
         self._commentary_prompt = load_prompt(COMPARISON_COMMENTARY)
@@ -113,6 +142,23 @@ class GeminiProvider:
         )
         return answer.text
 
+    def _call(self, *, model: str, contents: Any, config: types.GenerateContentConfig) -> Any:
+        """One generate_content call. A cached answer (P15 experiments) costs no request; a real
+        request first passes the daily cap (D-016) and may raise DailyLimitReached."""
+        key = _cache_key(model, contents, config) if self._cache is not None else None
+        if key is not None and self._cache is not None:
+            cached = self._cache.get(key)
+            if cached is not None:
+                return types.GenerateContentResponse.model_validate_json(cached)
+        if self._gate is not None:
+            self._gate.take(model)
+        response = self._client.models.generate_content(
+            model=model, contents=contents, config=config
+        )
+        if key is not None and self._cache is not None:
+            self._cache.put(key, response.model_dump_json(exclude_none=True))
+        return response
+
     def _generate(
         self,
         contents: str,
@@ -137,7 +183,7 @@ class GeminiProvider:
                     outcome = "timeout"
                     raise ProviderUnavailableError(_NO_ANSWER_IN_TIME)
                 try:
-                    response = self._client.models.generate_content(
+                    response = self._call(
                         model=self.model,
                         contents=contents,
                         config=types.GenerateContentConfig(
@@ -149,6 +195,9 @@ class GeminiProvider:
                             http_options=types.HttpOptions(timeout=max(1, int(remaining * 1000))),
                         ),
                     )
+                except DailyLimitReached:
+                    outcome = "daily_limit"
+                    raise
                 except errors.APIError as error:
                     code = getattr(error, "code", None)
                     if code in _RETRYABLE_HTTP_CODES and backoff_index < len(BACKOFF_SECONDS):
@@ -322,9 +371,12 @@ class GeminiProvider:
                 state["outcome"] = "timeout"
                 raise ProviderUnavailableError(_NO_ANSWER_IN_TIME)
             try:
-                return self._client.models.generate_content(
+                return self._call(
                     model=self.assistant_model, contents=contents, config=config(remaining)
                 )
+            except DailyLimitReached:
+                state["outcome"] = "daily_limit"
+                raise
             except errors.APIError as error:
                 code = getattr(error, "code", None)
                 if code in _RETRYABLE_HTTP_CODES and state["backoff"] < len(BACKOFF_SECONDS):

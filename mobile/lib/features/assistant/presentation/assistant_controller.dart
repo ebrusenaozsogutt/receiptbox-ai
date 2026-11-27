@@ -73,6 +73,9 @@ class AssistantChat extends _$AssistantChat {
   }
 
   static String _message(ApiError error) {
+    if (error.code == 'AI_DAILY_LIMIT') {
+      return 'Asistanın bugünkü ücretsiz kullanım hakkı doldu. Yarın tekrar sorabilirsin.';
+    }
     if (error.code == 'AI_CONSENT_REQUIRED') {
       return "Asistan için yapay zekâ izni gerekiyor. Ayarlar'dan açabilirsin.";
     }

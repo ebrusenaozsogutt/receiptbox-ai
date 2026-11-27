@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.provider import AIProvider, ExtractionHints, ProviderError
 from app.ai.schemas import Confidence, RawReceiptExtraction, ReceiptExtraction, ReceiptItem
+from app.ai.usage import DailyLimitReached
 from app.ai.validation import (
     FIELDS,
     MAX_RECEIPT_AGE_YEARS,
@@ -40,6 +41,7 @@ from app.ai.validation import (
     validate_receipt,
 )
 from app.core.errors import (
+    AiDailyLimitError,
     ExtractionFailedError,
     ExtractionRejectedError,
     InvalidQrError,
@@ -126,7 +128,7 @@ class ExtractionService:
         source: str,
     ) -> ExtractionOutcome:
         _check_size(masked_text)
-        raw = await self._ask_provider(masked_text, capture_date, source)
+        raw = await self._ask_provider(masked_text, capture_date, source, strict=True)
         if raw is None:
             raise ExtractionFailedError()
 
@@ -300,12 +302,20 @@ class ExtractionService:
     # ---- shared -------------------------------------------------------------------------------
 
     async def _ask_provider(
-        self, masked_text: str, capture_date: date, source: str
+        self, masked_text: str, capture_date: date, source: str, *, strict: bool = False
     ) -> RawReceiptExtraction | None:
+        """None when the model fails. `strict` (the receipt path, where the AI is the whole
+        point): the daily cap is reported as AI_DAILY_LIMIT instead. On the QR path the AI is
+        optional and the QR alone still works."""
         hints = ExtractionHints(capture_date=capture_date, source=source)
         try:
             # The SDK call is blocking: keep it off the event loop.
             return await asyncio.to_thread(self._provider.extract_receipt, masked_text, hints)
+        except DailyLimitReached:
+            logger.warning("extraction_failed", extra={"error_type": "DailyLimitReached"})
+            if strict:
+                raise AiDailyLimitError() from None
+            return None
         except ProviderError as error:
             logger.warning("extraction_failed", extra={"error_type": type(error).__name__})
             return None

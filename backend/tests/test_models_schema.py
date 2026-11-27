@@ -109,6 +109,8 @@ REQUIRED_COLUMNS: dict[str, set[str]] = {
     "return_windows": {"product_id", "end_date", "source", "status"},
     # Not in spec 6.1: P12 stores "bir daha sorma" (migration 0006, DECISIONS P-085).
     "product_suggestion_dismissals": {"user_id", "transaction_id", "receipt_item_id"},
+    # Not in spec 6.1: the daily cap on real AI requests (migration 0009, D-016); no user data.
+    "ai_daily_requests": {"day", "model", "count"},
     "budgets": {"user_id", "category_id", "monthly_limit_minor"},
     "reminders": {"user_id", "type", "target_id", "fire_at", "delivered_at", "dismissed_at"},
     "assistant_turns": {
@@ -166,9 +168,9 @@ def _tables():
     return Base.metadata.tables
 
 
-def test_exactly_the_19_spec_tables_and_the_p12_dismissals_exist() -> None:
+def test_exactly_the_19_spec_tables_the_p12_dismissals_and_the_ai_counter_exist() -> None:
     assert set(_tables()) == set(REQUIRED_COLUMNS)
-    assert len(_tables()) == 20
+    assert len(_tables()) == 21
 
 
 @pytest.mark.parametrize("table_name", sorted(REQUIRED_COLUMNS))
@@ -178,7 +180,9 @@ def test_required_columns_exist(table_name: str) -> None:
     assert REQUIRED_COLUMNS[table_name] <= columns, REQUIRED_COLUMNS[table_name] - columns
 
 
-@pytest.mark.parametrize("table_name", sorted(set(REQUIRED_COLUMNS) - {"user_category_rules"}))
+@pytest.mark.parametrize(
+    "table_name", sorted(set(REQUIRED_COLUMNS) - {"user_category_rules", "ai_daily_requests"})
+)
 def test_uuid_primary_key_and_timestamps(table_name: str) -> None:
     table = _tables()[table_name]
 
@@ -187,6 +191,11 @@ def test_uuid_primary_key_and_timestamps(table_name: str) -> None:
     for name in ("created_at", "updated_at"):
         assert table.c[name].type.timezone is True
         assert table.c[name].nullable is False
+
+
+def test_ai_daily_requests_is_keyed_by_day_and_model() -> None:
+    table = _tables()["ai_daily_requests"]
+    assert [column.name for column in table.primary_key.columns] == ["day", "model"]
 
 
 def test_user_category_rules_primary_key_is_user_and_merchant() -> None:

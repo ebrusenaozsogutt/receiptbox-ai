@@ -23,6 +23,7 @@ from app.ai.provider import (
 )
 from app.ai.providers.fake import FakeProvider
 from app.ai.providers.gemini import BACKOFF_SECONDS, GeminiProvider
+from app.ai.usage import DailyLimitReached
 from app.core.config import DEFAULT_MODEL_ASSISTANT, DEFAULT_MODEL_EXTRACT, Settings
 from app.models.enums import CategoryKey
 
@@ -51,6 +52,8 @@ class StubClient:
         step = self._script.pop(0)
         if isinstance(step, BaseException):
             raise step
+        if not isinstance(step, str):  # a real SDK response object (cache tests)
+            return step
         return SimpleNamespace(
             text=step,
             usage_metadata=SimpleNamespace(prompt_token_count=120, candidates_token_count=45),
@@ -566,3 +569,84 @@ def test_a_refusal_is_unavailable_and_not_echoed() -> None:
     with pytest.raises(ProviderUnavailableError) as raised:
         provider.run_assistant(ASSISTANT_MESSAGES, ASSISTANT_TOOLS, StubExecutor(clock.now + 20))
     assert "SECRET" not in str(raised.value)
+
+
+# ---- D-016: the daily cap and the response cache ------------------------------------------------
+
+
+class CountingGate:
+    def __init__(self, limit: int = 99) -> None:
+        self.taken: list[str] = []
+        self.limit = limit
+
+    def take(self, model: str) -> None:
+        if len(self.taken) >= self.limit:
+            raise DailyLimitReached("used up")
+        self.taken.append(model)
+
+
+class DictCache:
+    def __init__(self) -> None:
+        self.items: dict[str, str] = {}
+
+    def get(self, key: str) -> str | None:
+        return self.items.get(key)
+
+    def put(self, key: str, value: str) -> None:
+        self.items[key] = value
+
+
+def real_response(text: str) -> types.GenerateContentResponse:
+    return types.GenerateContentResponse(
+        candidates=[
+            types.Candidate(content=types.Content(role="model", parts=[types.Part(text=text)]))
+        ]
+    )
+
+
+def test_every_real_request_passes_the_gate_retries_too() -> None:
+    gate = CountingGate()
+    provider, client, _ = make([api_error(429), GOOD_JSON], gate=gate)
+
+    provider.extract_receipt(TEXT, HINTS)
+
+    assert gate.taken == ["test-model", "test-model"]
+    assert len(client.calls) == 2
+
+
+def test_a_used_up_cap_sends_nothing() -> None:
+    provider, client, _ = make([GOOD_JSON], gate=CountingGate(limit=0))
+
+    with pytest.raises(DailyLimitReached):
+        provider.extract_receipt(TEXT, HINTS)
+    assert client.calls == []
+
+
+def test_the_assistant_loop_also_passes_the_gate() -> None:
+    gate = CountingGate(limit=1)
+    provider, client, clock = make_assistant(
+        [model_reply(calls=[fn_call()]), model_reply(text="Tamam.")]
+    )
+    provider._gate = gate
+
+    with pytest.raises(DailyLimitReached):
+        provider.run_assistant(ASSISTANT_MESSAGES, ASSISTANT_TOOLS, StubExecutor(clock.now + 20))
+    assert len(client.calls) == 1
+
+
+def test_a_cached_answer_costs_no_request() -> None:
+    cache, gate = DictCache(), CountingGate()
+    provider, client, _ = make(
+        [real_response(GOOD_JSON), real_response(GOOD_JSON)], gate=gate, response_cache=cache
+    )
+
+    first = provider.extract_receipt(TEXT, HINTS)
+    second = provider.extract_receipt(TEXT, HINTS)
+
+    assert first == second
+    assert len(client.calls) == 1
+    assert len(gate.taken) == 1
+    assert len(cache.items) == 1
+    # Another input is another key.
+    provider.extract_receipt(TEXT + "\nEK SATIR", HINTS)
+    assert len(client.calls) == 2

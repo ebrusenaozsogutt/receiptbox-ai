@@ -164,6 +164,14 @@ class ExtractionFailedError(AppError):
     default_message = "The receipt could not be read right now. You can enter it manually."
 
 
+class AiDailyLimitError(AppError):
+    """D-016: the daily cap of free AI requests is used up; nothing was sent to the provider."""
+
+    status_code = 429
+    code = "AI_DAILY_LIMIT"
+    default_message = "Today's free AI requests are used up. Try again tomorrow."
+
+
 class AssistantUnavailableError(AppError):
     """P14: the AI provider did not answer in time, refused (quota, 429) or failed, before any
     tool result could be used. Nothing about the question is echoed."""

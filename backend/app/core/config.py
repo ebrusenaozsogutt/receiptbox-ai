@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 MIN_JWT_SECRET_LENGTH = 32  # HS256 needs a key of at least 256 bits
@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     ai_model_assistant: str = DEFAULT_MODEL_ASSISTANT
     gemini_api_key: SecretStr = SecretStr("")
     ai_timeout_seconds: float = 30.0
+    # D-016 (free tier only): real Gemini requests per model and Google quota day (midnight
+    # Pacific). Set it a little below the free limit shown on https://ai.dev/rate-limit.
+    ai_max_requests_per_day: int = Field(default=100, ge=1)
     # How much the model "thinks" before answering (MINIMAL / LOW / MEDIUM / HIGH on Gemini 3.x
     # models; other model families reject it). Empty = the model's own default. In the manual run
     # of 2026-11-19 MINIMAL was sometimes much faster (3.7 s against 9.4 s) but the free tier's
