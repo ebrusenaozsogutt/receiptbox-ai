@@ -21,7 +21,7 @@ Update after every phase. Newest entry on top of the log.
 | P12 | Products, warranties, returns, refunds | ✅ Done | 2026-11-25 |
 | P13 | Reminders & local notifications | ✅ Done | 2026-11-26 |
 | P14 | AI assistant | ✅ Done | 2026-11-26 |
-| P15 | Evaluation harness & experiments | ⬜ | |
+| P15 | Evaluation harness & experiments | 🟨 Part A done; part B waits for the owner's receipts | |
 | P16 | Hardening, security tests, demo | ⬜ | |
 
 Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
@@ -35,6 +35,37 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Manual test steps for the owner:
 - Known gaps / follow-ups:
 -->
+
+### 2026-11-27 — P15 Evaluation, part A (in progress; part B waits for the owner's receipts)
+- Done:
+  - **Free tier only (D-016)**: recorded in DECISIONS and CLAUDE.md. `AI_MAX_REQUESTS_PER_DAY` caps real Gemini requests per model and Google quota day, counted in `ai_daily_requests` (migration **0009**) and shared by the app and the experiments; 429 `AI_DAILY_LIMIT` with Turkish messages in the app (P-099).
+  - **Harness** `ai/experiments/` (P-100): YAML configs, `results/<exp>/<time>/`, a response cache per (model, system, input, tools) inside the backend provider, pacing, metric functions (field exact match, item P/R/F1 with fuzzy ≥ 85 + exact price, PR curves, AP, best-F1 threshold, bootstrap 95 % CIs), `make_report_assets.py` (Turkish captions). There is a CI job for the harness tests.
+  - **E4 privacy** (P-102): 600 seeded synthetic texts with 1,782 personal values, masked by the app's own Dart masker (`mobile/tool/mask_jsonl.dart`).
+  - **E3 assistant** (P-101): a rebuilt, seeded evaluation database, 88 Turkish questions, SQL gold, run through the app's own `AssistantService` with `gemini-3.5-flash-lite` (free tier, cached, paced).
+  - **E1 ready** (P-103): `export_receipts.py`, the labelling tool `label_receipts.py` (pre-fill marked unverified, only confirmed fields count, S5 permission per receipt), S1 regex baseline, S2-S4 (one model call), S5 (`extract_receipt_image`, experiment only), merchant-disjoint split. All of it was tried on the 13 synthetic receipts with the Fake provider.
+  - **E2 ready** (P-104): `synth_bank_rows.py`, `export_pairs.py` plus `label_pairs.py` (pre-filled labels count only when confirmed), deterministic scorer vs logistic regression (stratified 5-fold CV), PR curves, app thresholds 95/70, 1:1 and 1:N apart. Tried on synthetic pairs.
+- **Results (real runs)** (tables: `docs/report_assets/e3_assistant.md`, `e4_privacy.md`):
+  - **E4 privacy, complete.**
+    - Recall 100 % for keyword names, IBAN, cards, partly starred cards, TCKN, phones, e-mails and balance lines on clean values.
+    - Names without a keyword: 0 % (by design, spec 15.1).
+    - With one OCR-like error: IBAN 67 %, card 61 %, phone 49 %, TCKN 3 %.
+    - False positives: 0 % on totals, dates, times, invalid TCKNs, Luhn-invalid numbers, tax numbers and receipt numbers, but **13 %** on EAN-13 barcodes (masked as cards).
+    - Overall recall 84.3 %, false-positive rate 0.8 %.
+  - **E3 assistant, partial: 40/88 questions.** The free-tier day ended at 80 requests, 2 per question.
+    - Tool selection 100 %, correct answers 95.0 % [87.5–100], numeric correctness 94.7 % (n = 38).
+    - First-answer hallucination 0 %. Median latency 2.4 s, p95 3.1 s.
+    - Both wrong answers resolved "geçen ay" to October 2025 instead of 2026 (the numbers themselves were the tool's).
+    - The remaining 48 questions run on the next days with the same command; the first 40 replay from the committed cache.
+  - E1 and E2 have no numbers yet: they need the owner's labelled receipts and pairs (part B).
+- Tests added: backend **1488** (was 1473): the daily cap (gate on PostgreSQL, quota day, shared counter, API 429 for receipts and the assistant), provider cap, cache, pacing and S5 tests. Harness **44** (metrics, E1, labelling, E2, E3 scoring and question set, E4). Flutter **718** (was 716): the cap messages. FakeProvider only in tests.
+- Checks run on 2026-11-27: `ruff`, `pytest` (backend and harness), `flutter analyze`, `flutter test`.
+- Manual steps for the owner: `ai/experiments/README.md` (part B: export, label, run).
+- Known gaps / next:
+  - **E3**: run `uv run python e3_assistant.py` on the next days until it prints a complete summary (about 2 more days at 80 requests a day), then `make_report_assets.py`.
+  - **Part B**: E1 (150+ labelled receipts, at about 2 requests per receipt also several days) and E2 (your bank rows + labels). Then the E2 thresholds go back into the backend config with a DECISIONS entry (P15 acceptance).
+  - The free-tier daily limit of `gemini-3.5-flash-lite` is not known exactly; if ai.dev/rate-limit shows more than 100, raise `AI_MAX_REQUESTS_PER_DAY` (and `stop_at_requests`) to finish sooner. Billing stays off (D-016).
+  - The backend container's files (kept receipt photos) are not on a volume. `export_receipts.py --images` copies them out while the container exists.
+  - Proposals R-001 – R-003 from these results are in DECISIONS (not built).
 
 ### 2026-11-26 — P14 CI confirmed
 - CI run on `main` (`5bd5040`): jobs `backend` (1473 tests on a fresh PostgreSQL, fake provider only, migration 0008 included) and `mobile` (716 Flutter tests) both green. P14 is closed.

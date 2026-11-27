@@ -21,7 +21,7 @@ Hyper-parameter sweeps beyond thresholds, training any OCR/LLM model.
 
 ## Acceptance criteria
 
-- [ ] One command per experiment reproduces results from cached responses.
+- [x] One command per experiment reproduces results from cached responses. *(E3 replays from `ai/experiments/cache/e3/`; E4 is seeded; E1 / E2 the same once data exists.)*
 - [ ] E1 run on ≥ 150 labelled receipts (or all available, stated in the report).
 - [ ] E2 PR curve and threshold table produced; chosen thresholds written back to backend config with justification in DECISIONS.
 - [ ] E3 run on ≥ 60 questions; E4 on ≥ 500 synthetic samples.

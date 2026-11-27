@@ -39,6 +39,26 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pytest -q
 
+  experiments:
+    # P15: unit tests of the evaluation harness (metrics, E1-E4 scoring, labelling). No model is
+    # called and no database is needed here; the experiments themselves run on the owner's PC.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai/experiments
+    env:
+      JWT_SECRET: ci-only-jwt-secret-not-real-0123456789abcdef
+      AI_PROVIDER: fake
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest -q
+
   mobile:
     runs-on: ubuntu-latest
     defaults:
