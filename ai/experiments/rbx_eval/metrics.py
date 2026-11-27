@@ -1,6 +1,7 @@
 """Metric functions of spec 19 (unit-tested in tests/test_metrics.py).
 
-- Field exact match (merchant normalised like the app's alias keys, date, total in kuruş).
+- Field exact match (merchant normalised like the app's alias keys, Turkish letters folded;
+  date; total in kuruş).
 - Item precision / recall / F1: a predicted item matches a gold item when the names are at least
   85 similar (rapidfuzz ratio on normalised names) AND the prices are exactly equal; one-to-one.
 - Precision / recall / F1 from counts, PR curves, average precision, thresholds.
@@ -25,8 +26,13 @@ ITEM_NAME_THRESHOLD = 85.0
 # ---- fields -------------------------------------------------------------------------------------
 
 
+_ASCII = str.maketrans("İIŞĞÜÖÇ", "IISGUOC")
+
+
 def normalize_merchant(name: str | None) -> str:
-    return normalize_alias_key(name or "")
+    """The app's alias key (upper case the Turkish way, punctuation removed) with the Turkish
+    letters folded, because printers and OCR often drop them ("MİGROS A.Ş." = "MIGROS A.S.")."""
+    return normalize_alias_key(name or "").translate(_ASCII)
 
 
 def field_match(field: str, predicted: Any, gold: Any) -> bool:

@@ -66,6 +66,7 @@ class FakeProvider:
     ) -> None:
         self._answers = dict(answers or {})
         self._bank_answers = dict(bank_answers or {})
+        self._image_answers: dict[str, RawReceiptExtraction] = {}  # P15 E1 S5
         self.bank_calls = 0  # bank screenshot extractions
         self.bank_hints: list[str | None] = []  # the bank_key of each bank call
         self._categories = {_merchant_key(m): k for m, k in (categories or {}).items()}
@@ -126,6 +127,16 @@ class FakeProvider:
         )
         if answer is None:
             raise ProviderOutputError("The fake provider has no fixture for this text.")
+        return answer.model_copy(deep=True)
+
+    def add_image(self, image: bytes, answer: RawReceiptExtraction) -> None:
+        self._image_answers[hashlib.sha256(image).hexdigest()] = answer
+
+    def extract_receipt_image(self, image: bytes, mime_type: str) -> RawReceiptExtraction:
+        """P15 E1 S5 (tests only): the answer configured for these image bytes."""
+        answer = self._image_answers.get(hashlib.sha256(image).hexdigest())
+        if answer is None:
+            raise ProviderOutputError("The fake provider has no fixture for this image.")
         return answer.model_copy(deep=True)
 
     def add_bank(self, masked_text: str, answer: RawBankExtraction) -> None:

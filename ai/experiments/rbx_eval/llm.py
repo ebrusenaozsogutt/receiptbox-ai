@@ -6,6 +6,7 @@ import hashlib
 from pathlib import Path
 
 from rbx_eval import EXPERIMENTS_DIR
+from rbx_eval import settings as repo_settings
 
 from app.ai.providers.gemini import GeminiProvider  # noqa: E402
 from app.ai.usage import PostgresDailyGate  # noqa: E402
@@ -49,13 +50,17 @@ def gemini(
     pace_seconds: float,
     settings: Settings | None = None,
     timeout_seconds: float | None = None,
+    daily_limit: int | None = None,
 ) -> tuple[GeminiProvider, FileCache, PostgresDailyGate]:
     """A Gemini provider for `model` whose answers are cached in `cache_dir`. Every real request
     passes the shared daily cap (the same counter as the app)."""
-    settings = settings or Settings()  # type: ignore[call-arg]
+    settings = settings or repo_settings()
     api_key = settings.gemini_api_key.get_secret_value()
     cache = FileCache(cache_dir)
-    gate = PostgresDailyGate(settings.database_url, settings.ai_max_requests_per_day)
+    # The experiments stop below the app's cap (`daily_limit`), so the app keeps the rest. Cached
+    # answers never count. The counter is the app's own (one per model and Google quota day).
+    limit = min(daily_limit or settings.ai_max_requests_per_day, settings.ai_max_requests_per_day)
+    gate = PostgresDailyGate(settings.database_url, limit)
     provider = GeminiProvider(
         api_key=api_key or "missing-key",  # a full cache needs no key
         model=model,

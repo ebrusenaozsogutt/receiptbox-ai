@@ -123,6 +123,22 @@ class GeminiProvider:
             parse=lambda text: RawReceiptExtraction.model_validate_json(text),
         )
 
+    def extract_receipt_image(self, image: bytes, mime_type: str) -> RawReceiptExtraction:
+        """P15 E1 system S5 ONLY (the privacy-unfriendly baseline of spec 19): the photo itself,
+        unmasked, goes to the model. The app never calls this; the experiment calls it only for
+        receipts the owner allowed (gold.json "s5_allowed")."""
+        return self._generate(
+            [
+                types.Part.from_bytes(data=image, mime_type=mime_type),
+                "Bu fişin fotoğrafını oku.",
+            ],
+            system_prompt=self._receipt_prompt,
+            prompt_version=RECEIPT_EXTRACT,
+            mime_type="application/json",
+            schema=RawReceiptExtraction,
+            parse=lambda text: RawReceiptExtraction.model_validate_json(text),
+        )
+
     def classify_category(self, merchant: str, items: list[str]) -> CategoryKey:
         lines = [f"Merchant: {merchant.strip() or '(unknown)'}"]
         if items:
@@ -171,7 +187,7 @@ class GeminiProvider:
 
     def _generate(
         self,
-        contents: str,
+        contents: Any,
         *,
         system_prompt: str,
         prompt_version: str,

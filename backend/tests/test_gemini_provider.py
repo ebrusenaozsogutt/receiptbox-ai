@@ -666,3 +666,14 @@ def test_pacing_spaces_real_requests_but_not_cache_hits() -> None:
 
     assert sleeps == [5.0]
     assert len(client.calls) == 2
+
+
+def test_s5_sends_the_photo_with_the_receipt_prompt() -> None:
+    provider, client, _ = make([GOOD_JSON])
+
+    result = provider.extract_receipt_image(b"\xff\xd8 not really a jpeg", "image/jpeg")
+
+    assert result.total == "82,40"
+    contents = client.calls[0]["contents"]
+    assert contents[0].inline_data.mime_type == "image/jpeg"
+    assert client.calls[0]["config"].response_schema is not None

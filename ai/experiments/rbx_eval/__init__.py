@@ -20,3 +20,11 @@ REPORT_ASSETS = REPO / "docs" / "report_assets"
 
 if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
+
+
+def settings(**overrides: object):  # noqa: ANN201
+    """The backend settings with the repository's .env (wherever the script is started from).
+    The API key and the database URL come from there; nothing is printed."""
+    from app.core.config import Settings
+
+    return Settings(_env_file=(REPO / ".env",), **overrides)  # type: ignore[call-arg]

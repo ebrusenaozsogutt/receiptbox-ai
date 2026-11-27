@@ -1,0 +1,8 @@
+# E1 extraction (spec 19). Free tier only (D-016).
+model: gemini-3.5-flash-lite
+pace_seconds: 5
+stop_at_requests: 80
+# Share of shops in the dev part of the merchant-disjoint split (no shop in both parts).
+dev_share: 0.3
+# The validation rejects dates after "today": fixed for reproducible runs.
+today: 2026-12-31

@@ -37,6 +37,10 @@ extend-exclude = ["make_synthetic_samples.py", "run_bank_extract_manual.py", "ru
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
+[tool.ruff.lint.per-file-ignores]
+# Turkish captions of the report tables are long sentences.
+"make_report_assets.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "../../backend"]

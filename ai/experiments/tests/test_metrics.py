@@ -23,6 +23,7 @@ import pytest
 def test_merchant_match_is_normalised_the_apps_way() -> None:
     assert field_match("merchant", "Migros Ticaret A.Ş.", "MİGROS TİCARET A.Ş")
     assert field_match("merchant", "a101", "A101")
+    assert field_match("merchant", "MİGROS TİCARET A.Ş.", "MIGROS TICARET A.S.")
     assert not field_match("merchant", "Migros", "Macrocenter")
     assert not field_match("merchant", None, "Migros")
     assert field_match("merchant", None, None)
