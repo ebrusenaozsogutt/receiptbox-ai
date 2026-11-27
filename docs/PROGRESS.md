@@ -36,6 +36,15 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
+### 2026-11-27 — Fix before P15 part B: kept files on a Docker volume; R-001 – R-003 approved
+- Done:
+  - The backend's `STORAGE_ROOT` (`/app/storage`) is now on the named volume `receiptbox_receipt_files` (`infra/docker-compose.yml`), so kept receipt photos and documents survive `up -d --build` (P-105). Checked: a file written in the container was still there after `up -d --build --force-recreate`.
+  - Nothing had to be copied out first: the container held no files. Earlier rebuilds had already lost them, so 5 document rows of 2 development accounts point to files that no longer exist (left as they are; re-upload if needed).
+  - README §3.1: where the data lives, back up files + database together (tar through the backend image, `pg_dump` inside the db container, then `docker compose cp`) and restore. Tested: backup, delete, restore brought the file back with the right owner; the dump lists 22 tables.
+  - The owner approved R-001 – R-003: they are now DECISIONS D-022 – D-024 (D-017 – D-021 were already taken by the launch decisions), and item 8 of the P16 scope with a re-measurement through E4 / E3. Not implemented yet.
+- Tests: no code changed; rerun on 2026-11-27: backend `pytest` 1488 passed, harness 44 passed.
+- Known gaps: none new.
+
 ### 2026-11-27 — P15 part A CI confirmed
 - CI run on `main` (`7a3e448`): jobs `backend` (1488 tests, migration 0009 included), `mobile` (718 tests) and the new `experiments` (44 harness tests) all green. P15 stays open: E3 has 48 questions left, and part B (E1, E2) waits for the owner's receipts.
 
@@ -67,7 +76,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
   - **E3**: run `uv run python e3_assistant.py` on the next days until it prints a complete summary (about 2 more days at 80 requests a day), then `make_report_assets.py`.
   - **Part B**: E1 (150+ labelled receipts, at about 2 requests per receipt also several days) and E2 (your bank rows + labels). Then the E2 thresholds go back into the backend config with a DECISIONS entry (P15 acceptance).
   - The free-tier daily limit of `gemini-3.5-flash-lite` is not known exactly; if ai.dev/rate-limit shows more than 100, raise `AI_MAX_REQUESTS_PER_DAY` (and `stop_at_requests`) to finish sooner. Billing stays off (D-016).
-  - The backend container's files (kept receipt photos) are not on a volume. `export_receipts.py --images` copies them out while the container exists.
+  - ~~The backend container's files (kept receipt photos) are not on a volume.~~ → named volume `receiptbox_receipt_files` since 2026-11-27, see the entry above.
   - Proposals R-001 – R-003 from these results are in DECISIONS (not built).
 
 ### 2026-11-26 — P14 CI confirmed

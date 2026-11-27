@@ -117,8 +117,31 @@ Useful Docker commands:
 ```powershell
 docker compose -f infra/docker-compose.yml logs backend      # see backend logs
 docker compose -f infra/docker-compose.yml down              # stop everything (data is kept)
-docker compose -f infra/docker-compose.yml down -v           # stop and DELETE the database data
+docker compose -f infra/docker-compose.yml down -v           # stop and DELETE the database AND the kept files
 docker compose -f infra/docker-compose.yml up -d --build     # rebuild after changing backend code
+```
+
+**Where the data lives.** Two named Docker volumes: `receiptbox_db_data` (the database) and `receiptbox_receipt_files` (kept receipt photos, invoices and warranty documents: the backend's `STORAGE_ROOT`, `/app/storage` in the container). Both survive `down` and `up -d --build`; only `down -v` (or `docker volume rm`) deletes them.
+
+**Back up the files and the database together** (a document row in the database points to its file). The backup folder holds your private receipts: keep it outside the repository and never commit it. With Docker running, from the repository root in PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force "$HOMEeceiptbox-backup"
+docker compose -f infra/docker-compose.yml run --rm --no-deps -v "$HOMEeceiptbox-backup:/backup" backend tar czf /backup/receipt_files.tar.gz -C /app/storage .
+docker compose -f infra/docker-compose.yml exec -T db pg_dump -U receiptbox -Fc -f /tmp/receiptbox.dump receiptbox
+docker compose -f infra/docker-compose.yml cp db:/tmp/receiptbox.dump "$HOMEeceiptbox-backupeceiptbox.dump"
+```
+
+(The dump is written inside the container and copied out: PowerShell's `>` would change the bytes of a binary dump. The backend's own image does the copying, so nothing new is downloaded.)
+
+**Restore** (into the same volumes; this replaces what is there):
+
+```powershell
+docker compose -f infra/docker-compose.yml stop backend
+docker compose -f infra/docker-compose.yml run --rm --no-deps --user root -v "$HOMEeceiptbox-backup:/backup" backend sh -c "tar xzf /backup/receipt_files.tar.gz -C /app/storage && chown -R appuser /app/storage"
+docker compose -f infra/docker-compose.yml cp "$HOMEeceiptbox-backupeceiptbox.dump" db:/tmp/receiptbox.dump
+docker compose -f infra/docker-compose.yml exec -T db pg_restore -U receiptbox -d receiptbox --clean --if-exists /tmp/receiptbox.dump
+docker compose -f infra/docker-compose.yml up -d backend
 ```
 
 > **Port 5433, not 5432.** The Docker database is reachable from your PC at `localhost:5433`, so it never clashes with a PostgreSQL that is already installed on Windows.

@@ -35,8 +35,13 @@ services:
       # `environment` wins over env_file. Inside the compose network the DB host is `db`.
       DATABASE_URL: postgresql+asyncpg://receiptbox:receiptbox@db:5432/receiptbox
       STORAGE_ROOT: /app/storage
+    volumes:
+      # Kept receipt photos and documents survive rebuilds (`up --build`). On first use Docker
+      # fills the empty volume from the image's /app/storage, owned by the app's user.
+      - receipt_files:/app/storage
     ports:
       - "127.0.0.1:8000:8000"
 
 volumes:
   db_data:
+  receipt_files:

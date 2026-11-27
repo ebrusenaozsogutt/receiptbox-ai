@@ -13,6 +13,10 @@
 5. **Release build:** signed release APK (keystore kept out of git; instructions in README), app icon/name "ReceiptBox", version 1.0.0; backend run instructions for the demo laptop (Docker Compose) and phone on the same Wi-Fi.
 6. **Docs:** README final; `docs/ARCHITECTURE.md` (diagram + module overview, generated from code reality); update spec only via DECISIONS if reality differs.
 7. Fix all "known gaps" in PROGRESS that are in scope.
+8. **Approved findings of the P15 evaluation** (DECISIONS D-022 – D-024); measure each again with the same P15 experiment afterwards:
+   - **D-022 (R-001) Masker and OCR noise:** in digit runs treat a letter O as 0 and ignore one stray space inside a digit group before the TCKN / card / IBAN / phone checks (`mobile/lib/core/privacy/pii_masker.dart` + its tests). Re-run E4 (`e4_privacy.py`): the OCR-noise recall must rise without new false positives.
+   - **D-023 (R-002) Barcodes:** do not mask a 13-digit number that is a valid EAN-13 barcode (prefix 869 = Turkey) as a card. Re-run E4: the EAN-13 false-positive rate (13 % in P15) must drop, card recall must stay 100 %.
+   - **D-024 (R-003) "geçen ay" year:** make the assistant resolve relative periods to the right year (repeat the resolved year in the tool descriptions, or a backend check that a period the user called "geçen ay" is not a year earlier). Re-run E3 with a new prompt version (`assistant.v2`, new cache): the two wrong "geçen ay" answers of P15 must be right.
 
 ## Out of scope
 
@@ -24,6 +28,7 @@ Play Store publishing, cloud deployment (documented as future work), any new fea
 - [ ] Log audit finds no sensitive content.
 - [ ] Demo script runs end-to-end twice in a row on a real phone with fresh seed.
 - [ ] Release APK installs and runs against the demo backend.
+- [ ] D-022 – D-024 implemented and re-measured with E4 / E3 (numbers in PROGRESS).
 - [ ] CI green; PROGRESS shows all phases ✅.
 
 ## Tests
