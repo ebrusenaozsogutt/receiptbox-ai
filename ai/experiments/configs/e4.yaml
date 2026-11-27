@@ -1,0 +1,4 @@
+samples: 600
+seed: 2026
+# Share of IBAN / card / TCKN / phone values with one OCR-like error.
+noise_share: 0.2

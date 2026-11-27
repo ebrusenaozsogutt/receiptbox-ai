@@ -650,3 +650,19 @@ def test_a_cached_answer_costs_no_request() -> None:
     # Another input is another key.
     provider.extract_receipt(TEXT + "\nEK SATIR", HINTS)
     assert len(client.calls) == 2
+
+
+def test_pacing_spaces_real_requests_but_not_cache_hits() -> None:
+    cache = DictCache()
+    provider, client, sleeps = make(
+        [real_response(GOOD_JSON), real_response(GOOD_JSON)],
+        response_cache=cache,
+        pace_seconds=5.0,
+    )
+
+    provider.extract_receipt(TEXT, HINTS)
+    provider.extract_receipt(TEXT, HINTS)  # cached: no wait
+    provider.extract_receipt(TEXT + "\nEK", HINTS)  # real: waits out the 5 s
+
+    assert sleeps == [5.0]
+    assert len(client.calls) == 2

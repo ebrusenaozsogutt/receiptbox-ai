@@ -87,6 +87,7 @@ class GeminiProvider:
         assistant_model: str | None = None,
         gate: RequestGate | None = None,
         response_cache: ResponseCache | None = None,
+        pace_seconds: float = 0.0,
         client: Any | None = None,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
@@ -104,6 +105,10 @@ class GeminiProvider:
         # D-016: every real request passes the daily cap; a cache hit (P15 experiments) is free.
         self._gate = gate
         self._cache = response_cache
+        # P15 experiments: at least this long between two real requests (free-tier per-minute
+        # limits). The app does not pace (0).
+        self._pace_seconds = pace_seconds
+        self._last_request: float | None = None
         self._receipt_prompt = load_prompt(RECEIPT_EXTRACT)
         self._category_prompt = load_prompt(CATEGORY_CLASSIFY)
         self._commentary_prompt = load_prompt(COMPARISON_COMMENTARY)
@@ -152,6 +157,11 @@ class GeminiProvider:
                 return types.GenerateContentResponse.model_validate_json(cached)
         if self._gate is not None:
             self._gate.take(model)
+        if self._pace_seconds and self._last_request is not None:
+            wait = self._last_request + self._pace_seconds - self._clock()
+            if wait > 0:
+                self._sleep(wait)
+        self._last_request = self._clock()
         response = self._client.models.generate_content(
             model=model, contents=contents, config=config
         )
