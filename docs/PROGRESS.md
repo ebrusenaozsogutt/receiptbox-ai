@@ -36,6 +36,9 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⛔ blocked
 - Known gaps / follow-ups:
 -->
 
+### 2026-11-27 — P15 part A CI confirmed
+- CI run on `main` (`7a3e448`): jobs `backend` (1488 tests, migration 0009 included), `mobile` (718 tests) and the new `experiments` (44 harness tests) all green. P15 stays open: E3 has 48 questions left, and part B (E1, E2) waits for the owner's receipts.
+
 ### 2026-11-27 — P15 Evaluation, part A (in progress; part B waits for the owner's receipts)
 - Done:
   - **Free tier only (D-016)**: recorded in DECISIONS and CLAUDE.md. `AI_MAX_REQUESTS_PER_DAY` caps real Gemini requests per model and Google quota day, counted in `ai_daily_requests` (migration **0009**) and shared by the app and the experiments; 429 `AI_DAILY_LIMIT` with Turkish messages in the app (P-099).
