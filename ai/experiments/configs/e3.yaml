@@ -1,0 +1,9 @@
+# E3 assistant benchmark (spec 19). Free tier only (D-016).
+model: gemini-3.5-flash-lite
+# Seconds per real request on average (free-tier per-minute limit): waits between questions.
+pace_seconds: 5
+# Stop for the day once the shared counter (app + experiments) reaches this, so the app keeps
+# the rest of AI_MAX_REQUESTS_PER_DAY.
+stop_at_requests: 80
+# Rebuilt on every run.
+database: receiptbox_eval

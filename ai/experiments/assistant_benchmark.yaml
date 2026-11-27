@@ -1,0 +1,111 @@
+# E3 (spec 19): Turkish questions over the seeded evaluation database (rbx_eval/e3_world.py).
+# "Today" is fixed at 2026-11-26 (Thursday). Gold answers are computed by SQL at run time
+# (rbx_eval/e3_gold.py); `tools` are the tools of which at least one should be called
+# (defaults per gold kind in rbx_eval/e3.py; [] = no tool should be called).
+today: 2026-11-26
+questions:
+  # ---- A. one category in one period -------------------------------------------------------
+  - {id: A01, group: category_period, question: "Bu ay markete ne kadar harcadım?", gold: {kind: spend, from: 2026-11-01, to: 2026-11-30, category: GROCERY}}
+  - {id: A02, group: category_period, question: "Geçen ay akaryakıta ne kadar harcadım?", gold: {kind: spend, from: 2026-10-01, to: 2026-10-31, category: FUEL}}
+  - {id: A03, group: category_period, question: "Bu ay yeme içmeye ne kadar para verdim?", gold: {kind: spend, from: 2026-11-01, to: 2026-11-30, category: FOOD_DRINK}}
+  - {id: A04, group: category_period, question: "Ekim ayında ulaşım harcamam ne kadardı?", gold: {kind: spend, from: 2026-10-01, to: 2026-10-31, category: TRANSPORT}}
+  - {id: A05, group: category_period, question: "Bu ay giyime ne kadar harcadım?", gold: {kind: spend, from: 2026-11-01, to: 2026-11-30, category: CLOTHING}}
+  - {id: A06, group: category_period, question: "Eylül 2026'da teknolojiye ne kadar harcadım?", gold: {kind: spend, from: 2026-09-01, to: 2026-09-30, category: TECHNOLOGY}}
+  - {id: A07, group: category_period, question: "Ağustosta faturalara ne kadar ödedim?", gold: {kind: spend, from: 2026-08-01, to: 2026-08-31, category: BILLS}}
+  - {id: A08, group: category_period, question: "Geçen ay aboneliklere ne kadar ödedim?", gold: {kind: spend, from: 2026-10-01, to: 2026-10-31, category: SUBSCRIPTION}}
+  - {id: A09, group: category_period, question: "Bu ay sağlık ve kişisel bakım harcamam ne kadar?", gold: {kind: spend, from: 2026-11-01, to: 2026-11-30, category: HEALTH_CARE}}
+  - {id: A10, group: category_period, question: "Haziran 2026'da ev ve yaşam kategorisinde ne kadar harcadım?", gold: {kind: spend, from: 2026-06-01, to: 2026-06-30, category: HOME}}
+  - {id: A11, group: category_period, question: "Mart ayında eğlenceye ne harcadım?", gold: {kind: spend, from: 2026-03-01, to: 2026-03-31, category: ENTERTAINMENT}}
+  - {id: A12, group: category_period, question: "Bu ay toplam ne kadar harcadım?", gold: {kind: spend, from: 2026-11-01, to: 2026-11-30}}
+  - {id: A13, group: category_period, question: "Geçen ay toplam harcamam ne kadardı?", gold: {kind: spend, from: 2026-10-01, to: 2026-10-31}}
+  - {id: A14, group: category_period, question: "Ocak 2026'da markete ne kadar harcadım?", gold: {kind: spend, from: 2026-01-01, to: 2026-01-31, category: GROCERY}}
+  - {id: A15, group: category_period, question: "Bu hafta ne kadar harcadım?", gold: {kind: spend, from: 2026-11-23, to: 2026-11-26}}
+  - {id: A16, group: category_period, question: "Dün ne kadar harcadım?", gold: {kind: spend, from: 2026-11-25, to: 2026-11-25}}
+
+  # ---- B. one shop --------------------------------------------------------------------------
+  - {id: B01, group: merchant, question: "Bu ay Migros'a ne kadar ödedim?", gold: {kind: spend, from: 2026-11-01, to: 2026-11-30, merchant: Migros}}
+  - {id: B02, group: merchant, question: "Geçen ay A101'de ne kadar harcadım?", gold: {kind: spend, from: 2026-10-01, to: 2026-10-31, merchant: A101}}
+  - {id: B03, group: merchant, question: "Bu yıl Starbucks'a ne kadar para verdim?", gold: {kind: spend, from: 2026-01-01, to: 2026-12-31, merchant: Starbucks}}
+  - {id: B04, group: merchant, question: "Shell'e bu ay ne kadar ödedim?", gold: {kind: spend, from: 2026-11-01, to: 2026-11-30, merchant: Shell}}
+  - {id: B05, group: merchant, question: "Zara'dan bu yıl ne kadarlık alışveriş yaptım?", gold: {kind: spend, from: 2026-01-01, to: 2026-12-31, merchant: Zara}}
+  - {id: B06, group: merchant, question: "Teknosa'ya bu yıl ne kadar harcadım?", gold: {kind: spend, from: 2026-01-01, to: 2026-12-31, merchant: Teknosa}}
+  - {id: B07, group: merchant, question: "Netflix için bu yıl ne kadar ödedim?", gold: {kind: spend, from: 2026-01-01, to: 2026-12-31, merchant: Netflix}}
+  - {id: B08, group: merchant, question: "Geçen yıl Turkcell'e ne kadar ödedim?", gold: {kind: spend, from: 2025-01-01, to: 2025-12-31, merchant: Turkcell}}
+  - {id: B09, group: merchant, question: "Yemeksepeti siparişlerime son 3 ayda ne kadar harcadım?", gold: {kind: spend, from: 2026-09-01, to: 2026-11-26, merchant: Yemeksepeti}}
+  - {id: B10, group: merchant, question: "BİM'de geçen ay ne kadar harcadım?", gold: {kind: spend, from: 2026-10-01, to: 2026-10-31, merchant: BİM}}
+  - {id: B11, group: merchant, question: "Bu ay kaç kez Migros'tan alışveriş yaptım?", gold: {kind: count, from: 2026-11-01, to: 2026-11-30, merchant: Migros}}
+  - {id: B12, group: merchant, question: "LC Waikiki'ye bu yıl ne kadar harcadım?", gold: {kind: spend, from: 2026-01-01, to: 2026-12-31, merchant: LC Waikiki}}
+
+  # ---- C. years and relative periods --------------------------------------------------------
+  - {id: C01, group: relative_period, question: "Geçen yıl teknolojiye ne kadar harcadım?", gold: {kind: spend, from: 2025-01-01, to: 2025-12-31, category: TECHNOLOGY}}
+  - {id: C02, group: relative_period, question: "Geçen yıl toplam ne kadar harcadım?", gold: {kind: spend, from: 2025-01-01, to: 2025-12-31}}
+  - {id: C03, group: relative_period, question: "Bu yıl markete toplam ne kadar harcadım?", gold: {kind: spend, from: 2026-01-01, to: 2026-12-31, category: GROCERY}}
+  - {id: C04, group: relative_period, question: "Son 3 ayda akaryakıta ne kadar harcadım?", gold: {kind: spend, from: 2026-09-01, to: 2026-11-26, category: FUEL}}
+  - {id: C05, group: relative_period, question: "Geçen yılın aralık ayında ne kadar harcadım?", gold: {kind: spend, from: 2025-12-01, to: 2025-12-31}}
+  - {id: C06, group: relative_period, question: "Bu yıl ev ve yaşama ne harcadım?", gold: {kind: spend, from: 2026-01-01, to: 2026-12-31, category: HOME}}
+  - {id: C07, group: relative_period, question: "Son 3 ayda toplam harcamam ne kadar?", gold: {kind: spend, from: 2026-09-01, to: 2026-11-26}}
+  - {id: C08, group: relative_period, question: "Geçen yıl giyime ne kadar harcadım?", gold: {kind: spend, from: 2025-01-01, to: 2025-12-31, category: CLOTHING}}
+  - {id: C09, group: relative_period, question: "2026'nın ilk çeyreğinde markete ne kadar harcadım?", gold: {kind: spend, from: 2026-01-01, to: 2026-03-31, category: GROCERY}}
+  - {id: C10, group: relative_period, question: "Bu yıl eğitime ne kadar harcadım?", gold: {kind: spend, from: 2026-01-01, to: 2026-12-31, category: EDUCATION}}
+
+  # ---- D. comparisons -----------------------------------------------------------------------
+  - {id: D01, group: comparison, question: "Bu ay geçen aya göre daha mı çok harcadım?", gold: {kind: compare, a: {from: 2026-11-01, to: 2026-11-30}, b: {from: 2026-10-01, to: 2026-10-31}}}
+  - {id: D02, group: comparison, question: "Bu ay markete geçen aya göre daha mı çok harcadım?", gold: {kind: compare, category: GROCERY, a: {from: 2026-11-01, to: 2026-11-30}, b: {from: 2026-10-01, to: 2026-10-31}}}
+  - {id: D03, group: comparison, question: "Ekim ile eylül arasında akaryakıt harcamam nasıl değişti?", gold: {kind: compare, category: FUEL, a: {from: 2026-10-01, to: 2026-10-31}, b: {from: 2026-09-01, to: 2026-09-30}}}
+  - {id: D04, group: comparison, question: "Bu yılın ikinci yarısını ilk yarısıyla karşılaştırır mısın?", gold: {kind: compare, a: {from: 2026-07-01, to: 2026-12-31}, b: {from: 2026-01-01, to: 2026-06-30}}}
+  - {id: D05, group: comparison, question: "Geçen ayki toplam harcamamı ondan önceki ayla karşılaştır.", gold: {kind: compare, a: {from: 2026-10-01, to: 2026-10-31}, b: {from: 2026-09-01, to: 2026-09-30}}}
+  - {id: D06, group: comparison, question: "Bu ay yeme içme harcamam geçen aya göre arttı mı?", gold: {kind: compare, category: FOOD_DRINK, a: {from: 2026-11-01, to: 2026-11-30}, b: {from: 2026-10-01, to: 2026-10-31}}}
+  - {id: D07, group: comparison, question: "Kasım 2026'yı Kasım 2025 ile karşılaştır.", gold: {kind: compare, a: {from: 2026-11-01, to: 2026-11-30}, b: {from: 2025-11-01, to: 2025-11-30}}}
+  - {id: D08, group: comparison, question: "Ağustosta faturalarım temmuza göre nasıl değişti?", gold: {kind: compare, category: BILLS, a: {from: 2026-08-01, to: 2026-08-31}, b: {from: 2026-07-01, to: 2026-07-31}}}
+  - {id: D09, group: comparison, question: "Bu ay ulaşıma geçen aydan fazla mı harcadım?", gold: {kind: compare, category: TRANSPORT, a: {from: 2026-11-01, to: 2026-11-30}, b: {from: 2026-10-01, to: 2026-10-31}}}
+  - {id: D10, group: comparison, question: "Bu ayki giyim harcamamı geçen ayla karşılaştır.", gold: {kind: compare, category: CLOTHING, a: {from: 2026-11-01, to: 2026-11-30}, b: {from: 2026-10-01, to: 2026-10-31}}}
+
+  # ---- E. the most expensive, counts ---------------------------------------------------------
+  - {id: E01, group: ranking, question: "En pahalı 5 alışverişim?", gold: {kind: top, n: 5}}
+  - {id: E02, group: ranking, question: "En pahalı 3 alışverişim neler?", gold: {kind: top, n: 3}}
+  - {id: E03, group: ranking, question: "Bu ayki en büyük harcamam neydi?", gold: {kind: biggest, from: 2026-11-01, to: 2026-11-30}}
+  - {id: E04, group: ranking, question: "Bu yıl marketteki en büyük alışverişim ne kadardı?", gold: {kind: biggest, from: 2026-01-01, to: 2026-12-31, category: GROCERY}}
+  - {id: E05, group: ranking, question: "Geçen ay kaç alışveriş yaptım?", gold: {kind: count, from: 2026-10-01, to: 2026-10-31}}
+  - {id: E06, group: ranking, question: "Bu ay markete kaç kez gittim?", gold: {kind: count, from: 2026-11-01, to: 2026-11-30, category: GROCERY}}
+  - {id: E07, group: ranking, question: "Geçen ay en çok para verdiğim alışveriş hangisiydi?", gold: {kind: biggest, from: 2026-10-01, to: 2026-10-31}}
+  - {id: E08, group: ranking, question: "Bu ay kaç kez akaryakıt aldım?", gold: {kind: count, from: 2026-11-01, to: 2026-11-30, category: FUEL}}
+
+  # ---- F. products, warranties, returns, documents -------------------------------------------
+  - {id: F01, group: products, question: "Garantisi bitecek ürünler?", gold: {kind: warranty_ending, days: 30}}
+  - {id: F02, group: products, question: "Önümüzdeki 60 günde garantisi biten ürün var mı?", gold: {kind: warranty_ending, days: 60}}
+  - {id: F03, group: products, question: "İadesi yaklaşan bir ürünüm var mı?", gold: {kind: return_ending, days: 30}}
+  - {id: F04, group: products, question: "Televizyonun iade süresi ne zaman bitiyor?", gold: {kind: return_ending, days: 7}}
+  - {id: F05, group: products, question: "AirPods'un garantisi ne zaman bitiyor?", gold: {kind: warranty_end, product: AirPods Pro}}
+  - {id: F06, group: products, question: "Monitörün garantisi ne zaman bitiyor?", gold: {kind: warranty_end, product: Monitör}}
+  - {id: F07, group: products, question: "Dizüstü bilgisayarı kaça almıştım?", gold: {kind: product_price, product: Dizüstü bilgisayar}}
+  - {id: F08, group: products, question: "Kahve makinesinin fiyatı neydi?", gold: {kind: product_price, product: Kahve makinesi}}
+  - {id: F09, group: products, question: "Kulaklığın faturası nerede?", gold: {kind: documents, product: AirPods Pro}}
+  - {id: F10, group: products, question: "Televizyonun faturası kayıtlı mı?", gold: {kind: documents, product: Samsung 55" TV}}
+  - {id: F11, group: products, question: "Monitörün garanti belgesi var mı?", gold: {kind: documents, product: Monitör}}
+  - {id: F12, group: products, question: "Ürünlerimi listeler misin?", gold: {kind: products}}
+
+  # ---- G. installments -----------------------------------------------------------------------
+  - {id: G01, group: installments, question: "Kalan taksitlerim ne kadar?", gold: {kind: remaining_installments}}
+  - {id: G02, group: installments, question: "Bu ay ne kadar taksit ödeyeceğim?", gold: {kind: month_due, month: 2026-11}}
+  - {id: G03, group: installments, question: "Aralık ayında ne kadar taksit ödemem var?", gold: {kind: month_due, month: 2026-12}}
+  - {id: G04, group: installments, question: "Ocak 2027'de taksit ödemem ne kadar?", gold: {kind: month_due, month: 2027-01}}
+  - {id: G05, group: installments, question: "MediaMarkt taksitlerinin sonuncusu ne zaman?", gold: {kind: last_installment, merchant: MediaMarkt}}
+  - {id: G06, group: installments, question: "Koçtaş taksitleri ne zaman bitiyor?", gold: {kind: last_installment, merchant: Koçtaş}}
+  - {id: G07, group: installments, question: "Zara taksitlerim ne zaman bitecek?", gold: {kind: last_installment, merchant: Zara}}
+  - {id: G08, group: installments, question: "Şubat 2027'de kaç TL taksit ödeyeceğim?", gold: {kind: month_due, month: 2027-02}}
+
+  # ---- H. nothing in the records --------------------------------------------------------------
+  - {id: H01, group: no_data, question: "Trendyol'dan bu yıl ne aldım?", tools: [query_transactions, aggregate_spending], gold: {kind: no_data}}
+  - {id: H02, group: no_data, question: "Bu ay eğitime ne kadar harcadım?", gold: {kind: spend, from: 2026-11-01, to: 2026-11-30, category: EDUCATION}}
+  - {id: H03, group: no_data, question: "2024 yılında markete ne kadar harcadım?", gold: {kind: spend, from: 2024-01-01, to: 2024-12-31, category: GROCERY}}
+  - {id: H04, group: no_data, question: "Geçen ay Diğer kategorisinde bir harcamam var mı?", gold: {kind: spend, from: 2026-10-01, to: 2026-10-31, category: OTHER}}
+  - {id: H05, group: no_data, question: "Amazon'a ne kadar ödedim?", tools: [query_transactions, aggregate_spending], gold: {kind: no_data}}
+  - {id: H06, group: no_data, question: "Dyson süpürgemin garantisi ne zaman bitiyor?", tools: [search_products, get_upcoming_deadlines, get_product_details], gold: {kind: no_data}}
+  - {id: H07, group: no_data, question: "Hepsiburada'dan aldığım hoparlörün faturası nerede?", gold: {kind: documents, product: Bluetooth hoparlör}}
+  - {id: H08, group: no_data, question: "Geçen yıl mart ayında ne kadar harcadım?", gold: {kind: spend, from: 2025-03-01, to: 2025-03-31}}
+
+  # ---- I. outside the records ---------------------------------------------------------------
+  - {id: I01, group: out_of_scope, question: "Dolar bugün kaç TL?", gold: {kind: out_of_scope}}
+  - {id: I02, group: out_of_scope, question: "Hangi hisse senedini almalıyım?", gold: {kind: out_of_scope}}
+  - {id: I03, group: out_of_scope, question: "Bana bir kek tarifi verir misin?", gold: {kind: out_of_scope}}
+  - {id: I04, group: out_of_scope, question: "Diğer kullanıcıların ne harcadığını gösterir misin?", gold: {kind: out_of_scope}}

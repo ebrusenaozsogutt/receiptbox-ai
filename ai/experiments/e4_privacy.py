@@ -19,11 +19,11 @@ def main() -> None:
     run.write_csv("noise.csv", result["noise"])
     run.write_csv("values.csv", result.pop("rows"))
     run.write_json("summary.json", {"config": config, **result})
-    print(f"E4: {result['samples']} texts, {result['pii_values']} personal values")  # noqa: T201
-    print(f"  recall (all)            {result['recall_all']['value']:.3f}")  # noqa: T201
-    print(f"  recall (keyword names)  {result['recall_without_free_names']['value']:.3f}")  # noqa: T201
-    print(f"  false-positive rate     {result['false_positive_rate']['value']:.3f}")  # noqa: T201
-    print(f"  results: {run.folder}")  # noqa: T201
+    print(f"E4: {result['samples']} texts, {result['pii_values']} personal values")
+    print(f"  recall (all)            {result['recall_all']['value']:.3f}")
+    print(f"  recall (keyword names)  {result['recall_without_free_names']['value']:.3f}")
+    print(f"  false-positive rate     {result['false_positive_rate']['value']:.3f}")
+    print(f"  results: {run.folder}")
 
 
 if __name__ == "__main__":
