@@ -1,0 +1,5 @@
+# E2 matching (spec 19).
+folds: 5
+seed: 15
+synthetic_one_to_one: 600
+synthetic_one_to_many: 300
